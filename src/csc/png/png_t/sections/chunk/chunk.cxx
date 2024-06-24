@@ -5,7 +5,7 @@ module;
 
 #include <array>
 #include <vector>
-export module csc.png.sections:chunk;
+export module csc.png.png_t.sections:chunk;
 
 export namespace csc {
 class chunk {

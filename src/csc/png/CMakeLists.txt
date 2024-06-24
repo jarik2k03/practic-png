@@ -1,7 +1,6 @@
 #add_subdirectory(png-serializer)
 add_subdirectory(png-deserializer)
-#add_subdirectory(png-struct)
-add_subdirectory(sections)
+add_subdirectory(png_t)
 
 add_library(png STATIC png.cxx)
 target_link_libraries(png PUBLIC png-deserializer )

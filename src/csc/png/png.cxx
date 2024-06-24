@@ -3,7 +3,6 @@ module;
 export module csc.png;
 export import :deserializer;
 
-import csc.png.sections;
 // export import :serializer;
 
 

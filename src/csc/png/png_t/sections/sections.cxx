@@ -3,14 +3,14 @@ module;
 #include <vector>
 #include <tuple>
 #include <cstdint>
-export module csc.png.sections;
+export module csc.png.png_t.sections;
 
 export import :chunk;
 export import :attributes;
-
+ 
 export namespace csc {
 
-struct subscribe {
+struct SUBSCRIBE {
   constexpr static const std::array<uint8_t, 8> data = { 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
 };
 
