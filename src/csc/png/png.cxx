@@ -2,8 +2,9 @@ module;
 #include <stdio.h>
 export module csc.png;
 export import :deserializer;
-export import :serializer;
-// #include <iostream>
+
+import csc.png.sections;
+// export import :serializer;
 
 
 consteval int hidden() {
@@ -12,6 +13,6 @@ consteval int hidden() {
 
 export void print() {
   printf( "VALUE: %d\n", hidden()); 
-  serialize();
+  // serialize();
   csc::deserialize();
 }

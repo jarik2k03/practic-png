@@ -1,23 +1,19 @@
 module;
-#include <stdio.h>
-
+//#include <vector>
+#include <bits/stl_construct.h>
 export module csc.png:deserializer;
 import csc.png.sections;
 
 export namespace csc {
+
+class deserializer {
+};
+
 void print_chunk() {
-  csc::chunk ch{0};
-  printf("chunk: %d\n", ch.word);
+  csc::chunk ch{};
 }
 
-auto create_chunk(int val) -> csc::chunk {
-  return csc::chunk(val);
-}
 void deserialize() {
-  printf("deserialized!\n");
 }
-
-
-
 
 }
