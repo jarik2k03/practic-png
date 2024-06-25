@@ -1,6 +1,14 @@
+#ifndef NDEBUG
+#include <iostream>
+#endif
+
+#include <bits/stl_construct.h>
+#include <string_view>
 import csc.png;
-#include <stdio.h>
 int main(void) {
-  csc::print_chunk();
-  printf("Шанс конца света к 1052763432 == %\n");
+  csc::deserializer png_executor;
+  const csc::png_t file = png_executor.deserialize("vk_small.png");
+#ifndef NDEBUG
+  std::cout << file << '\n';
+#endif
 }
