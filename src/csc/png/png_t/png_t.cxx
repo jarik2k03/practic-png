@@ -1,10 +1,10 @@
 module;
 
-#ifndef NDEBUG
 #include <cstdint>
+#ifndef NDEBUG
 #include <ostream>
-#include <variant>
 #endif
+#include <variant>
 
 export module csc.png.png_t;
 export import csc.png.png_t.sections;
@@ -15,7 +15,6 @@ class png_t {
  public:
   csc::SUBSCRIBE m_start;
   csc::v_sections m_structured{};
-
 
   csc::IHDR m_header;
   csc::PLTE m_palette;
@@ -61,18 +60,16 @@ class png_t {
 #ifndef NDEBUG
 std::ostream& operator<<(std::ostream& os, const csc::png_t& image) {
   using ct = color_type_t;
-  if (!std::holds_alternative<csc::IHDR>(image.m_structured[0]))
-   os << "Невозможно отобразить поврежденное изображение!\n"; 
   const csc::IHDR& h = std::get<csc::IHDR>(image.m_structured[0]);
   const char* color_type = (h.color_type() == ct::bw) ? "чёрно-белый"
       : (h.color_type() == ct::rgb)                   ? "цветной"
       : (h.color_type() == ct::indexed)               ? "индексное изображение"
       : (h.color_type() == ct::bwa)                   ? "чёрно-белый (альфа-канал)"
       : (h.color_type() == ct::rgba)                  ? "цветной (альфа-канал)"
-                                                    : "unknown";
+                                                      : "unknown";
   const char* interlace = (h.interlace() == interlace_t::none) ? "Отсутствует"
       : (h.interlace() == interlace_t::adam7)                  ? "Есть (Adam7)"
-                                                             : "unknown";
+                                                               : "unknown";
 
   for (uint8_t byte : image.start().data) {
     os << std::hex << +byte << ' ';

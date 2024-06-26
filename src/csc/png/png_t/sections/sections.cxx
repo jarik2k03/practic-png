@@ -1,8 +1,6 @@
 module;
 #include <array>
 #include <cstdint>
-#include <string>
-#include <tuple>
 #include <variant>
 #include <vector>
 export module csc.png.png_t.sections;
@@ -37,21 +35,39 @@ class IHDR {
   uint32_t m_crc_adler;
 
  public:
-  uint32_t width() const noexcept { return m_width; }
-  uint32_t height() const noexcept { return m_height; }
-  uint8_t bit_depth() const noexcept { return m_bit_depth; }
-  csc::color_type_t color_type() const noexcept { return m_color_type; }
-  csc::compression_t compression() const noexcept { return m_compression; }
-  csc::filter_t filter() const noexcept { return m_filter; }
-  csc::interlace_t interlace() const noexcept { return m_interlace; }
-  uint32_t crc_adler() const noexcept { return m_crc_adler; }
+  uint32_t width() const noexcept {
+    return m_width;
+  }
+  uint32_t height() const noexcept {
+    return m_height;
+  }
+  uint8_t bit_depth() const noexcept {
+    return m_bit_depth;
+  }
+  csc::color_type_t color_type() const noexcept {
+    return m_color_type;
+  }
+  csc::compression_t compression() const noexcept {
+    return m_compression;
+  }
+  csc::filter_t filter() const noexcept {
+    return m_filter;
+  }
+  csc::interlace_t interlace() const noexcept {
+    return m_interlace;
+  }
+  uint32_t crc_adler() const noexcept {
+    return m_crc_adler;
+  }
   uint32_t construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept;
 };
 
 class PLTE {
  private:
-  using rgb8 = std::tuple<uint8_t, uint8_t, uint8_t>;
-  std::array<rgb8, 256> full_palette;
+  struct rgb8 {
+    uint8_t r, g, b;
+  };
+  std::vector<rgb8> full_palette;
   uint8_t full_palette_size = 0;
   uint32_t crc_adler;
 
@@ -91,20 +107,23 @@ uint32_t IHDR::construct(const csc::chunk& raw, const csc::v_sections& deps) noe
   return 0u;
 }
 uint32_t PLTE::construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept {
+  return 0u;
 }
 uint32_t IDAT::construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept {
+  return 0u;
 }
 uint32_t IEND::construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept {
+  return 0u;
 }
 
 } // namespace csc
 
 export namespace csc {
 
-struct f_serialize {
+struct f_construct {
   const csc::chunk& m_chunk;
   const csc::v_sections& m_common_deps;
-  f_serialize(const csc::chunk& ch, const csc::v_sections& cd) : m_chunk(ch), m_common_deps(cd) {
+  f_construct(const csc::chunk& ch, const csc::v_sections& cd) : m_chunk(ch), m_common_deps(cd) {
   }
   // статический полиморфизм
   uint32_t operator()(csc::IHDR& b) {
@@ -120,19 +139,5 @@ struct f_serialize {
     return b.construct(m_chunk, m_common_deps);
   }
 };
-
-csc::v_section init_section(const csc::chunk& ch) {
-  using namespace std::string_literals;
-  if (ch.chunk_name.data() == "IHDR"s)
-    return csc::v_section(IHDR());
-  else if (ch.chunk_name.data() == "PLTE"s)
-    return csc::v_section(PLTE());
-  else if (ch.chunk_name.data() == "IDAT"s)
-    return csc::v_section(IDAT());
-  else if (ch.chunk_name.data() == "IEND"s)
-    return csc::v_section(IEND());
-  else
-    return csc::v_section(IEND());
-}
 
 } // namespace csc
