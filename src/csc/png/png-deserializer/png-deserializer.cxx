@@ -1,4 +1,6 @@
 module;
+#include <cstdint>
+
 #include <algorithm>
 #include <fstream>
 #include <variant>
@@ -56,10 +58,12 @@ void check_for_chunk_errors(const csc::png_t& image) {
   const auto is_idat_type = [](const v_section& sn) { return std::holds_alternative<csc::IDAT>(sn); };
 
   const auto plte_pos = std::find_if(sns.cbegin(), sns.cend(), is_plte_type);
-  [[unlikely]] if (plte_pos == sns.cend() && header.color_type() == color_type_t::indexed)
-    throw std::domain_error("Для индексного изображения требуется палитра!");
+  [[unlikely]] if (!std::holds_alternative<csc::IHDR>(sns.front()))
+    throw std::domain_error("Блок IHDR не найден. Файл, вероятно, поврежден!");
   [[unlikely]] if (!std::holds_alternative<csc::IEND>(sns.back()))
     throw std::domain_error("Блок IEND не найден. Файл, вероятно, поврежден!");
+  [[unlikely]] if (plte_pos == sns.cend() && header.color_type() == color_type_t::indexed)
+    throw std::domain_error("Для индексного изображения требуется палитра!");
   const auto idat_pos = std::find_if(sns.cbegin(), sns.cend(), is_idat_type);
   [[unlikely]] if (idat_pos == sns.cend())
     throw std::domain_error("Блок IDAT не найден. Файл, вероятно, поврежден!");
@@ -80,7 +84,9 @@ csc::png_t deserializer::deserialize(std::string_view filepath) {
   while (png_fs) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
     auto section = csc::init_section(chunk);
-    std::visit(csc::f_construct(chunk, image.m_structured), section);
+    uint32_t result = std::visit(csc::f_construct(chunk, image.m_structured), section);
+    if (result != 0u)
+      throw std::domain_error("Ошибка в представлении сектора: " + std::string(chunk.chunk_name.data()));
     image.m_structured.emplace_back(std::move(section));
   }
   // проверка правильности расположения секторов

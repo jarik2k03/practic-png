@@ -1,7 +1,9 @@
 module;
-#include <array>
 #include <cstdint>
+
+#include <array>
 #include <variant>
+#include <iostream>
 #include <vector>
 export module csc.png.png_t.sections;
 
@@ -69,7 +71,7 @@ class PLTE {
   };
   std::vector<rgb8> full_palette;
   uint8_t full_palette_size = 0;
-  uint32_t crc_adler;
+  uint32_t m_crc_adler;
 
  public:
   uint32_t construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept;
@@ -78,14 +80,14 @@ class PLTE {
 class IDAT {
  private:
   std::vector<uint8_t> compressed_data;
-  uint32_t crc_adler;
+  uint32_t m_crc_adler;
 
  public:
   uint32_t construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept;
 };
 class IEND {
  private:
-  uint32_t crc_adler;
+  uint32_t m_crc_adler;
 
  public:
   uint32_t construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept;
@@ -107,6 +109,13 @@ uint32_t IHDR::construct(const csc::chunk& raw, const csc::v_sections& deps) noe
   return 0u;
 }
 uint32_t PLTE::construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept {
+  const csc::IHDR& header = std::get<csc::IHDR>(deps[0]);
+  if (raw.contained_length % 3 != 0 || raw.contained_length > (256 * 3))
+    return 1u;
+  if (header.color_type() == color_type_t::indexed && raw.contained_length / 3 > (1 << header.bit_depth())) 
+    return 1u;
+
+  m_crc_adler = raw.crc_adler;
   return 0u;
 }
 uint32_t IDAT::construct(const csc::chunk& raw, const csc::v_sections& deps) noexcept {
