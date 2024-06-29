@@ -84,8 +84,8 @@ csc::png_t deserializer::deserialize(std::string_view filepath) {
   while (png_fs) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
     auto section = csc::init_section(chunk);
-    uint32_t result = std::visit(csc::f_construct(chunk, image.m_structured), section);
-    if (result != 0u)
+    const auto result = std::visit(csc::f_construct(chunk, image.m_structured), section);
+    if (result != section_code_t::success)
       throw std::domain_error("Ошибка в представлении сектора: " + std::string(chunk.chunk_name.data()));
     image.m_structured.emplace_back(std::move(section));
   }

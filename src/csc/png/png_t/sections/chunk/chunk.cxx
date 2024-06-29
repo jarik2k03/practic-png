@@ -4,7 +4,7 @@ module;
 // #include <string>
 #include <array>
 #include <vector>
-export module csc.png.png_t.sections:chunk;
+export module csc.png.png_t.sections.chunk;
 
 export namespace csc {
 struct chunk {

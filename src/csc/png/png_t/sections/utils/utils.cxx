@@ -4,9 +4,28 @@ module;
 #include <cstdint>
 #include <cstring>
 #include <vector>
-export module csc.png.png_t.sections:utils;
+export module csc.png.png_t.sections.utils;
 
 export namespace csc {
+enum class section_code_t : uint32_t {
+  success = 0u,
+  error = 1u
+};
+
+
+template <class T>
+T swap_endian(T u);
+
+template <class T>
+void read_var_from_vector(T& t, uint32_t offset, const std::vector<uint8_t>& v);
+
+template <class T>
+void read_var_from_vector_swap(T& t, uint32_t offset, const std::vector<uint8_t>& v);
+
+}
+
+
+namespace csc {
 template <class T>
 T swap_endian(T u) {
   static_assert(CHAR_BIT == 8, "CHAR_BIT != 8");
