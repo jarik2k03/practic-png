@@ -6,6 +6,7 @@ export module csc.png.png_t.sections.IDAT;
 import csc.png.png_t.sections.IHDR; // зависим от состояния header
 import csc.png.png_t.sections.chunk;
 import csc.png.png_t.sections.utils;
+import csc.png.png_t.sections.inflate;
 
 export namespace csc {
 

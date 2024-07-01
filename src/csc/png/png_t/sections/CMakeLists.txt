@@ -1,5 +1,6 @@
 add_subdirectory(chunk)
 add_subdirectory(utils)
+add_subdirectory(inflate)
 add_subdirectory(IHDR)
 add_subdirectory(PLTE)
 add_subdirectory(IDAT)
