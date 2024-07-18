@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <vector>
+#include <iostream>
 export module csc.png.png_t.sections.IDAT;
 
 import csc.png.png_t.sections.IHDR; // зависим от состояния header
@@ -23,7 +24,10 @@ class IDAT {
 csc::section_code_t IDAT::construct(const csc::chunk& raw, const csc::IHDR& header) noexcept {
   // TO DO: сделать дифлейту
   m_crc_adler = raw.crc_adler;
+  std::cout <<  "IDAT chunk size: " << raw.contained_length << '\n';
   return csc::section_code_t::success;
+
+
 
 }
 
