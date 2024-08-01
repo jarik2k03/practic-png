@@ -1,35 +1,17 @@
 module;
-#include <cstdint>
-#include <vector>
-#include <iostream>
 export module csc.png.png_t.sections.IDAT;
 
-import csc.png.png_t.sections.IHDR; // зависим от состояния header
-import csc.png.png_t.sections.chunk;
-import csc.png.png_t.sections.utils;
-import csc.png.png_t.sections.inflate;
+import :impl;
 
 export namespace csc {
 
-
-class IDAT {
- private:
-  std::vector<uint8_t> compressed_data;
-  uint32_t m_crc_adler;
-
+class IDAT : private IDAT_impl {
  public:
-  csc::section_code_t construct(const csc::chunk& raw, const csc::IHDR& header) noexcept;
+  IDAT() = default;
+  ~IDAT() = default;
+  csc::section_code_t construct(const csc::chunk& raw, const csc::IHDR& header) noexcept {
+    return this->do_construct(raw, header);
+  }
 };
 
-csc::section_code_t IDAT::construct(const csc::chunk& raw, const csc::IHDR& header) noexcept {
-  // TO DO: сделать дифлейту
-  m_crc_adler = raw.crc_adler;
-  std::cout <<  "IDAT chunk size: " << raw.contained_length << '\n';
-  return csc::section_code_t::success;
-
-
-
-}
-
-
-}
+} // namespace csc

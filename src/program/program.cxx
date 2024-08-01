@@ -1,8 +1,9 @@
 #include <iostream>
 
 #include <bits/stl_construct.h>
-#include <string_view>
 import csc.png;
+import csc.stl_wrap.string_view;
+
 int main(int argc, char** argv) {
   csc::deserializer png_executor;
   if (argc < 2) {
@@ -11,7 +12,7 @@ int main(int argc, char** argv) {
   }
 
   try {
-    const csc::png_t file = png_executor.deserialize(argv[1]);
+    const csc::png_t file = png_executor.deserialize(static_cast<csc::string_view>(argv[1]));
 #ifndef NDEBUG
     std::cout << file << '\n';
 #endif

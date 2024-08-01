@@ -1,11 +1,11 @@
 module;
+#include <bits/stl_algobase.h>
 #include <cstdint>
-
-#include <array>
 #include <variant>
-#include <iostream>
-#include <vector>
 export module csc.png.png_t.sections;
+
+import csc.stl_wrap.vector;
+import csc.stl_wrap.array;
 
 export import csc.png.png_t.sections.chunk;
 export import csc.png.png_t.sections.utils;
@@ -18,22 +18,19 @@ export import csc.png.png_t.sections.IEND;
 export namespace csc {
 
 using v_section = std::variant<csc::IHDR, csc::PLTE, csc::IDAT, csc::IEND>;
-using v_sections = std::vector<v_section>;
+using v_sections = csc::vector<v_section>;
 
 struct SUBSCRIBE {
-  const std::array<uint8_t, 8> data = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+  const csc::array<uint8_t, 8> data = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
   bool operator==(const csc::SUBSCRIBE& other) {
-    return this->data == other.data;
+    return std::equal(this->data.cbegin(), this->data.cend(), other.data.cbegin());
   }
   bool operator!=(const csc::SUBSCRIBE& other) {
-    return this->data != other.data;
+    return !(*this == other);
   }
 };
 
-
 } // namespace csc
-
-
 
 export namespace csc {
 
