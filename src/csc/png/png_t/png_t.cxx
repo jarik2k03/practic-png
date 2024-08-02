@@ -1,13 +1,15 @@
 module;
 
 #include <cstdint>
-#ifndef NDEBUG
-#include <ostream>
-#endif
-#include <variant>
 
 export module csc.png.png_t;
 export import csc.png.png_t.sections;
+
+#ifndef NDEBUG
+import csc.stl_wrap.ios;
+import csc.stl_wrap.iostream;
+#endif
+import csc.stl_wrap.variant;
 
 export namespace csc {
 
@@ -58,9 +60,9 @@ class png_t {
 };
 
 #ifndef NDEBUG
-std::ostream& operator<<(std::ostream& os, const csc::png_t& image) {
+csc::ostream& operator<<(csc::ostream& os, const csc::png_t& image) {
   using ct = color_type_t;
-  const csc::IHDR& h = std::get<csc::IHDR>(image.m_structured[0]);
+  const csc::IHDR& h = csc::get<csc::IHDR>(image.m_structured[0]);
   const char* color_type = (h.color_type() == ct::bw) ? "чёрно-белый"
       : (h.color_type() == ct::rgb)                   ? "цветной"
       : (h.color_type() == ct::indexed)               ? "индексное изображение"
@@ -72,10 +74,10 @@ std::ostream& operator<<(std::ostream& os, const csc::png_t& image) {
                                                                : "unknown";
 
   for (uint8_t byte : image.start().data) {
-    os << std::hex << +byte << ' ';
+    os << csc::hex << +byte << ' ';
   }
   os << "\nОсновные данные:\n";
-  os << "Длина: " << std::dec << h.width() << " Ширина: " << h.height() << '\n';
+  os << "Длина: " << csc::dec << h.width() << " Ширина: " << h.height() << '\n';
   os << "Битовая глубина: " << +h.bit_depth() << '\n';
   os << "Цветность: " << color_type << '\n';
 

@@ -6,18 +6,18 @@ export module csc.stl_wrap.fstream;
 export namespace csc {
 
 template <typename CharT, typename Traits = std::char_traits<CharT>>
-class basic_fstream : public std::basic_fstream<CharT, Traits> {};
-using fstream = basic_fstream<char>;
-using wfstream = basic_fstream<wchar_t>;
+using basic_fstream = std::basic_fstream<CharT, Traits>;
+using fstream = csc::basic_fstream<char>;
+using wfstream = csc::basic_fstream<wchar_t>;
 
 template <typename CharT, typename Traits = std::char_traits<CharT>>
-class basic_ifstream : public std::basic_ifstream<CharT, Traits> {};
-using ifstream = basic_ifstream<char>;
-using wifstream = basic_ifstream<wchar_t>;
+using basic_ifstream = std::basic_ifstream<CharT, Traits>;
+using ifstream = csc::basic_ifstream<char>;
+using wifstream = csc::basic_ifstream<wchar_t>;
 
 template <typename CharT, typename Traits = std::char_traits<CharT>>
-class basic_ofstream : public std::basic_ofstream<CharT, Traits> {};
-using ofstream = basic_ofstream<char>;
-using wofstream = basic_ofstream<wchar_t>;
+using basic_ofstream = std::basic_ofstream<CharT, Traits>;
+using ofstream = csc::basic_ofstream<char>;
+using wofstream = csc::basic_ofstream<wchar_t>;
 
 } // namespace csc

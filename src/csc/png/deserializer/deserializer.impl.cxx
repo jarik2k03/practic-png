@@ -2,12 +2,13 @@ module;
 #include <cstdint>
 
 #include <algorithm>
-#include <string>
-#include <variant>
 export module csc.png.deserializer:impl;
 import csc.stl_wrap.string_view;
+import csc.stl_wrap.string;
 import csc.stl_wrap.fstream;
 import csc.stl_wrap.stdexcept;
+import csc.stl_wrap.variant;
+import csc.stl_wrap.ios;
 export import csc.png.png_t;
 namespace csc {
 
@@ -17,7 +18,7 @@ class deserializer_impl {
 };
 
 csc::v_section init_section(const csc::chunk& ch) {
-  std::string chunk_name = {ch.chunk_name.cbegin(), ch.chunk_name.cend()};
+  csc::string chunk_name = {ch.chunk_name.cbegin(), ch.chunk_name.cend()};
   if (chunk_name == "IHDR")
     return csc::v_section(csc::IHDR());
   else if (chunk_name == "PLTE")
@@ -30,7 +31,7 @@ csc::v_section init_section(const csc::chunk& ch) {
     return csc::v_section(csc::IEND());
 }
 
-csc::chunk read_chunk_from_ifstream(std::ifstream& is) {
+csc::chunk read_chunk_from_ifstream(csc::ifstream& is) {
   csc::chunk bufferized;
   // длина недесериализованного блока в чанке
   is.read(reinterpret_cast<char*>(&bufferized.contained_length), sizeof(bufferized.contained_length));
@@ -48,15 +49,15 @@ csc::chunk read_chunk_from_ifstream(std::ifstream& is) {
   return bufferized;
 }
 void check_for_chunk_errors(const csc::png_t& image) {
-  const csc::IHDR& header = std::get<csc::IHDR>(image.m_structured[0]);
+  const csc::IHDR& header = csc::get<csc::IHDR>(image.m_structured[0]);
   const csc::v_sections& sns = image.m_structured;
-  const auto is_plte_type = [](const v_section& sn) { return std::holds_alternative<csc::PLTE>(sn); };
-  const auto is_idat_type = [](const v_section& sn) { return std::holds_alternative<csc::IDAT>(sn); };
+  const auto is_plte_type = [](const v_section& sn) { return csc::holds_alternative<csc::PLTE>(sn); };
+  const auto is_idat_type = [](const v_section& sn) { return csc::holds_alternative<csc::IDAT>(sn); };
 
   const auto plte_pos = std::find_if(sns.cbegin(), sns.cend(), is_plte_type);
-  [[unlikely]] if (!std::holds_alternative<csc::IHDR>(sns.front()))
+  [[unlikely]] if (!csc::holds_alternative<csc::IHDR>(sns.front()))
     throw csc::domain_error("Блок IHDR не найден. Файл, вероятно, поврежден!");
-  [[unlikely]] if (!std::holds_alternative<csc::IEND>(sns.back()))
+  [[unlikely]] if (!csc::holds_alternative<csc::IEND>(sns.back()))
     throw csc::domain_error("Блок IEND не найден. Файл, вероятно, поврежден!");
   [[unlikely]] if (plte_pos == sns.cend() && header.color_type() == color_type_t::indexed)
     throw csc::domain_error("Для индексного изображения требуется палитра!");
@@ -68,8 +69,8 @@ void check_for_chunk_errors(const csc::png_t& image) {
 }
 
 csc::png_t deserializer_impl::do_deserialize(csc::string_view filepath) {
-  std::ifstream png_fs;
-  png_fs.open(filepath.data(), std::ios_base::binary);
+  csc::ifstream png_fs;
+  png_fs.open(filepath.data(), csc::ios_base::binary);
   csc::png_t image;
   if (!png_fs.is_open())
     throw csc::runtime_error("Не существует файла в указанной директории!");
@@ -80,9 +81,9 @@ csc::png_t deserializer_impl::do_deserialize(csc::string_view filepath) {
   while (png_fs) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
     auto section = csc::init_section(chunk);
-    const auto result = std::visit(csc::f_construct(chunk, image.m_structured), section);
+    const auto result = csc::visit(csc::f_construct(chunk, image.m_structured), section);
     if (result != section_code_t::success) {
-      const std::string err_msg = "Ошибка в представлении сектора: " + std::string(chunk.chunk_name.data());
+      const csc::string err_msg = "Ошибка в представлении сектора: " + csc::string(chunk.chunk_name.data());
       throw csc::domain_error(err_msg.c_str());
     }
     image.m_structured.emplace_back(std::move(section));
@@ -91,7 +92,7 @@ csc::png_t deserializer_impl::do_deserialize(csc::string_view filepath) {
   try {
     csc::check_for_chunk_errors(image);
   } catch (const csc::domain_error& e) {
-    const std::string err_msg = "PNG-изображение не прошло проверку: " + std::string(e.what());
+    const csc::string err_msg = "PNG-изображение не прошло проверку: " + csc::string(e.what());
     throw csc::domain_error(err_msg.c_str());
   }
   png_fs.close();
