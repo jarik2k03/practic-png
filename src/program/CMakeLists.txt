@@ -9,4 +9,4 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     target_compile_options(program PRIVATE -fmodule-mapper=${CSC_PNG_BIN_PATH}/png.cxx.o.modmap)
 endif()
 
-target_link_libraries(program PRIVATE png)
+target_link_libraries(program PRIVATE png stl_iostream stl_stdexcept)
