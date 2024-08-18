@@ -1,9 +1,12 @@
 module;
 #include <cstdint>
+#include <bits/stl_iterator.h>
 export module csc.png.png_t.sections.IHDR:impl;
 
 export import :attributes;
 import csc.png.png_t.sections.chunk;
+import csc.stl_wrap.iostream;
+import csc.stl_wrap.vector;
 import csc.png.png_t.sections.utils;
 
 namespace csc {

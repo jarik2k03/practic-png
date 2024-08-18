@@ -9,6 +9,7 @@ import csc.stl_wrap.fstream;
 import csc.stl_wrap.stdexcept;
 import csc.stl_wrap.variant;
 import csc.stl_wrap.ios;
+import csc.stl_wrap.iostream;
 export import csc.png.png_t;
 namespace csc {
 
@@ -34,15 +35,14 @@ csc::v_section init_section(const csc::chunk& ch) {
 csc::chunk read_chunk_from_ifstream(csc::ifstream& is) {
   csc::chunk bufferized;
   // длина недесериализованного блока в чанке
-  is.read(reinterpret_cast<char*>(&bufferized.contained_length), sizeof(bufferized.contained_length));
-  bufferized.contained_length = csc::swap_endian(bufferized.contained_length);
+  uint32_t chunk_size;
+  is.read(reinterpret_cast<char*>(&chunk_size), sizeof(chunk_size));
+  chunk_size = csc::swap_endian(chunk_size);
   // имя чанка
   is.read(reinterpret_cast<char*>(&bufferized.chunk_name), sizeof(bufferized.chunk_name));
   // запись недесериализованного блока в чанк
-  [[likely]] if (bufferized.contained_length != 0u) {
-    bufferized.data.reserve(bufferized.contained_length);
-    is.read(reinterpret_cast<char*>(bufferized.data.data()), bufferized.contained_length);
-  }
+    bufferized.data.resize(chunk_size); // для подготовки пространства
+    is.read(reinterpret_cast<char*>(bufferized.data.data()), chunk_size);
   // запись контрольной суммы в чанк
   is.read(reinterpret_cast<char*>(&bufferized.crc_adler), sizeof(bufferized.crc_adler));
   bufferized.crc_adler = csc::swap_endian(bufferized.crc_adler);
@@ -78,12 +78,12 @@ csc::png_t deserializer_impl::do_deserialize(csc::string_view filepath) {
   if (image.start() != csc::SUBSCRIBE())
     throw csc::runtime_error("Ошибка чтения png - предзаголовочная подпись не проинициализирована!");
 
-  while (png_fs) {
+  while (png_fs.peek() != -1) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
     auto section = csc::init_section(chunk);
     const auto result = csc::visit(csc::f_construct(chunk, image.m_structured), section);
     if (result != section_code_t::success) {
-      const csc::string err_msg = "Ошибка в представлении сектора: " + csc::string(chunk.chunk_name.data());
+      const csc::string err_msg = "Ошибка в представлении сектора: " + csc::string(chunk.chunk_name.data(), 4);
       throw csc::domain_error(err_msg.c_str());
     }
     image.m_structured.emplace_back(std::move(section));

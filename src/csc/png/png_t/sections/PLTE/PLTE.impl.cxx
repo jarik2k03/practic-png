@@ -23,9 +23,9 @@ class PLTE_impl {
 };
 
 csc::section_code_t PLTE_impl::do_construct(const csc::chunk& raw, const csc::IHDR& header) noexcept {
-  if (raw.contained_length % 3 != 0 || raw.contained_length > (256 * 3))
+  if (raw.data.size() % 3 != 0 || raw.data.size() > (256 * 3))
     return csc::section_code_t::error;
-  if (header.color_type() == color_type_t::indexed && raw.contained_length / 3 > (1 << header.bit_depth()))
+  if (header.color_type() == color_type_t::indexed && raw.data.size() / 3 > (1 << header.bit_depth()))
     return csc::section_code_t::error;
   m_crc_adler = raw.crc_adler;
   return csc::section_code_t::success;

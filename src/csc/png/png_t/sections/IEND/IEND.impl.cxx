@@ -2,6 +2,7 @@ module;
 #include <cstdint>
 export module csc.png.png_t.sections.IEND:impl;
 
+import csc.stl_wrap.iostream;
 export import csc.png.png_t.sections.chunk;
 export import csc.png.png_t.sections.utils;
 

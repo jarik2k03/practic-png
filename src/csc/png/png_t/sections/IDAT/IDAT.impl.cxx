@@ -4,6 +4,7 @@ module;
 export module csc.png.png_t.sections.IDAT:impl;
 
 import csc.stl_wrap.vector;
+import csc.stl_wrap.iostream;
 export import csc.png.png_t.sections.IHDR; // зависим от состояния header
 export import csc.png.png_t.sections.utils;
 export import csc.png.png_t.sections.chunk;
@@ -24,10 +25,10 @@ class IDAT_impl {
 csc::section_code_t IDAT_impl::do_construct(const csc::chunk& raw, const csc::IHDR& header) noexcept {
   // TO DO: сделать дифлейту
   csc::inflater infstream(raw.data);
-  infstream.inflate(0);
+  //infstream.inflate();
+
 
   m_crc_adler = raw.crc_adler;
-  // std::cout << "IDAT chunk size: " << raw.contained_length << '\n';
   return csc::section_code_t::success;
 }
 
