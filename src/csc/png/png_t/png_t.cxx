@@ -73,6 +73,8 @@ csc::ostream& operator<<(csc::ostream& os, const csc::png_t& image) {
   os << "Поддержка межстрочности: " << interlace << '\n';
   const float image_size_mb = image.m_image_data.size() / 1024.f / 1024.f; 
   os << "Размер изображения в памяти: " << image_size_mb << " Мб.\n";
+  os << "Размер изображения, б: " << image.m_image_data.size() << '\n';
+  os << "Ёмкость изображения, б: " << image.m_image_data.capacity() << '\n';
   return os;
 }
 #endif

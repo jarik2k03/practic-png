@@ -17,6 +17,24 @@ export import csc.png.png_t.sections.inflater;
 
 namespace csc {
 
+constexpr uint32_t pixel_size_from_color_type(csc::color_type_t t) {
+  using ct = csc::color_type_t;
+  switch (t) {
+    case ct::rgba:
+     return 4u;
+    case ct::rgb:
+     return 3u;
+    case ct::bw:
+     return 2u;
+    case ct::bwa:
+     return 3u;
+    case ct::indexed:
+     return 1u;
+    default:
+     return 0u;
+  }
+}
+
 class IDAT_impl {
  private:
   uint32_t m_crc_adler{0u};
@@ -29,7 +47,9 @@ class IDAT_impl {
 csc::section_code_t
 IDAT_impl::do_construct(const csc::chunk& raw, const csc::IHDR& header, csc::inflater& infstream, csc::vector<uint8_t>& generic_image) noexcept {
   try {
-    generic_image.reserve(header.width() * header.height()); // после первого резервирования ничего не делает
+    const float pixel_size = (header.bit_depth() / 8.f);
+    const uint32_t channels = pixel_size_from_color_type(header.color_type()); 
+    generic_image.reserve(static_cast<uint32_t>(header.width() * header.height() * pixel_size * channels * 1.01f)); // после первого резервирования ничего не делает
     infstream.set_compressed_buffer(raw.data);
     do {
       infstream.inflate();
