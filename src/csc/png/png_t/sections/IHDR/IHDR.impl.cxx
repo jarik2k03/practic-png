@@ -1,6 +1,6 @@
 module;
-#include <cstdint>
 #include <bits/stl_iterator.h>
+#include <cstdint>
 export module csc.png.png_t.sections.IHDR:impl;
 
 export import :attributes;

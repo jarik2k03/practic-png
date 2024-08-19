@@ -5,12 +5,16 @@ module;
 export module csc.png.deserializer:impl;
 import csc.stl_wrap.string_view;
 import csc.stl_wrap.string;
+import csc.stl_wrap.vector;
 import csc.stl_wrap.fstream;
 import csc.stl_wrap.stdexcept;
 import csc.stl_wrap.variant;
 import csc.stl_wrap.ios;
 import csc.stl_wrap.iostream;
+
 export import csc.png.png_t;
+import csc.png.png_t.sections.inflater;
+
 namespace csc {
 
 class deserializer_impl {
@@ -41,8 +45,8 @@ csc::chunk read_chunk_from_ifstream(csc::ifstream& is) {
   // имя чанка
   is.read(reinterpret_cast<char*>(&bufferized.chunk_name), sizeof(bufferized.chunk_name));
   // запись недесериализованного блока в чанк
-    bufferized.data.resize(chunk_size); // для подготовки пространства
-    is.read(reinterpret_cast<char*>(bufferized.data.data()), chunk_size);
+  bufferized.data.resize(chunk_size); // для подготовки пространства
+  is.read(reinterpret_cast<char*>(bufferized.data.data()), chunk_size);
   // запись контрольной суммы в чанк
   is.read(reinterpret_cast<char*>(&bufferized.crc_adler), sizeof(bufferized.crc_adler));
   bufferized.crc_adler = csc::swap_endian(bufferized.crc_adler);
@@ -74,14 +78,16 @@ csc::png_t deserializer_impl::do_deserialize(csc::string_view filepath) {
   csc::png_t image;
   if (!png_fs.is_open())
     throw csc::runtime_error("Не существует файла в указанной директории!");
+
   png_fs.read(reinterpret_cast<char*>(&image.start()), sizeof(csc::SUBSCRIBE));
   if (image.start() != csc::SUBSCRIBE())
     throw csc::runtime_error("Ошибка чтения png - предзаголовочная подпись не проинициализирована!");
 
+  csc::inflater z_stream;
   while (png_fs.peek() != -1) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
     auto section = csc::init_section(chunk);
-    const auto result = csc::visit(csc::f_construct(chunk, image.m_structured), section);
+    const auto result = csc::visit(csc::f_construct(chunk, image.m_structured, z_stream, image.m_image_data), section);
     if (result != section_code_t::success) {
       const csc::string err_msg = "Ошибка в представлении сектора: " + csc::string(chunk.chunk_name.data(), 4);
       throw csc::domain_error(err_msg.c_str());

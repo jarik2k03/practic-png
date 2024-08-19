@@ -10,6 +10,7 @@ import csc.stl_wrap.ios;
 import csc.stl_wrap.iostream;
 #endif
 import csc.stl_wrap.variant;
+import csc.stl_wrap.vector;
 
 export namespace csc {
 
@@ -17,10 +18,8 @@ class png_t {
  public:
   csc::SUBSCRIBE m_start;
   csc::v_sections m_structured{};
-
+  csc::vector<uint8_t> m_image_data{};
   csc::IHDR m_header;
-  csc::PLTE m_palette;
-  csc::IDAT m_image;
   csc::IEND m_eof_block;
 
  public:
@@ -32,12 +31,6 @@ class png_t {
   const csc::IHDR& header() const {
     return m_header;
   }
-  const csc::PLTE& palette() const {
-    return m_palette;
-  }
-  const csc::IDAT& image() const {
-    return m_image;
-  }
   const csc::IEND& eof_block() const {
     return m_eof_block;
   }
@@ -47,12 +40,6 @@ class png_t {
   }
   csc::IHDR& header() {
     return m_header;
-  }
-  csc::PLTE& palette() {
-    return m_palette;
-  }
-  csc::IDAT& image() {
-    return m_image;
   }
   csc::IEND& eof_block() {
     return m_eof_block;
@@ -84,7 +71,8 @@ csc::ostream& operator<<(csc::ostream& os, const csc::png_t& image) {
   os << "Метод компрессии: " << ((h.compression() == compression_t::deflate) ? "Алгоритм deflate" : "unknown") << '\n';
   os << "Фильтрация: " << ((h.filter() == filter_t::adaptive) ? "Стандарт (adaptive)" : "unknown") << '\n';
   os << "Поддержка межстрочности: " << interlace << '\n';
-
+  const float image_size_mb = image.m_image_data.size() / 1024.f / 1024.f; 
+  os << "Размер изображения в памяти: " << image_size_mb << " Мб.\n";
   return os;
 }
 #endif

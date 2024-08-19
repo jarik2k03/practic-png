@@ -8,6 +8,7 @@ import csc.stl_wrap.variant;
 
 export import csc.png.png_t.sections.chunk;
 export import csc.png.png_t.sections.utils;
+import csc.png.png_t.sections.inflater;
 
 export import csc.png.png_t.sections.IHDR;
 export import csc.png.png_t.sections.PLTE;
@@ -36,7 +37,10 @@ export namespace csc {
 struct f_construct {
   const csc::chunk& m_chunk;
   const csc::v_sections& m_common_deps;
-  f_construct(const csc::chunk& ch, const csc::v_sections& cd) : m_chunk(ch), m_common_deps(cd) {
+  csc::inflater& m_stream;
+  csc::vector<uint8_t>& m_image_data;
+  f_construct(const csc::chunk& ch, const csc::v_sections& cd, csc::inflater& sm, csc::vector<uint8_t>& img)
+      : m_chunk(ch), m_common_deps(cd), m_stream(sm), m_image_data(img) {
   }
   // статический полиморфизм
   csc::section_code_t operator()(csc::IHDR& b) {
@@ -48,7 +52,7 @@ struct f_construct {
   }
   csc::section_code_t operator()(csc::IDAT& b) {
     const csc::IHDR& header = csc::get<csc::IHDR>(m_common_deps[0]);
-    return b.construct(m_chunk, header);
+    return b.construct(m_chunk, header, m_stream, m_image_data);
   }
   csc::section_code_t operator()(csc::IEND& b) {
     return b.construct(m_chunk);
