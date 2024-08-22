@@ -1,7 +1,7 @@
 module;
+#include <algorithm>
 #include <cstdint>
 #include <ranges>
-#include <algorithm>
 export module csc.png.png_t.sections.IDAT:impl;
 
 import csc.stl_wrap.vector;
@@ -18,20 +18,20 @@ export import csc.png.png_t.sections.inflater;
 namespace csc {
 
 constexpr uint32_t pixel_size_from_color_type(csc::color_type_t t) {
-  using ct = csc::color_type_t;
+  using enum csc::color_type_t;
   switch (t) {
-    case ct::rgba:
-     return 4u;
-    case ct::rgb:
-     return 3u;
-    case ct::bw:
-     return 2u;
-    case ct::bwa:
-     return 3u;
-    case ct::indexed:
-     return 1u;
+    case rgba:
+      return 4u;
+    case rgb:
+      return 3u;
+    case bw:
+      return 2u;
+    case bwa:
+      return 3u;
+    case indexed:
+      return 1u;
     default:
-     return 0u;
+      return 0u;
   }
 }
 
@@ -41,15 +41,23 @@ class IDAT_impl {
 
  public:
   IDAT_impl() = default;
-  csc::section_code_t do_construct(const csc::chunk& raw, const csc::IHDR& header, csc::inflater& infstream, csc::vector<uint8_t>& generic_image) noexcept;
+  csc::section_code_t do_construct(
+      const csc::chunk& raw,
+      const csc::IHDR& header,
+      csc::inflater& infstream,
+      csc::vector<uint8_t>& generic_image) noexcept;
 };
 
-csc::section_code_t
-IDAT_impl::do_construct(const csc::chunk& raw, const csc::IHDR& header, csc::inflater& infstream, csc::vector<uint8_t>& generic_image) noexcept {
+csc::section_code_t IDAT_impl::do_construct(
+    const csc::chunk& raw,
+    const csc::IHDR& header,
+    csc::inflater& infstream,
+    csc::vector<uint8_t>& generic_image) noexcept {
   try {
     const float pixel_size = (header.bit_depth() / 8.f);
-    const uint32_t channels = pixel_size_from_color_type(header.color_type()); 
-    generic_image.reserve(static_cast<uint32_t>(header.width() * header.height() * pixel_size * channels * 1.01f)); // после первого резервирования ничего не делает
+    const uint32_t channels = pixel_size_from_color_type(header.color_type());
+    const uint32_t real_size = header.width() * header.height() * pixel_size * channels * 1.001f;
+    generic_image.reserve(real_size); // после первого резервирования ничего не делает
     infstream.set_compressed_buffer(raw.data);
     do {
       infstream.inflate();

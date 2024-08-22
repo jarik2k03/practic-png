@@ -11,7 +11,11 @@ class IDAT : private IDAT_impl {
  public:
   IDAT() = default;
   ~IDAT() = default;
-  csc::section_code_t construct(const csc::chunk& raw, const csc::IHDR& header, csc::inflater& infstream, csc::vector<uint8_t>& image_data) noexcept {
+  csc::section_code_t construct(
+      const csc::chunk& raw,
+      const csc::IHDR& header,
+      csc::inflater& infstream,
+      csc::vector<uint8_t>& image_data) noexcept {
     return this->do_construct(raw, header, infstream, image_data);
   }
 };

@@ -5,7 +5,7 @@ export module csc.png.png_t.sections.inflater:attributes;
 export namespace csc {
 
 struct uncompressed_range {
-  uint8_t* m_beg, *m_end;
+  uint8_t *m_beg, *m_end;
   uint8_t* begin() {
     return m_beg;
   }
@@ -17,4 +17,4 @@ struct uncompressed_range {
   }
 };
 
-}
+} // namespace csc
