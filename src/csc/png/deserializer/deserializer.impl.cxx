@@ -12,7 +12,7 @@ import csc.stl_wrap.variant;
 import csc.stl_wrap.ios;
 import csc.stl_wrap.iostream;
 
-export import csc.png.png_t;
+export import csc.png.picture;
 import csc.png.deserializer.consume_chunk.inflater;
 import csc.png.commons.utils;
 import csc.png.commons.chunk;
@@ -22,7 +22,7 @@ namespace csc {
 
 class deserializer_impl {
  public:
-  csc::png_t do_deserialize(csc::string_view filepath);
+  csc::picture do_deserialize(csc::string_view filepath);
 };
 
 csc::v_section init_section(const csc::chunk& ch) {
@@ -55,7 +55,7 @@ csc::chunk read_chunk_from_ifstream(csc::ifstream& is) {
   bufferized.crc_adler = csc::swap_endian(bufferized.crc_adler);
   return bufferized;
 }
-void check_for_chunk_errors(const csc::png_t& image) {
+void check_for_chunk_errors(const csc::picture& image) {
   const csc::IHDR& header = csc::get<csc::IHDR>(image.m_structured[0]);
   const csc::v_sections& sns = image.m_structured;
   const auto is_plte_type = [](const v_section& sn) { return csc::holds_alternative<csc::PLTE>(sn); };
@@ -66,7 +66,7 @@ void check_for_chunk_errors(const csc::png_t& image) {
     throw csc::domain_error("Блок IHDR не найден. Файл, вероятно, поврежден!");
   [[unlikely]] if (!csc::holds_alternative<csc::IEND>(sns.back()))
     throw csc::domain_error("Блок IEND не найден. Файл, вероятно, поврежден!");
-  [[unlikely]] if (plte_pos == sns.cend() && header.color_type == color_type_t::indexed)
+  [[unlikely]] if (plte_pos == sns.cend() && header.color_type == e_color_type::indexed)
     throw csc::domain_error("Для индексного изображения требуется палитра!");
   const auto idat_pos = std::find_if(sns.cbegin(), sns.cend(), is_idat_type);
   [[unlikely]] if (idat_pos == sns.cend())
@@ -75,10 +75,10 @@ void check_for_chunk_errors(const csc::png_t& image) {
     throw csc::domain_error("Блок IDAT должен располагаться после блока PLTE при его наличии!");
 }
 
-csc::png_t deserializer_impl::do_deserialize(csc::string_view filepath) {
+csc::picture deserializer_impl::do_deserialize(csc::string_view filepath) {
   csc::ifstream png_fs;
   png_fs.open(filepath.data(), csc::ios_base::binary);
-  csc::png_t image;
+  csc::picture image;
   if (!png_fs.is_open())
     throw csc::runtime_error("Не существует файла в указанной директории!");
 

@@ -12,14 +12,14 @@ import csc.stl_wrap.variant;
 import csc.stl_wrap.ios;
 import csc.stl_wrap.iostream;
 
-export import csc.png.png_t;
-import csc.png.png_t.sections.inflater;
+export import csc.png.picture;
+import csc.png.picture.sections.inflater;
 
 namespace csc {
 
 class serializer_impl {
  public:
-  void do_serialize(csc::string_view filepath, const csc::png_t& image);
+  void do_serialize(csc::string_view filepath, const csc::picture& image);
 };
 
 void write_chunk_to_ofstream(csc::ofstream& os, const csc::chunk& bufferized) {
@@ -35,7 +35,7 @@ void write_chunk_to_ofstream(csc::ofstream& os, const csc::chunk& bufferized) {
   os.write(reinterpret_cast<const char*>(&crc_adler_be), sizeof(uint32_t));
 }
 
-void serializer_impl::do_serialize(csc::string_view filepath, const csc::png_t& image) {
+void serializer_impl::do_serialize(csc::string_view filepath, const csc::picture& image) {
   csc::ofstream png_fs;
   png_fs.open(filepath.data(), csc::ios_base::binary);
   if (!png_fs.is_open())

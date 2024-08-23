@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-export module csc.png.png_t:signature;
+export module csc.png.picture:signature;
 
 export import csc.stl_wrap.array;
 

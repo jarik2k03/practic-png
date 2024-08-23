@@ -13,14 +13,14 @@ import csc.stl_wrap.iostream;
 #endif
 
 export import csc.png.deserializer.consume_chunk.inflater;
-export import csc.png.png_t.sections;
+export import csc.png.picture.sections;
 export import csc.png.commons.chunk;
 export import csc.png.commons.utils;
 
 namespace csc {
 // вспомогательно для IDAT
-constexpr uint32_t pixel_size_from_color_type(csc::color_type_t t) {
-  using enum csc::color_type_t;
+constexpr uint32_t pixel_size_from_color_type(csc::e_color_type t) {
+  using enum csc::e_color_type;
   switch (t) {
     case rgba:
       return 4u;
@@ -56,7 +56,7 @@ csc::section_code_t consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept
 csc::section_code_t consume_chunk(csc::PLTE& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
   if (blob.data.size() % 3 != 0 || blob.data.size() > (256 * 3))
     return csc::section_code_t::error;
-  if (header.color_type == color_type_t::indexed && blob.data.size() / 3 > (1 << header.bit_depth))
+  if (header.color_type == e_color_type::indexed && blob.data.size() / 3 > (1 << header.bit_depth))
     return csc::section_code_t::error;
   s.full_palette.reserve(256u);
 

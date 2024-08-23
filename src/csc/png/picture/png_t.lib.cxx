@@ -4,10 +4,10 @@ module;
 #include <cstdint>
 #include <ranges>
 
-export module csc.png.png_t;
+export module csc.png.picture;
 export import :signature;
 
-export import csc.png.png_t.sections;
+export import csc.png.picture.sections;
 
 #ifndef NDEBUG
 import csc.stl_wrap.ios;
@@ -18,7 +18,7 @@ import csc.stl_wrap.vector;
 
 export namespace csc {
 
-class png_t {
+class picture {
  public:
   csc::png_signature m_start;
   csc::v_sections m_structured{};
@@ -27,7 +27,7 @@ class png_t {
   csc::IEND m_eof_block;
 
  public:
-  png_t() = default;
+  picture() = default;
 
   const csc::png_signature& start() const {
     return m_start;
@@ -51,8 +51,8 @@ class png_t {
 };
 
 #ifndef NDEBUG
-csc::ostream& operator<<(csc::ostream& os, const csc::png_t& image) {
-  using ct = color_type_t;
+csc::ostream& operator<<(csc::ostream& os, const csc::picture& image) {
+  using ct = e_color_type;
   const csc::IHDR& h = csc::get<csc::IHDR>(image.m_structured[0]);
   const auto is_plte_type = [](const v_section& sn) { return csc::holds_alternative<csc::PLTE>(sn); };
   const auto plte_pos = std::ranges::find_if(image.m_structured, is_plte_type);
@@ -62,8 +62,8 @@ csc::ostream& operator<<(csc::ostream& os, const csc::png_t& image) {
       : (h.color_type == ct::bwa)                   ? "чёрно-белый (альфа-канал)"
       : (h.color_type == ct::rgba)                  ? "цветной (альфа-канал)"
                                                     : "unknown";
-  const char* interlace = (h.interlace == interlace_t::none) ? "Отсутствует"
-      : (h.interlace == interlace_t::adam7)                  ? "Есть (Adam7)"
+  const char* interlace = (h.interlace == e_interlace::none) ? "Отсутствует"
+      : (h.interlace == e_interlace::adam7)                  ? "Есть (Adam7)"
                                                              : "unknown";
 
   for (uint8_t byte : image.start().data) {
@@ -75,7 +75,7 @@ csc::ostream& operator<<(csc::ostream& os, const csc::png_t& image) {
   os << "Цветность: " << color_type << '\n';
 
   os << "Метод компрессии: " << ((h.compression == e_compression::deflate) ? "Алгоритм deflate" : "unknown") << '\n';
-  os << "Фильтрация: " << ((h.filter == filter_t::adaptive) ? "Стандарт (adaptive)" : "unknown") << '\n';
+  os << "Фильтрация: " << ((h.filter == e_filter::adaptive) ? "Стандарт (adaptive)" : "unknown") << '\n';
   os << "Поддержка межстрочности: " << interlace << '\n';
   const float image_size_mb = image.m_image_data.size() / 1024.f / 1024.f;
   os << "Размер изображения в памяти: " << image_size_mb << " Мб.\n";

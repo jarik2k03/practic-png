@@ -1,4 +1,4 @@
-add_subdirectory(png_t)
+add_subdirectory(picture)
 add_subdirectory(commons)
 add_subdirectory(deserializer)
 #add_subdirectory(serializer)

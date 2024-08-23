@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-export module csc.png.png_t.sections.PLTE:attributes;
+export module csc.png.picture.sections.PLTE:attributes;
 
 export namespace csc {
 

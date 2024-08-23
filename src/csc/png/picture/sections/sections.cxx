@@ -1,14 +1,14 @@
 module;
 #include <cstdint>
-export module csc.png.png_t.sections;
+export module csc.png.picture.sections;
 
 import csc.stl_wrap.vector;
 import csc.stl_wrap.variant;
 
-export import csc.png.png_t.sections.IHDR;
-export import csc.png.png_t.sections.PLTE;
-export import csc.png.png_t.sections.IDAT;
-export import csc.png.png_t.sections.IEND;
+export import csc.png.picture.sections.IHDR;
+export import csc.png.picture.sections.PLTE;
+export import csc.png.picture.sections.IDAT;
+export import csc.png.picture.sections.IEND;
 
 export namespace csc {
 

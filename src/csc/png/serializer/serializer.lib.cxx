@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 export module csc.png.serializer_lib;
 
-export import csc.png.png_t;
+export import csc.png.picture;
 import csc.stl_wrap.string_view;
 import :impl;
 
@@ -14,7 +14,7 @@ class serializer : private serializer_impl {
   }
   ~serializer() = default;
 
-  void serialize(csc::string_view filepath, const csc::png_t& image) {
+  void serialize(csc::string_view filepath, const csc::picture& image) {
     return do_serialize(filepath, image);
   }
 };

@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
   }
 
   try {
-    const csc::png_t file = png_executor.deserialize(static_cast<csc::string_view>(argv[1]));
+    const csc::picture file = png_executor.deserialize(static_cast<csc::string_view>(argv[1]));
 #ifndef NDEBUG
     csc::cout << file << '\n';
 #endif

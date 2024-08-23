@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-export module csc.png.png_t.sections.IDAT;
+export module csc.png.picture.sections.IDAT;
 
 export namespace csc {
 
