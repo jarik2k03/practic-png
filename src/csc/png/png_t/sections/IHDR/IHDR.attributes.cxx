@@ -4,7 +4,7 @@ export module csc.png.png_t.sections.IHDR:attributes;
 
 export namespace csc {
 
-enum class compression_t : uint8_t {
+enum class e_compression : uint8_t {
   deflate = 0
 };
 enum class interlace_t : uint8_t {

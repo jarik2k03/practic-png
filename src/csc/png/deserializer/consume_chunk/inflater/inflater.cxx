@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-export module csc.png.png_t.sections.inflater;
+export module csc.png.deserializer.consume_chunk.inflater;
 
 import :impl;
 export import :attributes;

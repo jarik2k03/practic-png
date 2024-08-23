@@ -2,7 +2,7 @@ module;
 #include <zlib.h>
 #include <cstdint>
 #include <memory>
-module csc.png.png_t.sections.inflater:impl;
+module csc.png.deserializer.consume_chunk.inflater:impl;
 export import csc.stl_wrap.vector;
 import csc.stl_wrap.stdexcept;
 

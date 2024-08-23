@@ -1,7 +1,7 @@
 module;
 
 #include <cstdint>
-export module csc.png.png_t.sections.chunk;
+export module csc.png.commons.chunk;
 
 import csc.stl_wrap.vector;
 import csc.stl_wrap.array;

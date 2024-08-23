@@ -3,7 +3,7 @@ module;
 #include <climits>
 #include <cstdint>
 #include <cstring>
-export module csc.png.png_t.sections.utils;
+export module csc.png.commons.utils;
 
 import csc.stl_wrap.vector;
 
