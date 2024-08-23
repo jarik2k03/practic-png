@@ -9,6 +9,9 @@ using cstd::operator==;
 
 struct png_signature {
   const cstd::array<uint8_t, 8> data = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+  int8_t eof_byte() const {
+    return data[7];
+  }
 };
 
 constexpr inline bool operator==(const csc::png_signature& one, const csc::png_signature& two) {

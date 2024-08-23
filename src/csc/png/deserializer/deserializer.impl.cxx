@@ -29,7 +29,7 @@ class deserializer_impl {
 };
 
 csc::v_section init_section(const csc::chunk& ch) {
-  cstd::string chunk_name = {ch.chunk_name.cbegin(), ch.chunk_name.cend()};
+  const cstd::string chunk_name = {ch.chunk_name.cbegin(), ch.chunk_name.cend()};
   if (chunk_name == "IHDR")
     return csc::v_section(csc::IHDR());
   else if (chunk_name == "PLTE")
@@ -97,7 +97,7 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
         cstd::visit(csc::f_consume_chunk(chunk, image.m_structured, z_stream, image.m_image_data), section);
     if (result != section_code_t::success) {
       const cstd::string err_msg = "Ошибка в представлении сектора: " + cstd::string(chunk.chunk_name.data(), 4);
-      throw cstd::domain_error(err_msg.c_str());
+      throw cstd::domain_error(err_msg);
     }
     image.m_structured.emplace_back(std::move(section));
   }
@@ -105,8 +105,8 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   try {
     csc::check_for_chunk_errors(image);
   } catch (const cstd::domain_error& e) {
-    const cstd::string err_msg = "PNG-изображение не прошло проверку: " + cstd::string(e.what());
-    throw cstd::domain_error(err_msg.c_str());
+    using namespace cstd::string_literals;
+    throw cstd::domain_error("PNG-изображение не прошло проверку: "_s + e.what());
   }
   png_fs.close();
   return image;
