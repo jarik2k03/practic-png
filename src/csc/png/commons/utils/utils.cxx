@@ -5,7 +5,7 @@ module;
 #include <cstring>
 export module csc.png.commons.utils;
 
-import csc.stl_wrap.vector;
+import cstd.stl_wrap.vector;
 
 export namespace csc {
 enum class section_code_t : uint32_t {
@@ -17,10 +17,10 @@ template <class T>
 T swap_endian(T u);
 
 template <class T>
-void read_var_from_vector(T& t, uint32_t offset, const csc::vector<uint8_t>& v);
+void read_var_from_vector(T& t, uint32_t offset, const cstd::vector<uint8_t>& v);
 
 template <class T>
-void read_var_from_vector_swap(T& t, uint32_t offset, const csc::vector<uint8_t>& v);
+void read_var_from_vector_swap(T& t, uint32_t offset, const cstd::vector<uint8_t>& v);
 
 } // namespace csc
 
@@ -43,12 +43,12 @@ T swap_endian(T u) {
 }
 
 template <class T>
-void read_var_from_vector(T& t, uint32_t offset, const csc::vector<uint8_t>& v) {
+void read_var_from_vector(T& t, uint32_t offset, const cstd::vector<uint8_t>& v) {
   std::memcpy(&t, &v[offset], sizeof(T));
 }
 
 template <class T>
-void read_var_from_vector_swap(T& t, uint32_t offset, const csc::vector<uint8_t>& v) {
+void read_var_from_vector_swap(T& t, uint32_t offset, const cstd::vector<uint8_t>& v) {
   std::memcpy(&t, &v[offset], sizeof(T));
   t = swap_endian(t);
 }

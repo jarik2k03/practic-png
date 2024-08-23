@@ -1,8 +1,8 @@
 module;
 #include <stdexcept>
-export module csc.stl_wrap.stdexcept;
+export module cstd.stl_wrap.stdexcept;
 
-export namespace csc {
+export namespace cstd {
 using exception = std::exception;
 
 using domain_error = std::domain_error;
@@ -15,4 +15,4 @@ using range_error = std::range_error;
 using overflow_error = std::overflow_error;
 using underflow_error = std::underflow_error;
 
-} // namespace csc
+} // namespace cstd

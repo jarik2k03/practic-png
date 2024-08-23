@@ -20,6 +20,9 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_options(-fcolor-diagnostics)
 endif()
 
+add_compile_options(-Wall -Wextra -pedantic)
+
+
 message(STATUS "Build type:" ${CMAKE_BUILD_TYPE})
 
 add_subdirectory(src)

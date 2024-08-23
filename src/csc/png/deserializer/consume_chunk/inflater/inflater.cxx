@@ -14,7 +14,7 @@ class inflater : private inflater_impl {
 
   ~inflater() noexcept = default;
 
-  void set_compressed_buffer(const csc::vector<uint8_t>& compressed) {
+  void set_compressed_buffer(const cstd::vector<uint8_t>& compressed) {
     return this->do_set_compressed_buffer(compressed);
   }
   void inflate() {

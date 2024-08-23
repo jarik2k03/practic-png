@@ -10,11 +10,11 @@ export import :signature;
 export import csc.png.picture.sections;
 
 #ifndef NDEBUG
-import csc.stl_wrap.ios;
-import csc.stl_wrap.iostream;
+import cstd.stl_wrap.ios;
+import cstd.stl_wrap.iostream;
 #endif
-import csc.stl_wrap.variant;
-import csc.stl_wrap.vector;
+import cstd.stl_wrap.variant;
+import cstd.stl_wrap.vector;
 
 export namespace csc {
 
@@ -22,7 +22,7 @@ class picture {
  public:
   csc::png_signature m_start;
   csc::v_sections m_structured{};
-  csc::vector<uint8_t> m_image_data{};
+  cstd::vector<uint8_t> m_image_data{};
   csc::IHDR m_header;
   csc::IEND m_eof_block;
 
@@ -51,10 +51,11 @@ class picture {
 };
 
 #ifndef NDEBUG
-csc::ostream& operator<<(csc::ostream& os, const csc::picture& image) {
+cstd::ostream& operator<<(cstd::ostream& os, const csc::picture& image) {
+  using cstd::operator<<;
   using ct = e_color_type;
-  const csc::IHDR& h = csc::get<csc::IHDR>(image.m_structured[0]);
-  const auto is_plte_type = [](const v_section& sn) { return csc::holds_alternative<csc::PLTE>(sn); };
+  const csc::IHDR& h = cstd::get<csc::IHDR>(image.m_structured[0]);
+  const auto is_plte_type = [](const v_section& sn) { return cstd::holds_alternative<csc::PLTE>(sn); };
   const auto plte_pos = std::ranges::find_if(image.m_structured, is_plte_type);
   const char* color_type = (h.color_type == ct::bw) ? "чёрно-белый"
       : (h.color_type == ct::rgb)                   ? "цветной"
@@ -67,10 +68,10 @@ csc::ostream& operator<<(csc::ostream& os, const csc::picture& image) {
                                                              : "unknown";
 
   for (uint8_t byte : image.start().data) {
-    os << csc::hex << +byte << ' ';
+    os << cstd::hex << +byte << ' ';
   }
-  os << "\nОсновные данные:\n";
-  os << "Длина: " << csc::dec << h.width << " Ширина: " << h.height << '\n';
+  os << cstd::dec << "\nОсновные данные:\n";
+  os << "Длина: " << cstd::dec << h.width << " Ширина: " << h.height << '\n';
   os << "Битовая глубина: " << +h.bit_depth << '\n';
   os << "Цветность: " << color_type << '\n';
 
@@ -84,14 +85,14 @@ csc::ostream& operator<<(csc::ostream& os, const csc::picture& image) {
 
   if (plte_pos != image.m_structured.end()) {
     os << "Палитра (в байтах): \n";
-    const csc::PLTE& plte = csc::get<csc::PLTE>(*plte_pos);
+    const csc::PLTE& plte = cstd::get<csc::PLTE>(*plte_pos);
     const auto& p = plte.full_palette;
     for (auto unit_it = p.begin(), last_row_it = unit_it - 1; unit_it != p.end(); ++unit_it) {
-      os << csc::hex << +unit_it->r << ' ' << +unit_it->g << ' ' << +unit_it->b << "  ";
+      os << cstd::hex << +unit_it->r << ' ' << +unit_it->g << ' ' << +unit_it->b << "  ";
       if (std::distance(last_row_it, unit_it) == h.bit_depth)
         os << '\n', last_row_it = unit_it;
     }
-    os << '\n' << csc::dec << "Размер палитры: " << plte.full_palette.size() << '\n';
+    os << '\n' << cstd::dec << "Размер палитры: " << plte.full_palette.size() << '\n';
   }
   return os;
 }

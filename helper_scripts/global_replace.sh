@@ -14,4 +14,4 @@ else
  echo "Wrong third argument!" && exit
 fi 
 
-find src/csc -type f -name "*.cxx" -exec sed --debug -i "s/$1/$2/g$STR_CASE" {} \;
+find src/csc/ -type f -name "*.cxx" -exec sed --debug -i "s/$1/$2/g$STR_CASE" {} \;

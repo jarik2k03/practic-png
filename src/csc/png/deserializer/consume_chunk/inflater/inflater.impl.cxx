@@ -3,8 +3,8 @@ module;
 #include <cstdint>
 #include <memory>
 module csc.png.deserializer.consume_chunk.inflater:impl;
-export import csc.stl_wrap.vector;
-import csc.stl_wrap.stdexcept;
+export import cstd.stl_wrap.vector;
+import cstd.stl_wrap.stdexcept;
 
 export import :attributes;
 
@@ -42,15 +42,15 @@ class inflater_impl {
   z_stream m_buf_stream = init_z_stream();
   std::unique_ptr<uint8_t[]> m_uncompressed_buffer = nullptr;
   uint32_t m_uncompressed_buffer_size = 0u;
-  const csc::vector<uint8_t>* m_compressed = nullptr;
+  const cstd::vector<uint8_t>* m_compressed = nullptr;
   bool is_initialized = false;
 
  public:
-  void do_set_compressed_buffer(const csc::vector<uint8_t>& c) {
+  void do_set_compressed_buffer(const cstd::vector<uint8_t>& c) {
     if (!is_initialized) {
       state = inflateInit(&m_buf_stream);
       if (state != Z_OK)
-        throw csc::runtime_error("Не удалось инициализировать inflater!");
+        throw cstd::runtime_error("Не удалось инициализировать inflater!");
       m_uncompressed_buffer = std::make_unique<uint8_t[]>(16_kB);
       is_initialized = true;
     }
@@ -75,7 +75,7 @@ void inflater_impl::do_inflate() {
   state = inflate(&m_buf_stream, Z_NO_FLUSH);
   m_uncompressed_buffer_size = 16_kB - m_buf_stream.avail_out;
   if (state < 0)
-    throw csc::runtime_error(csc::generate_error_message(state));
+    throw cstd::runtime_error(csc::generate_error_message(state));
 }
 bool inflater_impl::do_done() const {
   return m_buf_stream.avail_in == 0 || m_buf_stream.avail_out != 0 || state == Z_STREAM_END;

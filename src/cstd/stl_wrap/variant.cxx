@@ -1,16 +1,16 @@
 module;
 #include <cstdint>
 #include <variant>
-export module csc.stl_wrap.variant;
+export module cstd.stl_wrap.variant;
 
-export namespace csc {
+export namespace cstd {
 
 template <typename... Types>
 using variant = std::variant<Types...>;
 
 using bad_variant_access = std::bad_variant_access;
 
-#define VARIANT csc::variant<Types...>
+#define VARIANT cstd::variant<Types...>
 
 template <typename... Types>
 constexpr bool operator==(const VARIANT& x, const VARIANT& y) noexcept {
@@ -44,58 +44,58 @@ template <std::size_t I, typename Varnt>
 using variant_alternative_t = std::variant_alternative_t<I, Varnt>;
 
 template <std::size_t I, class... Types>
-constexpr csc::variant_alternative_t<I, csc::variant<Types...>>& get(csc::variant<Types...>& v) {
+constexpr cstd::variant_alternative_t<I, cstd::variant<Types...>>& get(cstd::variant<Types...>& v) {
   return std::get<I>(v);
 }
 template <std::size_t I, class... Types>
-constexpr csc::variant_alternative_t<I, csc::variant<Types...>>&& get(csc::variant<Types...>&& v) {
+constexpr cstd::variant_alternative_t<I, cstd::variant<Types...>>&& get(cstd::variant<Types...>&& v) {
   return std::get<I>(v);
 }
 template <std::size_t I, class... Types>
-constexpr const csc::variant_alternative_t<I, csc::variant<Types...>>& get(const csc::variant<Types...>& v) {
+constexpr const cstd::variant_alternative_t<I, cstd::variant<Types...>>& get(const cstd::variant<Types...>& v) {
   return std::get<I>(v);
 }
 template <std::size_t I, class... Types>
-constexpr const csc::variant_alternative_t<I, csc::variant<Types...>>&& get(const csc::variant<Types...>&& v) {
+constexpr const cstd::variant_alternative_t<I, cstd::variant<Types...>>&& get(const cstd::variant<Types...>&& v) {
   return std::get<I>(v);
 }
 
 template <class T, class... Types>
-constexpr T& get(csc::variant<Types...>& v) {
+constexpr T& get(cstd::variant<Types...>& v) {
   return std::get<T>(v);
 }
 template <class T, class... Types>
-constexpr T&& get(csc::variant<Types...>&& v) {
+constexpr T&& get(cstd::variant<Types...>&& v) {
   return std::get<T>(v);
 }
 template <class T, class... Types>
-constexpr const T& get(const csc::variant<Types...>& v) {
+constexpr const T& get(const cstd::variant<Types...>& v) {
   return std::get<T>(v);
 }
 template <class T, class... Types>
-constexpr const T&& get(const csc::variant<Types...>&& v) {
+constexpr const T&& get(const cstd::variant<Types...>&& v) {
   return std::get<T>(v);
 }
 
 template <typename IT>
 using add_pointer_t = std::add_pointer_t<IT>;
 
-#define INDEX csc::variant_alternative_t<I, csc::variant<Types...>>
+#define INDEX cstd::variant_alternative_t<I, cstd::variant<Types...>>
 #define TYPE T
 template <std::size_t I, class... Types>
-constexpr csc::add_pointer_t<INDEX> get_if(csc::variant<Types...>* pv) noexcept {
+constexpr cstd::add_pointer_t<INDEX> get_if(cstd::variant<Types...>* pv) noexcept {
   return std::get_if<I>(pv);
 }
 template <std::size_t I, class... Types>
-constexpr csc::add_pointer_t<const INDEX> get_if(const csc::variant<Types...>* pv) noexcept {
+constexpr cstd::add_pointer_t<const INDEX> get_if(const cstd::variant<Types...>* pv) noexcept {
   return std::get_if<I>(pv);
 }
 template <class T, class... Types>
-constexpr csc::add_pointer_t<TYPE> get_if(csc::variant<Types...>* pv) noexcept {
+constexpr cstd::add_pointer_t<TYPE> get_if(cstd::variant<Types...>* pv) noexcept {
   return std::get_if<T>(pv);
 }
 template <class T, class... Types>
-constexpr csc::add_pointer_t<const TYPE> get_if(const csc::variant<Types...>* pv) noexcept {
+constexpr cstd::add_pointer_t<const TYPE> get_if(const cstd::variant<Types...>* pv) noexcept {
   return std::get_if<T>(pv);
 }
-} // namespace csc
+} // namespace cstd

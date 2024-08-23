@@ -4,12 +4,12 @@ module;
 #include <ranges>
 module csc.png.deserializer.consume_chunk:overloads;
 
-import csc.stl_wrap.vector;
-import csc.stl_wrap.stdexcept;
-export import csc.stl_wrap.variant;
+import cstd.stl_wrap.vector;
+import cstd.stl_wrap.stdexcept;
+export import cstd.stl_wrap.variant;
 
 #ifndef NDEBUG
-import csc.stl_wrap.iostream;
+import cstd.stl_wrap.iostream;
 #endif
 
 export import csc.png.deserializer.consume_chunk.inflater;
@@ -75,7 +75,7 @@ csc::section_code_t consume_chunk(
     const csc::chunk& blob,
     const csc::IHDR& header,
     csc::inflater& infstream,
-    csc::vector<uint8_t>& generic_image) noexcept {
+    cstd::vector<uint8_t>& generic_image) noexcept {
   try {
     const float pixel_size = (header.bit_depth / 8.f);
     const uint32_t channels = pixel_size_from_color_type(header.color_type);
@@ -87,9 +87,10 @@ csc::section_code_t consume_chunk(
       auto range = infstream.value();
       std::ranges::copy(range, std::back_inserter(generic_image));
     } while (!infstream.done());
-  } catch (const csc::runtime_error& e) {
+  } catch (const cstd::runtime_error& e) {
 #ifndef NDEBUG
-    csc::cerr << "Недесериализован чанк IDAT, причина ошибки: " << e.what() << '\n';
+    using cstd::operator<<;
+    cstd::cerr << "Недесериализован чанк IDAT, причина ошибки: " << e.what() << '\n';
 #endif
   }
   s.crc_adler = blob.crc_adler;
