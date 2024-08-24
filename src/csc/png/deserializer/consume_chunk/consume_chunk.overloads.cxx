@@ -36,7 +36,42 @@ constexpr uint32_t pixel_size_from_color_type(csc::e_color_type t) {
       return 0u;
   }
 }
+
+csc::section_code_t consume_chunk(csc::bKGD& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
+  uint32_t buf_pos = 0u;
+  using enum csc::e_color_type;
+  const auto& type = header.color_type;
+  if ((type == rgb || type == rgba) && header.bit_depth == 8) {
+    uint16_t r16, g16, b16;
+    csc::read_var_from_vector_swap(r16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    csc::read_var_from_vector_swap(g16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    csc::read_var_from_vector_swap(b16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    s.color = csc::rgb8{static_cast<uint8_t>(r16), static_cast<uint8_t>(g16), static_cast<uint8_t>(b16)};
+    s.color_type = csc::e_pixel_view_id::rgb8;
+  } else if ((type == rgb || type == rgba) && header.bit_depth == 16) {
+    uint16_t r16, g16, b16;
+    csc::read_var_from_vector_swap(r16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    csc::read_var_from_vector_swap(g16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    csc::read_var_from_vector_swap(b16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    s.color = csc::rgb16{r16, g16, b16}, s.color_type = csc::e_pixel_view_id::rgb16;
+  } else if ((type == bw || type == bwa) && header.bit_depth <= 8) {
+    uint16_t bw16;
+    csc::read_var_from_vector_swap(bw16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    s.color = csc::bw8{static_cast<uint8_t>(bw16)}, s.color_type = csc::e_pixel_view_id::bw8;
+  } else if ((type == bw || type == bwa) && header.bit_depth == 16) {
+    uint16_t bw16;
+    csc::read_var_from_vector_swap(bw16, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+    s.color = csc::bw16{bw16}, s.color_type = csc::e_pixel_view_id::bw16;
+  } else if (type == indexed) {
+    uint8_t idx8;
+    csc::read_var_from_vector(idx8, buf_pos, blob.data), buf_pos += sizeof(uint8_t);
+    s.color = csc::plte_index{idx8}, s.color_type = csc::e_pixel_view_id::plte_index;
+  }
+  return csc::section_code_t::success;
+}
+
 } // namespace csc
+
 
 namespace csc {
 

@@ -38,6 +38,8 @@ csc::v_section init_section(const csc::chunk& ch) {
     return csc::v_section(csc::IDAT());
   else if (chunk_name == "IEND")
     return csc::v_section(csc::IEND());
+  else if (chunk_name == "bKGD")
+    return csc::v_section(csc::bKGD());
   else
     return csc::v_section(csc::IEND());
 }

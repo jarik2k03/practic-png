@@ -32,6 +32,10 @@ class f_consume_chunk {
   auto operator()(csc::IEND& b) {
     return csc::consume_chunk(b, m_chunk);
   }
+  auto operator()(csc::bKGD& b) {
+    const csc::IHDR& header = cstd::get<csc::IHDR>(m_common_deps[0]);
+    return csc::consume_chunk(b, m_chunk, header);
+  }
 };
 
 } // namespace csc

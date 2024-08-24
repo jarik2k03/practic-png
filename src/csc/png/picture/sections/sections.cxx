@@ -10,9 +10,10 @@ export import csc.png.picture.sections.PLTE;
 export import csc.png.picture.sections.IDAT;
 export import csc.png.picture.sections.IEND;
 
+export import csc.png.picture.sections.bKGD;
 export namespace csc {
 
-using v_section = cstd::variant<csc::IHDR, csc::PLTE, csc::IDAT, csc::IEND>;
+using v_section = cstd::variant<csc::IHDR, csc::PLTE, csc::IDAT, csc::IEND, csc::bKGD>;
 using v_sections = cstd::vector<v_section>;
 
 } // namespace csc

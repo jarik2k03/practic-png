@@ -3,7 +3,7 @@ module;
 export module csc.png.picture.sections.IHDR:attributes;
 
 export namespace csc {
-
+ 
 enum class e_compression : uint8_t {
   deflate = 0
 };

@@ -56,7 +56,9 @@ cstd::ostream& operator<<(cstd::ostream& os, const csc::picture& image) {
   using ct = e_color_type;
   const csc::IHDR& h = cstd::get<csc::IHDR>(image.m_structured[0]);
   const auto is_plte_type = [](const v_section& sn) { return cstd::holds_alternative<csc::PLTE>(sn); };
+  const auto is_bkgd_type = [](const v_section& sn) { return cstd::holds_alternative<csc::bKGD>(sn); };
   const auto plte_pos = std::ranges::find_if(image.m_structured, is_plte_type);
+  const auto bkgd_pos = std::ranges::find_if(image.m_structured, is_bkgd_type);
   const char* color_type = (h.color_type == ct::bw) ? "чёрно-белый"
       : (h.color_type == ct::rgb)                   ? "цветной"
       : (h.color_type == ct::indexed)               ? "индексное изображение"
@@ -83,7 +85,7 @@ cstd::ostream& operator<<(cstd::ostream& os, const csc::picture& image) {
   os << "Размер изображения, б: " << image.m_image_data.size() << '\n';
   os << "Ёмкость изображения, б: " << image.m_image_data.capacity() << '\n';
 
-  if (plte_pos != image.m_structured.end()) {
+  if (plte_pos != image.m_structured.cend()) {
     os << "Палитра (в байтах): \n";
     const csc::PLTE& plte = cstd::get<csc::PLTE>(*plte_pos);
     const auto& p = plte.full_palette;
@@ -93,7 +95,43 @@ cstd::ostream& operator<<(cstd::ostream& os, const csc::picture& image) {
         os << '\n', last_row_it = unit_it;
     }
     os << '\n' << cstd::dec << "Размер палитры: " << plte.full_palette.size() << '\n';
+  } else {
+    os << "Палитра отсутствует.\n";
   }
+
+  if (bkgd_pos != image.m_structured.cend()) {
+    const auto max_pixel_value = static_cast<uint16_t>((1ul << h.bit_depth) - 1);
+    os << "Заливка прозрачного фона: \n";
+    const csc::bKGD& bkgd = cstd::get<csc::bKGD>(*bkgd_pos);
+    if (bkgd.color_type == csc::e_pixel_view_id::rgb8) {
+      const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_id::rgb8);
+      const auto& pixel = cstd::get<variant_idx>(bkgd.color);
+      os << "Красный: " << +pixel.r << " Зелёный: " << +pixel.g << " Синий: " << +pixel.b << " (Max: " << max_pixel_value << ")\n";
+    } 
+    else if (bkgd.color_type == csc::e_pixel_view_id::rgb16) {
+      const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_id::rgb16);
+      const auto& pixel = cstd::get<variant_idx>(bkgd.color);
+      os << "Красный: " << +pixel.r << " Зелёный: " << +pixel.g << " Синий: " << +pixel.b << " (Max: " << max_pixel_value << ")\n";
+    } 
+    else if (bkgd.color_type == csc::e_pixel_view_id::bw8) {
+      const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_id::bw8);
+      const auto& pixel = cstd::get<variant_idx>(bkgd.color);
+      os << "Яркость: " << +pixel.bw << " (Max: " << max_pixel_value << ")\n";
+    } 
+    else if (bkgd.color_type == csc::e_pixel_view_id::bw16) {
+      const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_id::bw16);
+      const auto& pixel = cstd::get<variant_idx>(bkgd.color);
+      os << "Яркость: " << pixel.bw << " (Max: " << max_pixel_value << ")\n";
+    } 
+    else if (bkgd.color_type == csc::e_pixel_view_id::plte_index) {
+      const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_id::plte_index);
+      const auto& pixel = cstd::get<variant_idx>(bkgd.color);
+      os << "Значение индекса: " << +pixel.idx << " (Max: " << max_pixel_value << ")\n";
+    } 
+  } else {
+    os << "Заливка отсутствует. По умолчанию черный.\n";
+  }
+
   return os;
 }
 #endif
