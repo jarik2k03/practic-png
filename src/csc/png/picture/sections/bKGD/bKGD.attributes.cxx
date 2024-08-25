@@ -25,8 +25,11 @@ struct plte_index {
 using v_pixel_view = cstd::variant<rgb8, rgb16, bw8, bw16, plte_index>;
 
 enum class e_pixel_view_id : uint8_t {
-  rgb8 = 0, rgb16, bw8, bw16, plte_index
+  rgb8 = 0,
+  rgb16,
+  bw8,
+  bw16,
+  plte_index
 };
 
-
-}
+} // namespace csc

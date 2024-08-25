@@ -36,6 +36,9 @@ class f_consume_chunk {
     const csc::IHDR& header = cstd::get<csc::IHDR>(m_common_deps[0]);
     return csc::consume_chunk(b, m_chunk, header);
   }
+  auto operator()(csc::tIME& b) {
+    return csc::consume_chunk(b, m_chunk);
+  }
 };
 
 } // namespace csc

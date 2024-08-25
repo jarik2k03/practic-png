@@ -11,5 +11,4 @@ struct bKGD {
   csc::e_pixel_view_id color_type;
 };
 
-}
-
+} // namespace csc

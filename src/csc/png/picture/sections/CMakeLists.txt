@@ -3,8 +3,9 @@ add_subdirectory(PLTE)
 add_subdirectory(IDAT)
 add_subdirectory(IEND)
 add_subdirectory(bKGD)
+add_subdirectory(tIME)
 
 add_library(sections STATIC sections.cxx)
-target_link_libraries(sections PRIVATE IHDR PLTE IDAT IEND bKGD stl_vector stl_variant)
+target_link_libraries(sections PRIVATE IHDR PLTE IDAT IEND bKGD tIME stl_vector stl_variant)
 target_sources(sections PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES sections.cxx ) 
 

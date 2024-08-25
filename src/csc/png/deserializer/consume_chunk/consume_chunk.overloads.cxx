@@ -1,6 +1,7 @@
 module;
 #include <algorithm>
 #include <cstdint>
+#include <ctime>
 #include <ranges>
 module csc.png.deserializer.consume_chunk:overloads;
 
@@ -69,9 +70,32 @@ csc::section_code_t consume_chunk(csc::bKGD& s, const csc::chunk& blob, const cs
   }
   return csc::section_code_t::success;
 }
-
+int8_t bring_utc_offset() noexcept {
+  std::time_t current_time;
+  std::time(&current_time);
+  const auto p_localtime = std::localtime(&current_time);
+  return static_cast<int8_t>((p_localtime) ? (p_localtime->tm_gmtoff / 60 / 60) : 0); // секунды в часы
+}
+csc::section_code_t consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept {
+  uint32_t buf_pos = 0u;
+  uint16_t year; // в спецификации png год представлен как uint16, а в ctime как int
+  uint8_t mon, mday, hour, min, sec;
+  auto& t = s.time_data;
+  csc::read_var_from_vector_swap(year, buf_pos, blob.data), buf_pos += sizeof(uint16_t);
+  csc::read_var_from_vector(mon, buf_pos, blob.data), buf_pos += sizeof(uint8_t);
+  csc::read_var_from_vector(mday, buf_pos, blob.data), buf_pos += sizeof(uint8_t);
+  csc::read_var_from_vector(hour, buf_pos, blob.data), buf_pos += sizeof(uint8_t);
+  csc::read_var_from_vector(min, buf_pos, blob.data), buf_pos += sizeof(uint8_t);
+  csc::read_var_from_vector(sec, buf_pos, blob.data), buf_pos += sizeof(uint8_t);
+  t.tm_wday = 0, t.tm_yday = 0, t.tm_isdst = -1; // летнее время (dst) не опознано
+  mon = mon - 1; // png спецификация ведет отсчёт месяцев с 1, ctime - с нуля
+  year = year - 1900; // ctime - ведет отсчет годов с 1900 года
+  hour = hour + csc::bring_utc_offset(); // задаём час, учитывая наше локальное время
+  t.tm_year = static_cast<int>(year), t.tm_mon = static_cast<int>(mon), t.tm_mday = static_cast<int>(mday);
+  t.tm_hour = static_cast<int>(hour), t.tm_min = static_cast<int>(min), t.tm_sec = static_cast<int>(sec);
+  return csc::section_code_t::success;
+}
 } // namespace csc
-
 
 namespace csc {
 

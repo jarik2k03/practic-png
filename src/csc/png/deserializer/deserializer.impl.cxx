@@ -40,6 +40,8 @@ csc::v_section init_section(const csc::chunk& ch) {
     return csc::v_section(csc::IEND());
   else if (chunk_name == "bKGD")
     return csc::v_section(csc::bKGD());
+  else if (chunk_name == "tIME")
+    return csc::v_section(csc::tIME());
   else
     return csc::v_section(csc::IEND());
 }
