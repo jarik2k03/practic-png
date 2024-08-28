@@ -39,6 +39,43 @@ constexpr uint32_t pixel_size_from_color_type(csc::e_color_type t) {
   }
 }
 
+csc::section_code_t consume_chunk(csc::gAMA& s, const csc::chunk& blob) noexcept {
+  csc::buf_reader rdr(blob.data.data());
+  const auto gamma = rdr.read<uint32_t>();
+  s.gamma = gamma;
+  return csc::section_code_t::success;
+}
+
+csc::section_code_t consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept {
+  csc::buf_reader rdr(blob.data.data());
+  const auto pixels_x = rdr.read<uint32_t>(), pixels_y = rdr.read<uint32_t>();
+  const auto specifier = rdr.read<uint8_t>();
+  s.pixels_per_unit_x = pixels_x, s.pixels_per_unit_y = pixels_y;
+  s.unit_type = static_cast<csc::unit_specifier>(specifier);
+  return csc::section_code_t::success;
+}
+
+csc::section_code_t consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept {
+  csc::buf_reader rdr(blob.data.data());
+  s.histogram.reserve(256ul); // под максимальный размер палитры
+  for (const auto& _ : blob.data) {
+    const auto freq = rdr.read<uint16_t>();
+    s.histogram.emplace_back(freq);
+  }
+  return csc::section_code_t::success;
+}
+
+csc::section_code_t consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept {
+  csc::buf_reader rdr(blob.data.data());
+  const auto wh_x = rdr.read<uint32_t>(), wh_y = rdr.read<uint32_t>();
+  const auto r_x = rdr.read<uint32_t>(), r_y = rdr.read<uint32_t>();
+  const auto g_x = rdr.read<uint32_t>(), g_y = rdr.read<uint32_t>();
+  const auto b_x = rdr.read<uint32_t>(), b_y = rdr.read<uint32_t>();
+  s.white_x = wh_x, s.white_y = wh_y, s.red_x = r_x, s.red_y = r_y;
+  s.green_x = g_x, s.green_y = g_y, s.blue_x = b_x, s.blue_y = b_y;
+  return csc::section_code_t::success;
+}
+
 csc::section_code_t consume_chunk(csc::bKGD& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
   csc::buf_reader rdr(blob.data.data());
   using enum csc::e_color_type;

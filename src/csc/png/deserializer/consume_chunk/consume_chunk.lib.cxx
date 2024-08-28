@@ -39,6 +39,18 @@ class f_consume_chunk {
   auto operator()(csc::tIME& b) {
     return csc::consume_chunk(b, m_chunk);
   }
+  auto operator()(csc::cHRM& b) {
+    return csc::consume_chunk(b, m_chunk);
+  }
+  auto operator()(csc::gAMA& b) {
+    return csc::consume_chunk(b, m_chunk);
+  }
+  auto operator()(csc::hIST& b) {
+    return csc::consume_chunk(b, m_chunk);
+  }
+  auto operator()(csc::pHYs& b) {
+    return csc::consume_chunk(b, m_chunk);
+  }
 };
 
 } // namespace csc
