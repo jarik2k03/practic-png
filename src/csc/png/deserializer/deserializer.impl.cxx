@@ -38,6 +38,18 @@ csc::v_section init_section(const csc::chunk& ch) {
     return csc::v_section(csc::IDAT());
   else if (chunk_name == "IEND")
     return csc::v_section(csc::IEND());
+  else if (chunk_name == "bKGD")
+    return csc::v_section(csc::bKGD());
+  else if (chunk_name == "tIME")
+    return csc::v_section(csc::tIME());
+  else if (chunk_name == "cHRM")
+    return csc::v_section(csc::cHRM());
+  else if (chunk_name == "gAMA")
+    return csc::v_section(csc::gAMA());
+  else if (chunk_name == "hIST")
+    return csc::v_section(csc::hIST());
+  else if (chunk_name == "pHYs")
+    return csc::v_section(csc::pHYs());
   else
     return csc::v_section(csc::IEND());
 }

@@ -3,8 +3,6 @@ module;
 export module csc.png.picture.sections.IEND;
 
 export namespace csc {
-struct IEND {
-  uint32_t crc_adler;
-};
+struct IEND {};
 
 } // namespace csc
