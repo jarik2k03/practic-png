@@ -9,7 +9,6 @@ export namespace csc {
 
 struct PLTE {
   cstd::vector<rgb8> full_palette;
-  uint32_t crc_adler;
 };
 
 } // namespace csc
