@@ -12,7 +12,6 @@ struct IHDR {
   csc::e_compression compression;
   csc::e_filter filter;
   csc::e_interlace interlace;
-  uint32_t crc_adler;
 };
 
 } // namespace csc
