@@ -14,6 +14,7 @@ import cstd.stl_wrap.iostream;
 #endif
 
 export import csc.png.deserializer.consume_chunk.inflater;
+export import csc.png.deserializer.consume_chunk.buf_reader;
 export import csc.png.picture.sections;
 export import csc.png.commons.chunk;
 export import csc.png.commons.utils;
@@ -158,6 +159,7 @@ csc::section_code_t consume_chunk(
 
 csc::section_code_t consume_chunk(csc::IEND& s, const csc::chunk& blob) noexcept {
   s.crc_adler = blob.crc_adler;
+  csc::buf_reader rd(blob.data.data());
   return csc::section_code_t::success;
 }
 

@@ -13,6 +13,8 @@ enum class section_code_t : uint32_t {
   error = 1u
 };
 
+
+
 template <class T>
 T swap_endian(T u);
 
