@@ -2,6 +2,7 @@ module;
 #include <cstdint>
 export module csc.png.deserializer.consume_chunk;
 
+export import :utility;
 import :overloads;
 
 export namespace csc {

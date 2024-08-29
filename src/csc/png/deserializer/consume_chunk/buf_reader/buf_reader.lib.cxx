@@ -10,7 +10,7 @@ export namespace csc {
 class buf_reader : private csc::buf_reader_impl {
  public:
   buf_reader() = delete;
-  buf_reader(const uint8_t* const s) : csc::buf_reader_impl(s) {
+  explicit buf_reader(const uint8_t* const s) : csc::buf_reader_impl(s) {
   }
   template <csc::number Val>
   Val read() {
