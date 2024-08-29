@@ -14,9 +14,9 @@ import cstd.stl_wrap.iostream;
 
 export import csc.png.picture;
 import csc.png.deserializer.consume_chunk.inflater;
-import csc.png.commons.utils;
 import csc.png.commons.chunk;
 import csc.png.deserializer.consume_chunk;
+import csc.png.deserializer.consume_chunk.buf_reader;
 
 namespace csc {
 using cstd::operator==;
@@ -59,7 +59,7 @@ csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
   // длина недесериализованного блока в чанке
   uint32_t chunk_size;
   is.read(reinterpret_cast<char*>(&chunk_size), sizeof(chunk_size));
-  chunk_size = csc::swap_endian(chunk_size);
+  chunk_size = csc::from_be_to_system_endian(chunk_size);
   // имя чанка
   is.read(reinterpret_cast<char*>(&bufferized.chunk_name), sizeof(bufferized.chunk_name));
   // запись недесериализованного блока в чанк
@@ -67,7 +67,7 @@ csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
   is.read(reinterpret_cast<char*>(bufferized.data.data()), chunk_size);
   // запись контрольной суммы в чанк
   is.read(reinterpret_cast<char*>(&bufferized.crc_adler), sizeof(bufferized.crc_adler));
-  bufferized.crc_adler = csc::swap_endian(bufferized.crc_adler);
+  bufferized.crc_adler = csc::from_be_to_system_endian(bufferized.crc_adler);
   return bufferized;
 }
 void check_for_chunk_errors(const csc::picture& image) {
@@ -105,9 +105,9 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   while (png_fs.peek() != -1) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
     auto section = csc::init_section(chunk);
-    const auto result =
-        cstd::visit(csc::f_consume_chunk(chunk, image.m_structured, z_stream, image.m_image_data), section);
-    if (result != section_code_t::success) {
+    auto consume_chunk = csc::f_consume_chunk(chunk, image.m_structured, z_stream, image.m_image_data);
+    const auto result = cstd::visit(consume_chunk, section);
+    if (result != e_section_code::success) {
       const cstd::string err_msg = "Ошибка в представлении сектора: " + cstd::string(chunk.chunk_name.data(), 4);
       throw cstd::domain_error(err_msg);
     }

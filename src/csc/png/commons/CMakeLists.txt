@@ -1,2 +1,2 @@
 add_subdirectory(chunk)
-add_subdirectory(utils)
+add_subdirectory(utility)

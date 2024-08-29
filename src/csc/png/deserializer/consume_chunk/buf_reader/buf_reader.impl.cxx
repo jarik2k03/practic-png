@@ -5,6 +5,7 @@ module;
 #include <type_traits>
 export module csc.png.deserializer.consume_chunk.buf_reader:impl;
 export import :attributes;
+import csc.png.commons.utility;
 
 namespace csc {
 

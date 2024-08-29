@@ -7,65 +7,42 @@ module csc.png.deserializer.consume_chunk:overloads;
 
 import cstd.stl_wrap.vector;
 import cstd.stl_wrap.stdexcept;
-export import cstd.stl_wrap.variant;
-
-#ifndef NDEBUG
-import cstd.stl_wrap.iostream;
-#endif
+export import :utility;
 
 export import csc.png.deserializer.consume_chunk.inflater;
 export import csc.png.deserializer.consume_chunk.buf_reader;
 export import csc.png.picture.sections;
 export import csc.png.commons.chunk;
-export import csc.png.commons.utils;
 
 namespace csc {
-// вспомогательно для IDAT
-constexpr uint32_t pixel_size_from_color_type(csc::e_color_type t) {
-  using enum csc::e_color_type;
-  switch (t) {
-    case rgba:
-      return 4u;
-    case rgb:
-      return 3u;
-    case bw:
-      return 2u;
-    case bwa:
-      return 3u;
-    case indexed:
-      return 1u;
-    default:
-      return 0u;
-  }
-}
 
-csc::section_code_t consume_chunk(csc::gAMA& s, const csc::chunk& blob) noexcept {
+csc::e_section_code consume_chunk(csc::gAMA& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.data.data());
   const auto gamma = rdr.read<uint32_t>();
   s.gamma = gamma;
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept {
+csc::e_section_code consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.data.data());
   const auto pixels_x = rdr.read<uint32_t>(), pixels_y = rdr.read<uint32_t>();
   const auto specifier = rdr.read<uint8_t>();
   s.pixels_per_unit_x = pixels_x, s.pixels_per_unit_y = pixels_y;
   s.unit_type = static_cast<csc::unit_specifier>(specifier);
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept {
+csc::e_section_code consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.data.data());
   s.histogram.reserve(256ul); // под максимальный размер палитры
-  for (const auto& _ : blob.data) {
+  for (uint32_t pos = 0u; pos < blob.data.size(); pos += 2u) {
     const auto freq = rdr.read<uint16_t>();
     s.histogram.emplace_back(freq);
   }
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept {
+csc::e_section_code consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.data.data());
   const auto wh_x = rdr.read<uint32_t>(), wh_y = rdr.read<uint32_t>();
   const auto r_x = rdr.read<uint32_t>(), r_y = rdr.read<uint32_t>();
@@ -73,10 +50,10 @@ csc::section_code_t consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept
   const auto b_x = rdr.read<uint32_t>(), b_y = rdr.read<uint32_t>();
   s.white_x = wh_x, s.white_y = wh_y, s.red_x = r_x, s.red_y = r_y;
   s.green_x = g_x, s.green_y = g_y, s.blue_x = b_x, s.blue_y = b_y;
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(csc::bKGD& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
+csc::e_section_code consume_chunk(csc::bKGD& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
   csc::buf_reader rdr(blob.data.data());
   using enum csc::e_color_type;
   const auto& type = header.color_type;
@@ -97,15 +74,10 @@ csc::section_code_t consume_chunk(csc::bKGD& s, const csc::chunk& blob, const cs
     const auto idx8 = rdr.read<uint8_t>();
     s.color = csc::plte_index{idx8}, s.color_type = csc::e_pixel_view_id::plte_index;
   }
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
-int8_t bring_utc_offset() noexcept {
-  std::time_t current_time;
-  std::time(&current_time);
-  const auto p_localtime = std::localtime(&current_time);
-  return static_cast<int8_t>((p_localtime) ? (p_localtime->tm_gmtoff / 60 / 60) : 0); // секунды в часы
-}
-csc::section_code_t consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept {
+
+csc::e_section_code consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.data.data());
   const auto year = rdr.read<uint16_t>(); // в спецификации год представлен как uint16, а в ctime как int
   const auto mon = rdr.read<uint8_t>(), mday = rdr.read<uint8_t>();
@@ -117,13 +89,10 @@ csc::section_code_t consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept
   const auto t_hour = hour + csc::bring_utc_offset(); // задаём час, учитывая наше локальное время
   t.tm_year = static_cast<int>(t_year), t.tm_mon = static_cast<int>(t_mon), t.tm_mday = static_cast<int>(mday);
   t.tm_hour = static_cast<int>(t_hour), t.tm_min = static_cast<int>(min), t.tm_sec = static_cast<int>(sec);
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
-} // namespace csc
 
-namespace csc {
-
-csc::section_code_t consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept {
+csc::e_section_code consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.data.data());
   const auto width = rdr.read<uint32_t>(), height = rdr.read<uint32_t>();
   const auto bit_depth = rdr.read<uint8_t>(), color_type = rdr.read<uint8_t>();
@@ -131,14 +100,14 @@ csc::section_code_t consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept
   s.width = width, s.height = height, s.bit_depth = bit_depth, s.color_type = static_cast<e_color_type>(color_type);
   s.compression = static_cast<e_compression>(compression), s.filter = static_cast<e_filter>(filter);
   s.interlace = static_cast<e_interlace>(interlace);
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(csc::PLTE& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
+csc::e_section_code consume_chunk(csc::PLTE& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
   if (blob.data.size() % 3 != 0 || blob.data.size() > (256 * 3))
-    return csc::section_code_t::error;
+    return csc::e_section_code::error;
   if (header.color_type == e_color_type::indexed && blob.data.size() / 3 > (1 << header.bit_depth))
-    return csc::section_code_t::error;
+    return csc::e_section_code::error;
 
   s.full_palette.reserve(256u);
   csc::buf_reader rdr(blob.data.data());
@@ -146,10 +115,10 @@ csc::section_code_t consume_chunk(csc::PLTE& s, const csc::chunk& blob, const cs
     const auto idxr = rdr.read<uint8_t>(), idxg = rdr.read<uint8_t>(), idxb = rdr.read<uint8_t>();
     s.full_palette.emplace_back(csc::rgb8(idxr, idxg, idxb));
   }
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(
+csc::e_section_code consume_chunk(
     csc::IDAT&,
     const csc::chunk& blob,
     const csc::IHDR& header,
@@ -167,16 +136,15 @@ csc::section_code_t consume_chunk(
       std::ranges::copy(range, std::back_inserter(generic_image));
     } while (!infstream.done());
   } catch (const cstd::runtime_error& e) {
-#ifndef NDEBUG
-    using cstd::operator<<;
-    cstd::cerr << "Недесериализован чанк IDAT, причина ошибки: " << e.what() << '\n';
-#endif
+    // using cstd::operator<<;
+    // cstd::cerr << "Недесериализован чанк IDAT, причина ошибки: " << e.what() << '\n';
+    return csc::e_section_code::error;
   }
-  return csc::section_code_t::success;
+  return csc::e_section_code::success;
 }
 
-csc::section_code_t consume_chunk(csc::IEND&, const csc::chunk&) noexcept {
-  return csc::section_code_t::success;
+csc::e_section_code consume_chunk(csc::IEND&, const csc::chunk&) noexcept {
+  return csc::e_section_code::success;
 }
 
 } // namespace csc

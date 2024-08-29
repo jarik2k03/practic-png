@@ -1,5 +1,7 @@
 module;
+#include <bits/move.h>
 #include <cstdint>
+
 export module csc.png.deserializer.consume_chunk.inflater;
 
 import :impl;
@@ -9,10 +11,16 @@ export namespace csc {
 
 class inflater : private inflater_impl {
  public:
-  inflater() : inflater_impl() {
+  explicit inflater() : inflater_impl() {
   }
 
   ~inflater() noexcept = default;
+
+  inflater(const csc::inflater& copy) = delete;
+  auto& operator=(const csc::inflater& copy) = delete;
+
+  inflater(csc::inflater&& move) noexcept = default; // использует ctor от impl
+  csc::inflater& operator=(csc::inflater&& move) noexcept = default; // исп. присваивание от impl
 
   void set_compressed_buffer(const cstd::vector<uint8_t>& compressed) {
     return this->do_set_compressed_buffer(compressed);

@@ -1,0 +1,8 @@
+add_library(write_section_to_ostream_overloads STATIC write_section_to_ostream.overloads.cxx)
+target_sources(write_section_to_ostream_overloads PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES write_section_to_ostream.overloads.cxx ) 
+target_link_libraries(write_section_to_ostream_overloads PRIVATE picture stl_ostream stl_ios)
+
+add_library(write_section_to_ostream STATIC write_section_to_ostream.lib.cxx)
+target_sources(write_section_to_ostream PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES write_section_to_ostream.lib.cxx ) 
+target_link_libraries(write_section_to_ostream PRIVATE write_section_to_ostream_overloads)
+

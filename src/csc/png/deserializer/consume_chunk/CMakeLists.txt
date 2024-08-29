@@ -1,13 +1,13 @@
 add_subdirectory(inflater)
 add_subdirectory(buf_reader)
 
-add_library(consume_chunk_overloads STATIC consume_chunk.overloads.cxx)
-target_link_libraries(consume_chunk_overloads PRIVATE inflater sections utils chunk stl_variant buf_reader)
-target_sources(consume_chunk_overloads PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES consume_chunk.overloads.cxx ) 
+add_library(consume_chunk_utility STATIC consume_chunk.utility.cxx)
+target_link_libraries(consume_chunk_utility PRIVATE IHDR)
+target_sources(consume_chunk_utility PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES consume_chunk.utility.cxx ) 
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  target_link_libraries(consume_chunk_overloads PRIVATE stl_iostream)
-endif() 
+add_library(consume_chunk_overloads STATIC consume_chunk.overloads.cxx)
+target_link_libraries(consume_chunk_overloads PRIVATE consume_chunk_utility inflater chunk buf_reader sections)
+target_sources(consume_chunk_overloads PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES consume_chunk.overloads.cxx ) 
 
 add_library(consume_chunk STATIC consume_chunk.lib.cxx)
 target_link_libraries(consume_chunk PRIVATE consume_chunk_overloads)
