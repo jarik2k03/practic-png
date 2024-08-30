@@ -4,9 +4,9 @@ Language:        Cpp
 AccessModifierOffset: -1 
 AlignAfterOpenBracket: AlwaysBreak 
 AlignConsecutiveMacros: false 
-AlignConsecutiveAssignments: None 
-AlignConsecutiveBitFields: None 
-AlignConsecutiveDeclarations: None 
+AlignConsecutiveAssignments: false 
+AlignConsecutiveBitFields: false 
+AlignConsecutiveDeclarations: false 
 AlignEscapedNewlines: Left 
 AlignOperands:   DontAlign 
 AlignTrailingComments: false 
@@ -16,11 +16,11 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortEnumsOnASingleLine: false 
 AllowShortBlocksOnASingleLine: Never 
 AllowShortCaseLabelsOnASingleLine: false 
-AllowShortFunctionsOnASingleLine: None 
+AllowShortFunctionsOnASingleLine: false 
 AllowShortLambdasOnASingleLine: All 
 AllowShortIfStatementsOnASingleLine: Never 
 AllowShortLoopsOnASingleLine: false 
-AlwaysBreakAfterDefinitionReturnType: None 
+AlwaysBreakAfterDefinitionReturnType: false 
 AlwaysBreakAfterReturnType: None 
 AlwaysBreakBeforeMultilineStrings: true 
 AlwaysBreakTemplateDeclarations: Yes 
@@ -47,7 +47,7 @@ BraceWrapping:
   SplitEmptyFunction: true 
   SplitEmptyRecord: true 
   SplitEmptyNamespace: true 
-BreakBeforeBinaryOperators: None 
+BreakBeforeBinaryOperators: false 
 BreakBeforeConceptDeclarations: true 
 BreakBeforeBraces: Attach 
 BreakBeforeInheritanceComma: false 
