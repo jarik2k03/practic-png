@@ -1,8 +1,8 @@
 module;
-#include <zlib.h>
 #include <cstdint>
 #include <memory>
 #include <utility>
+#include <zlib.h>
 module csc.png.deserializer.consume_chunk.inflater:impl;
 export import cstd.stl_wrap.vector;
 import cstd.stl_wrap.stdexcept;
