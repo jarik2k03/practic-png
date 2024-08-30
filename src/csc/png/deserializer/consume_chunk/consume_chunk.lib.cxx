@@ -54,6 +54,9 @@ class f_consume_chunk {
   auto operator()(csc::pHYs& b) {
     return csc::consume_chunk(b, m_chunk);
   }
+  auto operator()(csc::dummy& b) {
+    return csc::e_section_code::success;
+  }
 };
 
 } // namespace csc

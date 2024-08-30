@@ -50,7 +50,7 @@ csc::v_section init_section(const csc::chunk& ch) {
   else if (chunk_name == "pHYs")
     return csc::v_section(csc::pHYs());
   else
-    return csc::v_section(csc::IEND());
+    return csc::v_section(csc::dummy());
 }
 
 csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
@@ -62,8 +62,8 @@ csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
   // имя чанка
   is.read(reinterpret_cast<char*>(&bufferized.chunk_name), sizeof(bufferized.chunk_name));
   // запись недесериализованного блока в чанк
-  bufferized.data.resize(chunk_size); // для подготовки пространства
-  is.read(reinterpret_cast<char*>(bufferized.data.data()), chunk_size);
+  bufferized.buffer = csc::make_unique_buffer<uint8_t>(chunk_size); // для подготовки пространства
+  is.read(reinterpret_cast<char*>(bufferized.buffer.data.get()), chunk_size);
   // запись контрольной суммы в чанк
   is.read(reinterpret_cast<char*>(&bufferized.crc_adler), sizeof(bufferized.crc_adler));
   bufferized.crc_adler = csc::from_be_to_system_endian(bufferized.crc_adler);

@@ -18,6 +18,7 @@ export import csc.png.picture.sections.hIST;
 export import csc.png.picture.sections.pHYs;
 export namespace csc {
 
+struct dummy {};
 using v_section = cstd::variant<
     csc::IHDR,
     csc::PLTE,
@@ -28,7 +29,8 @@ using v_section = cstd::variant<
     csc::cHRM,
     csc::gAMA,
     csc::hIST,
-    csc::pHYs>;
+    csc::pHYs,
+    csc::dummy>;
 using v_sections = cstd::vector<v_section>;
 
 } // namespace csc

@@ -35,8 +35,6 @@ void buf_writer_impl::do_write(Val num) {
 
   std::memcpy((m_start + m_pos), &num, sizeof(Val)); // из num в конец буфера
   m_pos += sizeof(num);
-
-  return num;
 }
 
 } // namespace csc
