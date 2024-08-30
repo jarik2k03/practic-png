@@ -2,8 +2,10 @@ module;
 #include <cstdint>
 export module csc.png.deserializer.consume_chunk;
 
-export import :utility;
+import :utility;
 import :overloads;
+
+export import csc.png.commons.chunk;
 
 export namespace csc {
 
@@ -51,6 +53,9 @@ class f_consume_chunk {
   }
   auto operator()(csc::pHYs& b) {
     return csc::consume_chunk(b, m_chunk);
+  }
+  auto operator()(csc::dummy& b) {
+    return csc::e_section_code::success;
   }
 };
 

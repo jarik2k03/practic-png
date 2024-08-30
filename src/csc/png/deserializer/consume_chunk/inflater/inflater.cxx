@@ -22,7 +22,7 @@ class inflater : private inflater_impl {
   inflater(csc::inflater&& move) noexcept = default; // использует ctor от impl
   csc::inflater& operator=(csc::inflater&& move) noexcept = default; // исп. присваивание от impl
 
-  void set_compressed_buffer(const cstd::vector<uint8_t>& compressed) {
+  void set_compressed_buffer(const csc::u8unique_buffer& compressed) {
     return this->do_set_compressed_buffer(compressed);
   }
   void inflate() {
@@ -31,8 +31,8 @@ class inflater : private inflater_impl {
   bool done() const {
     return this->do_done();
   }
-  uncompressed_range value() const {
-    return static_cast<uncompressed_range>(this->do_value());
+  auto value() const {
+    return static_cast<const_u8unique_buffer_range>(this->do_value());
   }
 };
 

@@ -7,6 +7,11 @@ export module csc.png.commons.utility;
 
 export namespace csc {
 
+enum class e_section_code : uint32_t {
+  success = 0u,
+  error = 1u
+};
+
 template <typename T>
 concept number = std::is_integral_v<T>;
 
