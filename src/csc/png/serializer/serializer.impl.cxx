@@ -1,7 +1,7 @@
 module;
 #include <algorithm>
 #include <cstdint>
-module csc.png.serializer_lib:impl;
+module csc.png.serializer:impl;
 
 import cstd.stl_wrap.string_view;
 import cstd.stl_wrap.string;
@@ -13,7 +13,8 @@ import cstd.stl_wrap.ios;
 import cstd.stl_wrap.iostream;
 
 export import csc.png.picture;
-import csc.png.picture.sections.inflater;
+import csc.png.serializer.produce_chunk;
+import csc.png.serializer.produce_chunk.buf_writer;
 
 namespace csc {
 
@@ -41,11 +42,15 @@ void serializer_impl::do_serialize(cstd::string_view filepath, const csc::pictur
   if (!png_fs.is_open())
     throw cstd::runtime_error("Не удалось открыть файл на запись!");
 
-  png_fs.write(reinterpret_cast<const char*>(&image.start()), sizeof(csc::SUBSCRIBE)); // пнг-подпись
+  png_fs.write(reinterpret_cast<const char*>(&image.start()), sizeof(csc::png_signature)); // пнг-подпись
 
   // csc::deflater z_stream;
-  for (const auto& section : image.m_structured) {
+  for (const auto& v_section : image.m_structured) {
+    csc::chunk raw_chunk;
+    auto invoke_produce_chunk = csc::f_produce_chunk(raw_chunk, image.m_structured, image.m_image_data);
+    const auto result = cstd::visit(invoke_produce_chunk, v_section);
     // const auto chunk = cstd::visit(csc::f_store_to_chunk(chunk, image.m_structured, z_stream, image.m_image_data),
+    csc::write_chunk_to_ofstream(png_fs, raw_chunk);
     // section); csc::write_chunk_to_ofstream(png_fs, chunk);
   }
 

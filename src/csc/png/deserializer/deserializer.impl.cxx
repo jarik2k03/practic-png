@@ -14,7 +14,6 @@ import cstd.stl_wrap.iostream;
 
 export import csc.png.picture;
 import csc.png.deserializer.consume_chunk.inflater;
-import csc.png.commons.chunk;
 import csc.png.deserializer.consume_chunk;
 import csc.png.deserializer.consume_chunk.buf_reader;
 
@@ -104,14 +103,14 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   csc::inflater z_stream;
   while (png_fs.peek() != -1) {
     const auto chunk = csc::read_chunk_from_ifstream(png_fs);
-    auto section = csc::init_section(chunk);
-    auto consume_chunk = csc::f_consume_chunk(chunk, image.m_structured, z_stream, image.m_image_data);
-    const auto result = cstd::visit(consume_chunk, section);
+    auto v_section = csc::init_section(chunk);
+    auto invoke_consume_chunk = csc::f_consume_chunk(chunk, image.m_structured, z_stream, image.m_image_data);
+    const auto result = cstd::visit(invoke_consume_chunk, v_section);
     if (result != e_section_code::success) {
       const cstd::string err_msg = "Ошибка в представлении сектора: " + cstd::string(chunk.chunk_name.data(), 4);
       throw cstd::domain_error(err_msg);
     }
-    image.m_structured.emplace_back(std::move(section));
+    image.m_structured.emplace_back(std::move(v_section));
   }
   // проверка правильности расположения секторов
   try {

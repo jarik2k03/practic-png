@@ -2,11 +2,11 @@
 module;
 #include <cstdint>
 #include <ctime>
-module csc.png.deserializer.consume_chunk:utility;
+module csc.png.serializer.produce_chunk:utility;
 import csc.png.picture.sections.IHDR;
 
 namespace csc {
-constexpr uint32_t pixel_size_from_color_type(csc::e_color_type t) {
+constexpr uint32_t dummy1(csc::e_color_type t) {
   using enum csc::e_color_type;
   switch (t) {
     case rgba:
