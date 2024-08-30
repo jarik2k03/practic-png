@@ -8,6 +8,7 @@ stages:
 check-format:
   stage: check-format
   script:
+    - clang-format --version
     - ./helper_scripts/format.sh
     - git diff --exit-code
 
