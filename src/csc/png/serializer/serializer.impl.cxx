@@ -1,6 +1,7 @@
 module;
 #include <algorithm>
 #include <cstdint>
+#include <ranges>
 module csc.png.serializer:impl;
 
 import cstd.stl_wrap.string_view;
@@ -45,13 +46,12 @@ void serializer_impl::do_serialize(cstd::string_view filepath, const csc::pictur
   png_fs.write(reinterpret_cast<const char*>(&image.start()), sizeof(csc::png_signature)); // пнг-подпись
 
   // csc::deflater z_stream;
-  for (const auto& v_section : image.m_structured) {
+  auto create_chunk_and_write_to_file = [&](const auto& v_sec) {
     csc::chunk raw_chunk;
-    auto invoke_produce_chunk = csc::f_produce_chunk(raw_chunk, image.m_structured, image.m_image_data);
-    const auto result = cstd::visit(invoke_produce_chunk, v_section);
+    cstd::visit(csc::f_produce_chunk(raw_chunk), v_sec);
     csc::write_chunk_to_ofstream(png_fs, raw_chunk);
-    // section); csc::write_chunk_to_ofstream(png_fs, chunk);
-  }
+  };
+  std::ranges::for_each(image.m_structured, create_chunk_and_write_to_file);
 
   png_fs.close();
 }

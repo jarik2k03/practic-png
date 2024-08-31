@@ -2,7 +2,6 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections.cHRM;
 
-export import :attributes;
 export namespace csc {
 
 struct cHRM {

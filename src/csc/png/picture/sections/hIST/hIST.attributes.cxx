@@ -4,5 +4,5 @@ export module csc.png.picture.sections.hIST:attributes;
 
 export namespace csc {
 
-using color_frequency = std::uint16_t;
+using color_frequency = uint16_t;
 }
