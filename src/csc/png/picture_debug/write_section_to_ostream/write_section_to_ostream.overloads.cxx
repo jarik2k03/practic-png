@@ -89,9 +89,6 @@ void write_section_to_ostream(const csc::PLTE& plte, cstd::ostream& os, uint8_t 
   os << '\n' << cstd::dec << "Размер палитры: " << plte.full_palette.size() << '\n';
 }
 
-void write_section_to_ostream(const csc::IDAT&, cstd::ostream&) {
-}
-
 void write_section_to_ostream(const csc::IEND&, cstd::ostream&) {
 }
 

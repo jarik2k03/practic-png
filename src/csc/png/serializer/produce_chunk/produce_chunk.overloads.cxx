@@ -1,8 +1,8 @@
 module;
-#include <algorithm>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 #include <cstdint>
 #include <ctime>
-#include <ranges>
 module csc.png.serializer.produce_chunk:overloads;
 
 import :utility;
@@ -78,7 +78,8 @@ csc::e_section_code produce_chunk(const csc::bKGD& s, csc::chunk& blob) noexcept
     wrt.write(static_cast<uint16_t>(color.b)); // rgb8 хранится в файле как rgb16
   } else if (cstd::holds_alternative<csc::rgb16>(s.color)) {
     const auto& color = cstd::get<csc::rgb16>(s.color);
-    wrt.write(color.r), wrt.write(color.g), wrt.write(color.b); // rgb16 записываем как есть
+    wrt.write(color.r), wrt.write(color.g),
+        wrt.write(color.b); // rgb16 записываем как есть
   } else if (cstd::holds_alternative<csc::bw8>(s.color)) {
     const auto& color = cstd::get<csc::bw8>(s.color);
     wrt.write(static_cast<uint16_t>(color.bw)); // bw8 хранится в файле как bw16
@@ -131,12 +132,6 @@ csc::e_section_code produce_chunk(const csc::PLTE& s, csc::chunk& blob) noexcept
   csc::buf_writer wrt(blob.buffer.data.get());
   auto write_plte_unit = [&wrt](const auto& unit) { wrt.write(unit.r), wrt.write(unit.g), wrt.write(unit.b); };
   std::ranges::for_each(s.full_palette, write_plte_unit);
-  return csc::e_section_code::success;
-}
-
-csc::e_section_code produce_chunk(const csc::IDAT&, csc::chunk& blob) noexcept {
-  blob.crc_adler = std::rand(); // не реализовано вычисление контрольной суммы
-  blob.chunk_name = cstd::array<char, 4>{'I', 'D', 'A', 'T'};
   return csc::e_section_code::success;
 }
 

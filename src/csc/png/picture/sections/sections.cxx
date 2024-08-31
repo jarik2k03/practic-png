@@ -7,7 +7,6 @@ import cstd.stl_wrap.variant;
 
 export import csc.png.picture.sections.IHDR;
 export import csc.png.picture.sections.PLTE;
-export import csc.png.picture.sections.IDAT;
 export import csc.png.picture.sections.IEND;
 
 export import csc.png.picture.sections.bKGD;
@@ -22,7 +21,6 @@ struct dummy {};
 using v_section = cstd::variant<
     csc::IHDR,
     csc::PLTE,
-    csc::IDAT,
     csc::IEND,
     csc::bKGD,
     csc::tIME,

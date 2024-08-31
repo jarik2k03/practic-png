@@ -2,7 +2,6 @@ module;
 #include <bit>
 #include <cstdint>
 #include <cstring>
-#include <type_traits>
 export module csc.png.serializer.produce_chunk.buf_writer:impl;
 export import :attributes;
 import csc.png.commons.utility;
@@ -17,7 +16,10 @@ class buf_writer_impl {
  public:
   buf_writer_impl() = delete;
   buf_writer_impl(uint8_t* const s) : m_start(s) {
-    static_assert(csc::is_valid_endian(), "This program doesn't support this endian! Your endian is probably the PDP");
+    static_assert(
+        csc::is_valid_endian(),
+        "This program doesn't support this endian! Your endian is "
+        "probably the PDP");
   }
   template <csc::number Val>
   void do_write(Val num);

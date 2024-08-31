@@ -13,12 +13,20 @@ struct chunk {
   csc::u8unique_buffer buffer{};
   uint32_t crc_adler = 0u;
 
-  uint32_t size = 0u;
   chunk() = default;
   chunk(const chunk& copy) = delete;
   chunk& operator=(const chunk& copy) = delete;
   chunk(chunk&& move) = default;
   chunk& operator=(chunk&& move) = default;
+
+  inline bool operator==(const csc::chunk& two) const {
+    using cstd::operator==; // благодаря контрольным суммам нет необходимости
+                            // сравнивать буферы друг с другом
+    return this->chunk_name == two.chunk_name && this->crc_adler == two.crc_adler;
+  }
+  inline bool operator!=(const csc::chunk& two) const {
+    return !(*this == two);
+  }
 };
 
 } // namespace csc

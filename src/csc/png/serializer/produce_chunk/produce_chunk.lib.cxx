@@ -23,9 +23,6 @@ class f_produce_chunk {
   auto operator()(const csc::PLTE& b) {
     return csc::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::IDAT& b) {
-    return csc::produce_chunk(b, m_chunk);
-  }
   auto operator()(const csc::IEND& b) {
     return csc::produce_chunk(b, m_chunk);
   }
