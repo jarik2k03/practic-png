@@ -12,11 +12,6 @@ struct IHDR {
   csc::e_compression compression;
   csc::e_filter filter;
   csc::e_interlace interlace;
-
-  static consteval uint32_t size() {
-    return sizeof(width) + sizeof(height) + sizeof(bit_depth) + sizeof(color_type) + sizeof(compression) +
-        sizeof(filter) + sizeof(interlace);
-  }
 };
 
 } // namespace csc

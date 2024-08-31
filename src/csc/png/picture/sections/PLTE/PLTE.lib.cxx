@@ -9,9 +9,6 @@ export namespace csc {
 
 struct PLTE {
   cstd::vector<rgb8> full_palette;
-  uint32_t size() const {
-    return full_palette.size() * sizeof(csc::rgb8);
-  }
 };
 
 } // namespace csc
