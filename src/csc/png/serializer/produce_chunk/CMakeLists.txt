@@ -1,5 +1,5 @@
 add_subdirectory(buf_writer)
-# add_subdirectory(deflater)
+add_subdirectory(deflater)
 
 add_library(produce_chunk_utility STATIC produce_chunk.utility.cxx)
 target_link_libraries(produce_chunk_utility PRIVATE sections)

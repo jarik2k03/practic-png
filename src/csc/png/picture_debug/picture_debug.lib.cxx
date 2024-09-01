@@ -24,7 +24,8 @@ cstd::ostream& operator<<(cstd::ostream& os, const csc::picture& image) {
   const uint8_t image_bit_depth = cstd::get<csc::IHDR>(image.m_structured[0]).bit_depth;
   os << "Размер изображения в памяти: " << cstd::dec << image_size_mb << " Мб.\n";
   os << "Размер изображения, б: " << image.m_image_data.size() << '\n';
-  os << "Ёмкость изображения, б: " << image.m_image_data.capacity() << '\n';
+  os << "Ёмкость изображения, б: " << image.m_image_data.capacity() << " (" << image.m_image_data.capacity() / 2ul
+     << ')' << '\n';
 
   auto write_section_to_ostream = csc::f_write_section_to_ostream(os, image_bit_depth);
   for (const auto& section : image.m_structured) {

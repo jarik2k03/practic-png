@@ -2,37 +2,61 @@ module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_util.h>
 #include <cstdint>
+#include <cmath>
 module csc.png.deserializer:utility;
 
 import csc.png.deserializer.consume_chunk.buf_reader;
 import csc.png.commons.chunk;
-import cstd.stl_wrap.string;
+import cstd.stl_wrap.array;
 import cstd.stl_wrap.fstream;
 import cstd.stl_wrap.stdexcept;
 import csc.png.picture;
 
 namespace csc {
 
+auto f_pixel_size_from_color_type = [](csc::e_color_type t) -> uint8_t {
+  using enum csc::e_color_type;
+  switch (t) {
+    case rgba:
+      return 4u;
+    case rgb:
+      return 3u;
+    case bw:
+      return 2u;
+    case bwa:
+      return 3u;
+    case indexed:
+      return 1u;
+    default:
+      return 0u;
+  }
+};
+
+auto f_calc_image_size = [](const csc::IHDR& header) -> uint32_t {
+  const uint8_t pixel_size = static_cast<uint8_t>(std::ceilf(header.bit_depth / 8.f));
+  const uint32_t channels = f_pixel_size_from_color_type(header.color_type);
+  return header.width * header.height * pixel_size * channels;
+};
+
 csc::v_section init_section(const csc::chunk& ch) {
   using cstd::operator==;
-  const cstd::string chunk_name = {ch.chunk_name.cbegin(), ch.chunk_name.cend()};
-  if (chunk_name == "IHDR")
+  if (ch.chunk_name == cstd::array<char, 4>{'I', 'H', 'D', 'R'})
     return csc::v_section(csc::IHDR());
-  else if (chunk_name == "PLTE")
+  else if (ch.chunk_name == cstd::array<char, 4>{'P', 'L', 'T', 'E'})
     return csc::v_section(csc::PLTE());
-  else if (chunk_name == "IEND")
+  else if (ch.chunk_name == cstd::array<char, 4>{'I', 'E', 'N', 'D'})
     return csc::v_section(csc::IEND());
-  else if (chunk_name == "bKGD")
+  else if (ch.chunk_name == cstd::array<char, 4>{'b', 'K', 'G', 'D'})
     return csc::v_section(csc::bKGD());
-  else if (chunk_name == "tIME")
+  else if (ch.chunk_name == cstd::array<char, 4>{'t', 'I', 'M', 'E'})
     return csc::v_section(csc::tIME());
-  else if (chunk_name == "cHRM")
+  else if (ch.chunk_name == cstd::array<char, 4>{'c', 'H', 'R', 'M'})
     return csc::v_section(csc::cHRM());
-  else if (chunk_name == "gAMA")
+  else if (ch.chunk_name == cstd::array<char, 4>{'g', 'A', 'M', 'A'})
     return csc::v_section(csc::gAMA());
-  else if (chunk_name == "hIST")
+  else if (ch.chunk_name == cstd::array<char, 4>{'h', 'I', 'S', 'T'})
     return csc::v_section(csc::hIST());
-  else if (chunk_name == "pHYs")
+  else if (ch.chunk_name == cstd::array<char, 4>{'p', 'H', 'Y', 's'})
     return csc::v_section(csc::pHYs());
   else
     return csc::v_section(csc::dummy());
