@@ -1,15 +1,13 @@
 module;
-#include <algorithm>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 #include <cstdint>
 #include <ctime>
-#include <ranges>
 module csc.png.deserializer.consume_chunk:overloads;
 
-import cstd.stl_wrap.vector;
-import cstd.stl_wrap.stdexcept;
 import :utility;
 
-export import csc.png.deserializer.consume_chunk.inflater;
+// import csc.png.deserializer.consume_chunk.inflater;
 export import csc.png.deserializer.consume_chunk.buf_reader;
 export import csc.png.picture.sections;
 export import csc.png.commons.chunk;
@@ -79,11 +77,13 @@ csc::e_section_code consume_chunk(csc::bKGD& s, const csc::chunk& blob, const cs
 
 csc::e_section_code consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept {
   csc::buf_reader rdr(blob.buffer.data.get());
-  const auto year = rdr.read<uint16_t>(); // в спецификации год представлен как uint16, а в ctime как int
+  const auto year = rdr.read<uint16_t>(); // в спецификации год представлен как
+                                          // uint16, а в ctime как int
   const auto mon = rdr.read<uint8_t>(), mday = rdr.read<uint8_t>();
   const auto hour = rdr.read<uint8_t>(), min = rdr.read<uint8_t>(), sec = rdr.read<uint8_t>();
   auto& t = s.time_data;
-  t.tm_wday = 0, t.tm_yday = 0, t.tm_isdst = -1; // летнее время (dst) не опознано
+  t.tm_wday = 0, t.tm_yday = 0,
+  t.tm_isdst = -1; // летнее время (dst) не опознано
   const auto t_mon = mon - 1; // png спецификация ведет отсчёт месяцев с 1, ctime - с нуля
   const auto t_year = year - 1900; // ctime - ведет отсчет годов с 1900 года
   const auto t_hour = hour + csc::bring_utc_offset(); // задаём час, учитывая наше локальное время
@@ -114,31 +114,6 @@ csc::e_section_code consume_chunk(csc::PLTE& s, const csc::chunk& blob, const cs
   for (uint32_t pos = 0u; pos < blob.buffer.size; pos += 3u) {
     const auto idxr = rdr.read<uint8_t>(), idxg = rdr.read<uint8_t>(), idxb = rdr.read<uint8_t>();
     s.full_palette.emplace_back(csc::rgb8(idxr, idxg, idxb));
-  }
-  return csc::e_section_code::success;
-}
-
-csc::e_section_code consume_chunk(
-    csc::IDAT&,
-    const csc::chunk& blob,
-    const csc::IHDR& header,
-    csc::inflater& infstream,
-    cstd::vector<uint8_t>& generic_image) noexcept {
-  try {
-    const float pixel_size = (header.bit_depth / 8.f);
-    const uint32_t channels = pixel_size_from_color_type(header.color_type);
-    const uint32_t real_size = header.width * header.height * pixel_size * channels * 1.015f;
-    generic_image.reserve(real_size); // после первого резервирования ничего не делает
-    infstream.set_compressed_buffer(blob.buffer);
-    do {
-      infstream.inflate();
-      auto range = infstream.value();
-      std::ranges::copy(range, std::back_inserter(generic_image));
-    } while (!infstream.done());
-  } catch (const cstd::runtime_error& e) {
-    // using cstd::operator<<;
-    // cstd::cerr << "Недесериализован чанк IDAT, причина ошибки: " << e.what() << '\n';
-    return csc::e_section_code::error;
   }
   return csc::e_section_code::success;
 }

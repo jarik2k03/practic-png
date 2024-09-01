@@ -4,7 +4,6 @@ module;
 #include <utility>
 #include <zlib.h>
 module csc.png.deserializer.consume_chunk.inflater:impl;
-export import cstd.stl_wrap.vector;
 import cstd.stl_wrap.stdexcept;
 export import csc.png.commons.unique_buffer;
 
@@ -24,13 +23,15 @@ constexpr const char* generate_error_message(int32_t status) {
     case Z_BUF_ERROR:
       return "Попытка записать данные в переполненный буфер.";
     case Z_DATA_ERROR:
-      return "Вероятность повреждения данных. Входной поток не соответствует формату zlib";
+      return "Вероятность повреждения данных. Входной поток не соответствует "
+             "формату zlib";
     case Z_VERSION_ERROR:
       return "Неопознанная версия zlib.";
     case Z_MEM_ERROR:
       return "Выход за пределы памяти.";
     case Z_STREAM_ERROR:
-      return "Неопознанная степень сжатия или структура потока неправильно инициализирована.";
+      return "Неопознанная степень сжатия или структура потока неправильно "
+             "инициализирована.";
     default:
       return "Неизвестная ошибка.";
   }
@@ -89,6 +90,7 @@ void inflater_impl::do_inflate() {
   m_buf_stream.avail_out = 16_kB;
   m_buf_stream.next_out = m_uncompressed.data.get();
   m_state = inflate(&m_buf_stream, Z_NO_FLUSH);
+
   if (m_state < 0)
     throw cstd::runtime_error(csc::generate_error_message(m_state));
 }
@@ -96,7 +98,8 @@ bool inflater_impl::do_done() const {
   return m_buf_stream.avail_in == 0 || m_buf_stream.avail_out != 0 || m_state == Z_STREAM_END;
 }
 auto inflater_impl::do_value() const {
-  return csc::const_u8unique_buffer_range(m_uncompressed.begin(), m_uncompressed.end());
+  return csc::const_u8unique_buffer_range(
+      m_uncompressed.begin(), m_uncompressed.begin() + 16_kB - m_buf_stream.avail_out);
 }
 
 void inflater_impl::do_set_compressed_buffer(const csc::u8unique_buffer& c) {

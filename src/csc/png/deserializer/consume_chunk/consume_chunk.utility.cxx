@@ -6,23 +6,6 @@ module csc.png.deserializer.consume_chunk:utility;
 import csc.png.picture.sections.IHDR;
 
 namespace csc {
-constexpr uint32_t pixel_size_from_color_type(csc::e_color_type t) {
-  using enum csc::e_color_type;
-  switch (t) {
-    case rgba:
-      return 4u;
-    case rgb:
-      return 3u;
-    case bw:
-      return 2u;
-    case bwa:
-      return 3u;
-    case indexed:
-      return 1u;
-    default:
-      return 0u;
-  }
-}
 
 int8_t bring_utc_offset() noexcept {
   std::time_t current_time;

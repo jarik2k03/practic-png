@@ -42,13 +42,13 @@ struct basic_unique_buffer {
     return data.get();
   }
   Val* end() {
-    return data.get() + size + 1; // возможна ошибка
+    return data.get() + size; // нормальный диапазон
   }
   const Val* begin() const {
     return data.get();
   }
   const Val* end() const {
-    return data.get() + size + 1; // возможна ошибка
+    return data.get() + size; // то же самое
   }
 };
 using u8unique_buffer = csc::basic_unique_buffer<uint8_t>;

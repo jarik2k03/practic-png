@@ -76,9 +76,6 @@ ForEachMacros:
   - BOOST_FOREACH 
 StatementAttributeLikeMacros: 
   - Q_EMIT 
-IncludeBlocks:   Preserve 
-IncludeIsMainRegex: '(-_)?$' 
-IncludeIsMainSourceRegex: '' 
 IndentCaseLabels: true 
 IndentCaseBlocks: false 
 IndentGotoLabels: true 
@@ -123,3 +120,5 @@ RawStringFormats:
     CanonicalDelimiter: '' 
     BasedOnStyle:    google 
   - Language:        TextProto
+SortIncludes: false
+
