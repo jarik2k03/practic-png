@@ -26,8 +26,8 @@ class deflater : private deflater_impl {
   void set_decompressed_buffer(const cstd::vector<uint8_t>& decompressed) {
     return this->do_set_decompressed_buffer(decompressed);
   }
-  void deflate() {
-    return this->do_deflate();
+  void deflate(int flush) {
+    return this->do_deflate(flush);
   }
   bool done() const {
     return this->do_done();

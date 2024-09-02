@@ -57,7 +57,7 @@ class inflater_impl {
 
   void do_set_compressed_buffer(const csc::u8unique_buffer& c);
   auto do_value() const;
-  void do_inflate();
+  void do_inflate(int flush);
   bool do_done() const;
 };
 
@@ -86,16 +86,16 @@ inflater_impl& inflater_impl::operator=(csc::inflater_impl&& move) noexcept {
   return *this;
 }
 
-void inflater_impl::do_inflate() {
+void inflater_impl::do_inflate(int flush) {
   m_buf_stream.avail_out = 16_kB;
   m_buf_stream.next_out = m_uncompressed.data.get();
-  m_state = inflate(&m_buf_stream, Z_NO_FLUSH);
+  m_state = inflate(&m_buf_stream, flush);
 
   if (m_state < 0)
     throw cstd::runtime_error(csc::generate_error_message(m_state));
 }
 bool inflater_impl::do_done() const {
-  return m_buf_stream.avail_in == 0 || m_buf_stream.avail_out != 0 || m_state == Z_STREAM_END;
+  return m_buf_stream.avail_in == 0 || m_state == Z_STREAM_END;
 }
 auto inflater_impl::do_value() const {
   return csc::const_u8unique_buffer_range(

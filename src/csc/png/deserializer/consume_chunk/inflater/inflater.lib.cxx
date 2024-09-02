@@ -25,8 +25,8 @@ class inflater : private inflater_impl {
   void set_compressed_buffer(const csc::u8unique_buffer& compressed) {
     return this->do_set_compressed_buffer(compressed);
   }
-  void inflate() {
-    return this->do_inflate();
+  void inflate(int flush) {
+    return this->do_inflate(flush);
   }
   bool done() const {
     return this->do_done();
