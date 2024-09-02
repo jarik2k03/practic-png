@@ -17,7 +17,8 @@ namespace csc {
 
 auto create_crc32 = [](const cstd::array<char, 4>& name, const csc::u8unique_buffer& data) -> uint32_t {
   uint32_t crc = crc32(0ul, reinterpret_cast<const uint8_t*>(name.cbegin()), name.size());
-  crc = crc32(crc, data.begin(), data.size);
+  if (data.size != 0u)
+    crc = crc32(crc, data.begin(), data.size);
   return crc;
 };
 
@@ -155,7 +156,6 @@ csc::e_section_code produce_chunk(const csc::PLTE& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::IEND&, csc::chunk& blob) noexcept {
-  blob.crc_adler = std::rand(); // не реализовано вычисление контрольной суммы
   blob.chunk_name = cstd::array<char, 4>{'I', 'E', 'N', 'D'};
   blob.crc_adler = create_crc32(blob.chunk_name, blob.buffer);
   return csc::e_section_code::success;

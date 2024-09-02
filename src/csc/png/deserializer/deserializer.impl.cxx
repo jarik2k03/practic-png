@@ -3,6 +3,7 @@ module;
 #include <bits/stl_construct.h>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
+#include <zlib.h>
 #include <cstdint>
 export module csc.png.deserializer:impl;
 import cstd.stl_wrap.string_view;
@@ -64,7 +65,7 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   auto decode_with_inflater = [&image, &z_stream](const auto& chunk) {
     z_stream.set_compressed_buffer(chunk.buffer);
     do {
-      z_stream.inflate();
+      z_stream.inflate(Z_NO_FLUSH);
       // cstd::cout << "Инфляция: " << std::ranges::distance(z_stream.value()) << '\n';
       std::ranges::copy(z_stream.value(), std::back_inserter(image.m_image_data));
     } while (!z_stream.done());

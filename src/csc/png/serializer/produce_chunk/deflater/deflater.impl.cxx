@@ -55,7 +55,7 @@ class deflater_impl {
 
   void do_set_decompressed_buffer(const cstd::vector<uint8_t>& c);
   auto do_value() const;
-  void do_deflate();
+  void do_deflate(int flush);
   bool do_done() const;
 };
 
@@ -84,15 +84,15 @@ deflater_impl& deflater_impl::operator=(csc::deflater_impl&& move) noexcept {
   return *this;
 }
 
-void deflater_impl::do_deflate() {
+void deflater_impl::do_deflate(int flush) {
   m_buf_stream.avail_out = 8_kB;
   m_buf_stream.next_out = m_compressed.data.get();
-  m_state = deflate(&m_buf_stream, Z_NO_FLUSH);
+  m_state = deflate(&m_buf_stream, flush);
   if (m_state < 0)
     throw cstd::runtime_error(csc::generate_error_message(m_state));
 }
 bool deflater_impl::do_done() const {
-  return m_buf_stream.avail_in == 0 || m_buf_stream.avail_out != 0 || m_state == Z_STREAM_END;
+  return m_buf_stream.avail_in == 0 && m_state == Z_STREAM_END;
 }
 auto deflater_impl::do_value() const {
   return csc::const_u8unique_buffer_range(m_compressed.begin(), m_compressed.begin() + 8_kB - m_buf_stream.avail_out);
@@ -100,7 +100,7 @@ auto deflater_impl::do_value() const {
 
 void deflater_impl::do_set_decompressed_buffer(const cstd::vector<uint8_t>& c) {
   if (!m_is_init) {
-    m_state = deflateInit(&m_buf_stream, Z_DEFAULT_COMPRESSION);
+    m_state = deflateInit(&m_buf_stream, 9);
     if (m_state != Z_OK)
       throw cstd::runtime_error("Не удалось инициализировать deflater!");
     m_compressed = csc::make_unique_buffer<uint8_t>(8_kB);

@@ -54,9 +54,11 @@ void serializer_impl::do_serialize(cstd::string_view filepath, const csc::pictur
     csc::deflater z_stream;
     z_stream.set_decompressed_buffer(image.m_image_data);
 
+    using cstd::operator<<;
     do {
-      z_stream.deflate();
+      z_stream.deflate(Z_FINISH); // нет необходимости переключать входной буфер. Он один (image.m_image_data)
       raw_chunk.buffer.size = std::ranges::distance(z_stream.value()); // обновляем размер буфера
+      cstd::cout << "deflated: " << raw_chunk.buffer.size << '\n';
       std::ranges::copy(z_stream.value(), raw_chunk.buffer.data.get()); // переносим данные из внутреннего в текущий
       raw_chunk.crc_adler = create_crc32(raw_chunk.chunk_name, raw_chunk.buffer); // контрольная сумма
       csc::write_chunk_to_ofstream(png_fs, raw_chunk); // запись в файл
