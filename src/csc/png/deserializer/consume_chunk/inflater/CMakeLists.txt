@@ -3,8 +3,8 @@ target_sources(inflater_attributes PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILE
 
 add_library(inflater_impl STATIC inflater.impl.cxx)
 target_sources(inflater_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES inflater.impl.cxx ) 
-target_link_libraries(inflater_impl PRIVATE ZLIB::ZLIB stl_vector stl_stdexcept inflater_attributes)
+target_link_libraries(inflater_impl PRIVATE ZLIB::ZLIB unique_buffer stl_stdexcept inflater_attributes)
 
-add_library(inflater STATIC inflater.cxx)
-target_sources(inflater PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES inflater.cxx ) 
+add_library(inflater STATIC inflater.lib.cxx)
+target_sources(inflater PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES inflater.lib.cxx ) 
 target_link_libraries(inflater PRIVATE inflater_impl)

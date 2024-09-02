@@ -1,9 +1,10 @@
 module;
 #include <cstdint>
 export module csc.png.deserializer;
+
+import :impl;
 export import csc.png.picture;
 import cstd.stl_wrap.string_view;
-import :impl;
 
 export namespace csc {
 

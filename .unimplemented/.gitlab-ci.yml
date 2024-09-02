@@ -1,0 +1,29 @@
+image: registry.csc.sibsutis.ru/ci/git-clang-format:latest
+
+stages:
+  - check-format
+  - build-debug
+  - build-release
+
+check-format:
+  stage: check-format
+  script:
+    - clang-format --version
+    - ./helper_scripts/format.sh
+    - git diff --exit-code
+
+build-debug:
+  stage: build-debug
+  script:
+    - cmake --preset debug
+    - cmake --build --preset debug
+    - cmake --build --preset debug --target program
+
+build-release:
+  stage: build-release
+  script:
+    - cmake --preset release
+    - cmake --build --preset release
+    - cmake --build --preset release --target program
+
+

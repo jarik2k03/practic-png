@@ -25,9 +25,6 @@ class f_write_section_to_ostream {
   void operator()(const csc::PLTE& b) {
     csc::write_section_to_ostream(b, m_debug, m_bit_depth);
   }
-  void operator()(const csc::IDAT& b) {
-    csc::write_section_to_ostream(b, m_debug);
-  }
   void operator()(const csc::IEND& b) {
     csc::write_section_to_ostream(b, m_debug);
   }
@@ -48,6 +45,8 @@ class f_write_section_to_ostream {
   }
   void operator()(const csc::pHYs& b) {
     csc::write_section_to_ostream(b, m_debug);
+  }
+  void operator()(const csc::dummy&) {
   }
 };
 

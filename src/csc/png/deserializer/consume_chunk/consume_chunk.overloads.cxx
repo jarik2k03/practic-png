@@ -1,15 +1,13 @@
 module;
-#include <algorithm>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 #include <cstdint>
 #include <ctime>
-#include <ranges>
 module csc.png.deserializer.consume_chunk:overloads;
 
-import cstd.stl_wrap.vector;
-import cstd.stl_wrap.stdexcept;
-export import :utility;
+import :utility;
 
-export import csc.png.deserializer.consume_chunk.inflater;
+// import csc.png.deserializer.consume_chunk.inflater;
 export import csc.png.deserializer.consume_chunk.buf_reader;
 export import csc.png.picture.sections;
 export import csc.png.commons.chunk;
@@ -17,14 +15,14 @@ export import csc.png.commons.chunk;
 namespace csc {
 
 csc::e_section_code consume_chunk(csc::gAMA& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.data.data());
+  csc::buf_reader rdr(blob.buffer.data.get());
   const auto gamma = rdr.read<uint32_t>();
   s.gamma = gamma;
   return csc::e_section_code::success;
 }
 
 csc::e_section_code consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.data.data());
+  csc::buf_reader rdr(blob.buffer.data.get());
   const auto pixels_x = rdr.read<uint32_t>(), pixels_y = rdr.read<uint32_t>();
   const auto specifier = rdr.read<uint8_t>();
   s.pixels_per_unit_x = pixels_x, s.pixels_per_unit_y = pixels_y;
@@ -33,9 +31,9 @@ csc::e_section_code consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.data.data());
+  csc::buf_reader rdr(blob.buffer.data.get());
   s.histogram.reserve(256ul); // под максимальный размер палитры
-  for (uint32_t pos = 0u; pos < blob.data.size(); pos += 2u) {
+  for (uint32_t pos = 0u; pos < blob.buffer.size; pos += 2u) {
     const auto freq = rdr.read<uint16_t>();
     s.histogram.emplace_back(freq);
   }
@@ -43,7 +41,7 @@ csc::e_section_code consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.data.data());
+  csc::buf_reader rdr(blob.buffer.data.get());
   const auto wh_x = rdr.read<uint32_t>(), wh_y = rdr.read<uint32_t>();
   const auto r_x = rdr.read<uint32_t>(), r_y = rdr.read<uint32_t>();
   const auto g_x = rdr.read<uint32_t>(), g_y = rdr.read<uint32_t>();
@@ -54,7 +52,7 @@ csc::e_section_code consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::bKGD& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
-  csc::buf_reader rdr(blob.data.data());
+  csc::buf_reader rdr(blob.buffer.data.get());
   using enum csc::e_color_type;
   const auto& type = header.color_type;
   if ((type == rgb || type == rgba) && header.bit_depth == 8) {
@@ -78,12 +76,14 @@ csc::e_section_code consume_chunk(csc::bKGD& s, const csc::chunk& blob, const cs
 }
 
 csc::e_section_code consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.data.data());
-  const auto year = rdr.read<uint16_t>(); // в спецификации год представлен как uint16, а в ctime как int
+  csc::buf_reader rdr(blob.buffer.data.get());
+  const auto year = rdr.read<uint16_t>(); // в спецификации год представлен как
+                                          // uint16, а в ctime как int
   const auto mon = rdr.read<uint8_t>(), mday = rdr.read<uint8_t>();
   const auto hour = rdr.read<uint8_t>(), min = rdr.read<uint8_t>(), sec = rdr.read<uint8_t>();
   auto& t = s.time_data;
-  t.tm_wday = 0, t.tm_yday = 0, t.tm_isdst = -1; // летнее время (dst) не опознано
+  t.tm_wday = 0, t.tm_yday = 0,
+  t.tm_isdst = -1; // летнее время (dst) не опознано
   const auto t_mon = mon - 1; // png спецификация ведет отсчёт месяцев с 1, ctime - с нуля
   const auto t_year = year - 1900; // ctime - ведет отсчет годов с 1900 года
   const auto t_hour = hour + csc::bring_utc_offset(); // задаём час, учитывая наше локальное время
@@ -93,7 +93,7 @@ csc::e_section_code consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.data.data());
+  csc::buf_reader rdr(blob.buffer.data.get());
   const auto width = rdr.read<uint32_t>(), height = rdr.read<uint32_t>();
   const auto bit_depth = rdr.read<uint8_t>(), color_type = rdr.read<uint8_t>();
   const auto compression = rdr.read<uint8_t>(), filter = rdr.read<uint8_t>(), interlace = rdr.read<uint8_t>();
@@ -104,41 +104,16 @@ csc::e_section_code consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::PLTE& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
-  if (blob.data.size() % 3 != 0 || blob.data.size() > (256 * 3))
+  if (blob.buffer.size % 3 != 0 || blob.buffer.size > (256 * 3))
     return csc::e_section_code::error;
-  if (header.color_type == e_color_type::indexed && blob.data.size() / 3 > (1 << header.bit_depth))
+  if (header.color_type == e_color_type::indexed && blob.buffer.size / 3 > (1 << header.bit_depth))
     return csc::e_section_code::error;
 
   s.full_palette.reserve(256u);
-  csc::buf_reader rdr(blob.data.data());
-  for (uint32_t pos = 0u; pos < blob.data.size(); pos += 3u) {
+  csc::buf_reader rdr(blob.buffer.data.get());
+  for (uint32_t pos = 0u; pos < blob.buffer.size; pos += 3u) {
     const auto idxr = rdr.read<uint8_t>(), idxg = rdr.read<uint8_t>(), idxb = rdr.read<uint8_t>();
     s.full_palette.emplace_back(csc::rgb8(idxr, idxg, idxb));
-  }
-  return csc::e_section_code::success;
-}
-
-csc::e_section_code consume_chunk(
-    csc::IDAT&,
-    const csc::chunk& blob,
-    const csc::IHDR& header,
-    csc::inflater& infstream,
-    cstd::vector<uint8_t>& generic_image) noexcept {
-  try {
-    const float pixel_size = (header.bit_depth / 8.f);
-    const uint32_t channels = pixel_size_from_color_type(header.color_type);
-    const uint32_t real_size = header.width * header.height * pixel_size * channels * 1.015f;
-    generic_image.reserve(real_size); // после первого резервирования ничего не делает
-    infstream.set_compressed_buffer(blob.data);
-    do {
-      infstream.inflate();
-      auto range = infstream.value();
-      std::ranges::copy(range, std::back_inserter(generic_image));
-    } while (!infstream.done());
-  } catch (const cstd::runtime_error& e) {
-    // using cstd::operator<<;
-    // cstd::cerr << "Недесериализован чанк IDAT, причина ошибки: " << e.what() << '\n';
-    return csc::e_section_code::error;
   }
   return csc::e_section_code::success;
 }

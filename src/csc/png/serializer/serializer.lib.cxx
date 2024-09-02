@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-export module csc.png.serializer_lib;
+export module csc.png.serializer;
 
 export import csc.png.picture;
 import cstd.stl_wrap.string_view;

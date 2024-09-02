@@ -17,7 +17,10 @@ class buf_reader_impl {
  public:
   buf_reader_impl() = delete;
   buf_reader_impl(const uint8_t* const s) : m_start(s) {
-    static_assert(csc::is_valid_endian(), "This program doesn't support this endian! Your endian is probably the PDP");
+    static_assert(
+        csc::is_valid_endian(),
+        "This program doesn't support this endian! Your endian is "
+        "probably the PDP");
   }
   template <csc::number Val>
   Val do_read();
@@ -33,7 +36,8 @@ Val buf_reader_impl::do_read() {
   }
 
   if constexpr (std::endian::native == std::endian::big) {
-    // если на нашем компьютере BE - читаем напрямую (png использует Bittle Endian - как в сетевых протоколах)
+    // если на нашем компьютере BE - читаем напрямую (png использует Bittle
+    // Endian - как в сетевых протоколах)
   } else if constexpr (std::endian::native == std::endian::little) {
     word = csc::swap_endian(word); // from BE to LE
   }
