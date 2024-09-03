@@ -5,7 +5,7 @@ module;
 #include <zlib.h>
 module csc.png.serializer.produce_chunk.deflater:impl;
 import cstd.stl_wrap.stdexcept;
-export import csc.png.commons.unique_buffer;
+export import csc.png.commons.buffer;
 export import cstd.stl_wrap.vector;
 
 export import :attributes;
@@ -41,7 +41,7 @@ class deflater_impl {
  private:
   int32_t m_state = Z_OK;
   z_stream m_buf_stream = init_z_stream();
-  csc::u8unique_buffer m_compressed{};
+  csc::u8buffer m_compressed{};
   const cstd::vector<uint8_t>* m_decompressed{};
   bool m_is_init = false;
 
@@ -86,7 +86,7 @@ deflater_impl& deflater_impl::operator=(csc::deflater_impl&& move) noexcept {
 
 void deflater_impl::do_deflate(int flush) {
   m_buf_stream.avail_out = 8_kB;
-  m_buf_stream.next_out = m_compressed.data.get();
+  m_buf_stream.next_out = m_compressed.data();
   m_state = deflate(&m_buf_stream, flush);
   if (m_state < 0)
     throw cstd::runtime_error(csc::generate_error_message(m_state));
@@ -95,7 +95,7 @@ bool deflater_impl::do_done() const {
   return m_buf_stream.avail_in == 0 && m_state == Z_STREAM_END;
 }
 auto deflater_impl::do_value() const {
-  return csc::const_u8unique_buffer_range(m_compressed.begin(), m_compressed.begin() + 8_kB - m_buf_stream.avail_out);
+  return csc::const_u8buffer_range(m_compressed.begin(), m_compressed.begin() + 8_kB - m_buf_stream.avail_out);
 }
 
 void deflater_impl::do_set_decompressed_buffer(const cstd::vector<uint8_t>& c) {
@@ -103,7 +103,7 @@ void deflater_impl::do_set_decompressed_buffer(const cstd::vector<uint8_t>& c) {
     m_state = deflateInit(&m_buf_stream, 9);
     if (m_state != Z_OK)
       throw cstd::runtime_error("Не удалось инициализировать deflater!");
-    m_compressed = csc::make_unique_buffer<uint8_t>(8_kB);
+    m_compressed = csc::make_buffer<uint8_t>(8_kB);
     m_is_init = true;
   }
   m_decompressed = &c;

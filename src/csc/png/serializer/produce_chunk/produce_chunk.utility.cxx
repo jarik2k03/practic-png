@@ -2,10 +2,24 @@
 module;
 #include <cstdint>
 #include <ctime>
+#include <zlib.h>
+
 module csc.png.serializer.produce_chunk:utility;
+
 import csc.png.picture.sections;
+import csc.png.commons.buffer_view;
+import csc.png.commons.buffer;
+
+import cstd.stl_wrap.array;
 
 namespace csc {
+
+auto create_crc32 = [](const cstd::array<char, 4>& name, csc::u8buffer_view data) -> uint32_t {
+  uint32_t crc = ::crc32(0ul, reinterpret_cast<const uint8_t*>(name.cbegin()), name.size());
+  if (data.size() != 0u)
+    crc = ::crc32(crc, data.data(), data.size());
+  return crc;
+};
 
 constexpr uint32_t calc_size_for_chunk(const csc::IHDR& s) noexcept {
   return sizeof(s.width) + sizeof(s.height) + sizeof(s.bit_depth) + sizeof(s.color_type) + sizeof(s.compression) +

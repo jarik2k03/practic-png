@@ -35,9 +35,9 @@ void serializer_impl::do_serialize(cstd::string_view filepath, const csc::pictur
   png_fs.write(reinterpret_cast<const char*>(&image.start()),
                sizeof(csc::png_signature)); // пнг-подпись
 
-  auto create_crc32 = [](const cstd::array<char, 4>& name, const csc::u8unique_buffer& data) -> uint32_t {
+  auto create_crc32 = [](const cstd::array<char, 4>& name, const csc::u8buffer& data) -> uint32_t {
     uint32_t crc = crc32(0ul, reinterpret_cast<const uint8_t*>(name.cbegin()), name.size());
-    crc = crc32(crc, data.begin(), data.size);
+    crc = crc32(crc, data.begin(), data.size());
     return crc;
   };
   auto create_chunk_and_write_to_file = [&](const auto& v_sec) {
@@ -49,7 +49,7 @@ void serializer_impl::do_serialize(cstd::string_view filepath, const csc::pictur
   auto create_deflation_and_write_to_file = [&]() {
     csc::chunk raw_chunk;
     raw_chunk.chunk_name = cstd::array<char, 4>{'I', 'D', 'A', 'T'};
-    raw_chunk.buffer = csc::make_unique_buffer<uint8_t>(8_kB);
+    raw_chunk.buffer = csc::make_buffer<uint8_t>(8_kB);
 
     csc::deflater z_stream;
     z_stream.set_decompressed_buffer(image.m_image_data);
@@ -57,9 +57,9 @@ void serializer_impl::do_serialize(cstd::string_view filepath, const csc::pictur
     using cstd::operator<<;
     do {
       z_stream.deflate(Z_FINISH); // нет необходимости переключать входной буфер. Он один (image.m_image_data)
-      raw_chunk.buffer.size = std::ranges::distance(z_stream.value()); // обновляем размер буфера
-      cstd::cout << "deflated: " << raw_chunk.buffer.size << '\n';
-      std::ranges::copy(z_stream.value(), raw_chunk.buffer.data.get()); // переносим данные из внутреннего в текущий
+      raw_chunk.buffer.resize(std::ranges::distance(z_stream.value())); // обновляем границы буфера (без реаллокаций)
+      cstd::cout << "deflated: " << raw_chunk.buffer.size() << '\n';
+      std::ranges::copy(z_stream.value(), raw_chunk.buffer.data()); // переносим данные из внутреннего в текущий
       raw_chunk.crc_adler = create_crc32(raw_chunk.chunk_name, raw_chunk.buffer); // контрольная сумма
       csc::write_chunk_to_ofstream(png_fs, raw_chunk); // запись в файл
     } while (!z_stream.done());

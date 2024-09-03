@@ -71,8 +71,8 @@ csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
   // имя чанка
   is.read(reinterpret_cast<char*>(&bufferized.chunk_name), sizeof(bufferized.chunk_name));
   // запись недесериализованного блока в чанк
-  bufferized.buffer = csc::make_unique_buffer<uint8_t>(chunk_size); // для подготовки пространства
-  is.read(reinterpret_cast<char*>(bufferized.buffer.data.get()), chunk_size);
+  bufferized.buffer = csc::make_buffer<uint8_t>(chunk_size); // для подготовки пространства
+  is.read(reinterpret_cast<char*>(bufferized.buffer.data()), chunk_size);
   // запись контрольной суммы в чанк
   is.read(reinterpret_cast<char*>(&bufferized.crc_adler), sizeof(bufferized.crc_adler));
   bufferized.crc_adler = csc::from_be_to_system_endian(bufferized.crc_adler);

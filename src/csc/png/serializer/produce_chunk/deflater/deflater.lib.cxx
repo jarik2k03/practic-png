@@ -33,7 +33,7 @@ class deflater : private deflater_impl {
     return this->do_done();
   }
   auto value() const {
-    return static_cast<const_u8unique_buffer_range>(this->do_value());
+    return static_cast<const_u8buffer_range>(this->do_value());
   }
 };
 

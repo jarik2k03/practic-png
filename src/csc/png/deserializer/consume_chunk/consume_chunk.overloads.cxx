@@ -15,14 +15,14 @@ export import csc.png.commons.chunk;
 namespace csc {
 
 csc::e_section_code consume_chunk(csc::gAMA& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   const auto gamma = rdr.read<uint32_t>();
   s.gamma = gamma;
   return csc::e_section_code::success;
 }
 
 csc::e_section_code consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   const auto pixels_x = rdr.read<uint32_t>(), pixels_y = rdr.read<uint32_t>();
   const auto specifier = rdr.read<uint8_t>();
   s.pixels_per_unit_x = pixels_x, s.pixels_per_unit_y = pixels_y;
@@ -31,9 +31,9 @@ csc::e_section_code consume_chunk(csc::pHYs& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   s.histogram.reserve(256ul); // под максимальный размер палитры
-  for (uint32_t pos = 0u; pos < blob.buffer.size; pos += 2u) {
+  for (uint32_t pos = 0u; pos < blob.buffer.size(); pos += 2u) {
     const auto freq = rdr.read<uint16_t>();
     s.histogram.emplace_back(freq);
   }
@@ -41,7 +41,7 @@ csc::e_section_code consume_chunk(csc::hIST& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   const auto wh_x = rdr.read<uint32_t>(), wh_y = rdr.read<uint32_t>();
   const auto r_x = rdr.read<uint32_t>(), r_y = rdr.read<uint32_t>();
   const auto g_x = rdr.read<uint32_t>(), g_y = rdr.read<uint32_t>();
@@ -52,7 +52,7 @@ csc::e_section_code consume_chunk(csc::cHRM& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::bKGD& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   using enum csc::e_color_type;
   const auto& type = header.color_type;
   if ((type == rgb || type == rgba) && header.bit_depth == 8) {
@@ -76,7 +76,7 @@ csc::e_section_code consume_chunk(csc::bKGD& s, const csc::chunk& blob, const cs
 }
 
 csc::e_section_code consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   const auto year = rdr.read<uint16_t>(); // в спецификации год представлен как
                                           // uint16, а в ctime как int
   const auto mon = rdr.read<uint8_t>(), mday = rdr.read<uint8_t>();
@@ -93,7 +93,7 @@ csc::e_section_code consume_chunk(csc::tIME& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept {
-  csc::buf_reader rdr(blob.buffer.data.get());
+  csc::buf_reader rdr(blob.buffer.data());
   const auto width = rdr.read<uint32_t>(), height = rdr.read<uint32_t>();
   const auto bit_depth = rdr.read<uint8_t>(), color_type = rdr.read<uint8_t>();
   const auto compression = rdr.read<uint8_t>(), filter = rdr.read<uint8_t>(), interlace = rdr.read<uint8_t>();
@@ -104,14 +104,14 @@ csc::e_section_code consume_chunk(csc::IHDR& s, const csc::chunk& blob) noexcept
 }
 
 csc::e_section_code consume_chunk(csc::PLTE& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
-  if (blob.buffer.size % 3 != 0 || blob.buffer.size > (256 * 3))
+  if (blob.buffer.size() % 3 != 0 || blob.buffer.size() > (256 * 3))
     return csc::e_section_code::error;
-  if (header.color_type == e_color_type::indexed && blob.buffer.size / 3 > (1 << header.bit_depth))
+  if (header.color_type == e_color_type::indexed && blob.buffer.size() / 3 > (1 << header.bit_depth))
     return csc::e_section_code::error;
 
   s.full_palette.reserve(256u);
-  csc::buf_reader rdr(blob.buffer.data.get());
-  for (uint32_t pos = 0u; pos < blob.buffer.size; pos += 3u) {
+  csc::buf_reader rdr(blob.buffer.data());
+  for (uint32_t pos = 0u; pos < blob.buffer.size(); pos += 3u) {
     const auto idxr = rdr.read<uint8_t>(), idxg = rdr.read<uint8_t>(), idxb = rdr.read<uint8_t>();
     s.full_palette.emplace_back(csc::rgb8(idxr, idxg, idxb));
   }
