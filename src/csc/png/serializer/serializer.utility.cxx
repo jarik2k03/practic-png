@@ -1,11 +1,28 @@
 module;
 #include <cstdint>
+#include <type_traits>
 module csc.png.serializer:utility;
 
+import cstd.stl_wrap.vector;
 import cstd.stl_wrap.fstream;
 import csc.png.commons.chunk;
 import csc.png.serializer.produce_chunk.buf_writer;
+
 namespace csc {
+
+template <class Cont>
+cstd::vector<Cont> split_vector_to_chunks(const cstd::vector<uint8_t>& generic, uint32_t bits) {
+  cstd::vector<Cont> partitions;
+  auto i = 0u;
+  if (generic.size() >= bits) {
+    for (; i < generic.size() - bits; i += bits) {
+      const auto beg = generic.cbegin() + i, end = beg + bits;
+      partitions.emplace_back(Cont(beg, end));
+    }
+  }
+  partitions.emplace_back(Cont(generic.cbegin() + i, generic.cend()));
+  return partitions;
+}
 
 void write_chunk_to_ofstream(cstd::ofstream& os, const csc::chunk& bufferized) {
   // запись длины недесериализованного блока в файл

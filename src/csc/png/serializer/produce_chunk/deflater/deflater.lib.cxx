@@ -6,7 +6,6 @@ module;
 export module csc.png.serializer.produce_chunk.deflater;
 
 import :impl;
-export import :attributes;
 
 export namespace csc {
 
@@ -23,8 +22,8 @@ class deflater : private deflater_impl {
   deflater(csc::deflater&& move) noexcept = default; // использует ctor от impl
   csc::deflater& operator=(csc::deflater&& move) noexcept = default; // исп. присваивание от impl
 
-  void set_decompressed_buffer(const cstd::vector<uint8_t>& decompressed) {
-    return this->do_set_decompressed_buffer(decompressed);
+  void flush(csc::u8buffer_view decompressed) {
+    return this->do_flush(decompressed);
   }
   void deflate(int flush) {
     return this->do_deflate(flush);

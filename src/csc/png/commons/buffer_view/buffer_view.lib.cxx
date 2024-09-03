@@ -2,6 +2,7 @@ module;
 
 #include <cstdint>
 #include <bits/stl_iterator.h>
+#include <type_traits>
 export module csc.png.commons.buffer_view;
 
 export import :range;
@@ -22,8 +23,8 @@ class basic_buffer_view {
   // безопасный обход
   template <std::contiguous_iterator Begin, std::contiguous_iterator Sent>
   basic_buffer_view(Begin b, Sent e) {
-    m_data = *b;
-    m_size = e - b; // использует random-access возможности
+    m_data = &*b;
+    m_size = static_cast<uint32_t>(e - b); // использует random-access возможности
   }
   basic_buffer_view(const Val* d) = delete;
   basic_buffer_view(std::nullptr_t) = delete;

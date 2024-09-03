@@ -17,7 +17,7 @@ class inflater_impl {
   int32_t m_state = Z_OK;
   z_stream m_buf_stream = init_z_stream();
 
-  csc::u8buffer_view m_compressed{}; // input buffer
+  csc::u8buffer_view m_compressed{}; // input buffer (view)
   csc::u8buffer m_uncompressed{}; // output buffer
 
   bool m_is_init = false;
