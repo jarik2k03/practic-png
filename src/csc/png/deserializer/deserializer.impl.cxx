@@ -61,7 +61,7 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   // декодирование изображения
   using cstd::operator<<;
   csc::inflater z_stream;
-  image.m_image_data.reserve(csc::f_calc_image_size(image.m_header));
+  image.m_image_data.reserve(csc::bring_image_size(image.m_header));
   auto decode_with_inflater = [&image, &z_stream](const auto& chunk) {
     z_stream.flush(chunk.buffer);
     do {

@@ -15,7 +15,7 @@ namespace csc {
 class inflater_impl {
  private:
   int32_t m_state = Z_OK;
-  z_stream m_buf_stream = init_z_stream();
+  z_stream m_buf_stream = csc::init_z_stream();
 
   csc::u8buffer_view m_compressed{}; // input buffer (view)
   csc::u8buffer m_uncompressed{}; // output buffer

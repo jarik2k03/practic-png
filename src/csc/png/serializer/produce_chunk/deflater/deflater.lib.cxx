@@ -6,6 +6,7 @@ module;
 export module csc.png.serializer.produce_chunk.deflater;
 
 import :impl;
+export import :attributes;
 
 export namespace csc {
 
@@ -13,7 +14,8 @@ class deflater : private deflater_impl {
  public:
   explicit deflater() : deflater_impl() {
   }
-
+  explicit deflater(csc::e_compression_level level) : deflater_impl(level) {
+  }
   ~deflater() noexcept = default;
 
   deflater(const csc::deflater& copy) = delete;
@@ -25,8 +27,8 @@ class deflater : private deflater_impl {
   void flush(csc::u8buffer_view decompressed) {
     return this->do_flush(decompressed);
   }
-  void deflate(int flush) {
-    return this->do_deflate(flush);
+  void deflate(uint32_t stride_read) {
+    return this->do_deflate(stride_read);
   }
   bool done() const {
     return this->do_done();
