@@ -5,46 +5,21 @@ module;
 #include <zlib.h>
 module csc.png.deserializer.consume_chunk.inflater:impl;
 import cstd.stl_wrap.stdexcept;
-export import csc.png.commons.unique_buffer;
+export import csc.png.commons.buffer;
+export import csc.png.commons.buffer_view;
 
-export import :attributes;
+import :utility;
 
 namespace csc {
-
-constexpr unsigned long long operator"" _kB(unsigned long long koef) {
-  return koef * 1024u;
-}
-constexpr const char* generate_error_message(int32_t status) {
-  switch (status) {
-    case Z_NEED_DICT:
-      return "Отсутствует словарь для декодирования изображения.";
-    case Z_STREAM_END:
-      return "Попытка чтения из остановленного потока.";
-    case Z_BUF_ERROR:
-      return "Попытка записать данные в переполненный буфер.";
-    case Z_DATA_ERROR:
-      return "Вероятность повреждения данных. Входной поток не соответствует "
-             "формату zlib";
-    case Z_VERSION_ERROR:
-      return "Неопознанная версия zlib.";
-    case Z_MEM_ERROR:
-      return "Выход за пределы памяти.";
-    case Z_STREAM_ERROR:
-      return "Неопознанная степень сжатия или структура потока неправильно "
-             "инициализирована.";
-    default:
-      return "Неизвестная ошибка.";
-  }
-}
-
-constexpr z_stream init_z_stream() noexcept;
 
 class inflater_impl {
  private:
   int32_t m_state = Z_OK;
-  z_stream m_buf_stream = init_z_stream();
-  csc::u8unique_buffer m_uncompressed{};
-  const csc::u8unique_buffer* m_compressed{};
+  z_stream m_buf_stream = csc::init_z_stream();
+
+  csc::u8buffer_view m_compressed{}; // input buffer (view)
+  csc::u8buffer m_uncompressed{}; // output buffer
+
   bool m_is_init = false;
 
  public:
@@ -55,7 +30,7 @@ class inflater_impl {
   inflater_impl(csc::inflater_impl&& move) noexcept; // implemented
   inflater_impl& operator=(csc::inflater_impl&& move) noexcept; // implemented
 
-  void do_set_compressed_buffer(const csc::u8unique_buffer& c);
+  void do_flush(csc::u8buffer_view c);
   auto do_value() const;
   void do_inflate(int flush);
   bool do_done() const;
@@ -64,8 +39,8 @@ class inflater_impl {
 inflater_impl::inflater_impl(csc::inflater_impl&& move) noexcept
     : m_state(move.m_state),
       m_buf_stream(move.m_buf_stream),
-      m_uncompressed(std::move(move.m_uncompressed)),
       m_compressed(move.m_compressed),
+      m_uncompressed(std::move(move.m_uncompressed)),
       m_is_init(std::exchange(move.m_is_init, false)) {
 }
 inflater_impl::~inflater_impl() noexcept {
@@ -88,7 +63,7 @@ inflater_impl& inflater_impl::operator=(csc::inflater_impl&& move) noexcept {
 
 void inflater_impl::do_inflate(int flush) {
   m_buf_stream.avail_out = 16_kB;
-  m_buf_stream.next_out = m_uncompressed.data.get();
+  m_buf_stream.next_out = m_uncompressed.data();
   m_state = inflate(&m_buf_stream, flush);
 
   if (m_state < 0)
@@ -98,31 +73,20 @@ bool inflater_impl::do_done() const {
   return m_buf_stream.avail_in == 0 || m_state == Z_STREAM_END;
 }
 auto inflater_impl::do_value() const {
-  return csc::const_u8unique_buffer_range(
-      m_uncompressed.begin(), m_uncompressed.begin() + 16_kB - m_buf_stream.avail_out);
+  return csc::const_u8buffer_range(m_uncompressed.begin(), m_uncompressed.begin() + 16_kB - m_buf_stream.avail_out);
 }
 
-void inflater_impl::do_set_compressed_buffer(const csc::u8unique_buffer& c) {
+void inflater_impl::do_flush(csc::u8buffer_view change) {
   if (!m_is_init) {
     m_state = inflateInit(&m_buf_stream);
     if (m_state != Z_OK)
       throw cstd::runtime_error("Не удалось инициализировать inflater!");
-    m_uncompressed = csc::make_unique_buffer<uint8_t>(16_kB);
+    m_uncompressed = csc::make_buffer<uint8_t>(16_kB);
     m_is_init = true;
   }
-  m_compressed = &c;
-  m_buf_stream.avail_in = m_compressed->size;
-  m_buf_stream.next_in = const_cast<uint8_t*>(m_compressed->data.get());
-}
-
-constexpr z_stream init_z_stream() noexcept {
-  z_stream st;
-  st.zalloc = Z_NULL;
-  st.zfree = Z_NULL;
-  st.opaque = Z_NULL;
-  st.next_in = st.next_out = Z_NULL;
-  st.total_in = st.total_out = st.avail_in = st.avail_out = 0u;
-  return st;
+  m_compressed = change; // very cheap copy-operator=
+  m_buf_stream.avail_in = m_compressed.size();
+  m_buf_stream.next_in = const_cast<uint8_t*>(m_compressed.data());
 }
 
 } // namespace csc
