@@ -26,63 +26,63 @@ constexpr auto operator<=>(const BASIC_STRING& x, const BASIC_STRING& y) noexcep
 }
 
 template <typename CharT, typename Traits, typename Alloc>
-constexpr bool operator==(const BASIC_STRING& x, const CharT* y) {
+constexpr inline bool operator==(const BASIC_STRING& x, const CharT* y) {
   return std::operator==(x, y);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr auto operator<=>(const BASIC_STRING& x, const CharT* y) {
+constexpr inline auto operator<=>(const BASIC_STRING& x, const CharT* y) {
   return std::operator<=>(x, y);
 }
 
 // string <-> string. copy or move
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(const BASIC_STRING& lhs, const BASIC_STRING& rhs) {
+constexpr inline BASIC_STRING operator+(const BASIC_STRING& lhs, const BASIC_STRING& rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(BASIC_STRING&& lhs, const BASIC_STRING& rhs) {
+constexpr inline BASIC_STRING operator+(BASIC_STRING&& lhs, const BASIC_STRING& rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(const BASIC_STRING& lhs, BASIC_STRING&& rhs) {
+constexpr inline BASIC_STRING operator+(const BASIC_STRING& lhs, BASIC_STRING&& rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(BASIC_STRING&& lhs, BASIC_STRING&& rhs) {
+constexpr inline BASIC_STRING operator+(BASIC_STRING&& lhs, BASIC_STRING&& rhs) {
   return std::operator+(lhs, rhs);
 }
 // charT, const CharT* and copied string
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(const BASIC_STRING& lhs, CharT rhs) {
+constexpr inline BASIC_STRING operator+(const BASIC_STRING& lhs, CharT rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(const BASIC_STRING& lhs, const CharT* rhs) {
+constexpr inline BASIC_STRING operator+(const BASIC_STRING& lhs, const CharT* rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(CharT lhs, const BASIC_STRING& rhs) {
+constexpr inline BASIC_STRING operator+(CharT lhs, const BASIC_STRING& rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(const CharT* lhs, const BASIC_STRING& rhs) {
+constexpr inline BASIC_STRING operator+(const CharT* lhs, const BASIC_STRING& rhs) {
   return std::operator+(lhs, rhs);
 }
 // charT, const CharT* and moved string
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(BASIC_STRING&& lhs, CharT rhs) {
+constexpr inline BASIC_STRING operator+(BASIC_STRING&& lhs, CharT rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(BASIC_STRING&& lhs, const CharT* rhs) {
+constexpr inline BASIC_STRING operator+(BASIC_STRING&& lhs, const CharT* rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(CharT lhs, BASIC_STRING&& rhs) {
+constexpr inline BASIC_STRING operator+(CharT lhs, BASIC_STRING&& rhs) {
   return std::operator+(lhs, rhs);
 }
 template <typename CharT, typename Traits, typename Alloc>
-constexpr BASIC_STRING operator+(const CharT* lhs, BASIC_STRING&& rhs) {
+constexpr inline BASIC_STRING operator+(const CharT* lhs, BASIC_STRING&& rhs) {
   return std::operator+(lhs, rhs);
 }
 

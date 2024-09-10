@@ -21,12 +21,15 @@ class deflater_impl {
   z_stream m_buf_stream = csc::init_z_stream();
   int32_t m_state = Z_OK;
   csc::e_compression_level m_compr_level = e_compression_level::default_;
+  csc::e_compression_strategy m_strategy = e_compression_strategy::default_;
+  int32_t m_mem_level = 8, m_win_bits = 15;
 
   bool m_is_init = false;
 
  public:
   deflater_impl() = default;
-  deflater_impl(csc::e_compression_level cmpr);
+  deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w);
+
   ~deflater_impl() noexcept; // implemented
   deflater_impl(const csc::deflater_impl& copy) = delete;
   auto& operator=(const csc::deflater_impl& copy) = delete;
@@ -39,7 +42,8 @@ class deflater_impl {
   bool do_done() const;
 };
 
-deflater_impl::deflater_impl(csc::e_compression_level cmpr) : m_compr_level(cmpr) {
+deflater_impl::deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w)
+    : m_compr_level(c), m_strategy(s), m_mem_level(m), m_win_bits(w) {
 }
 
 deflater_impl::deflater_impl(csc::deflater_impl&& move) noexcept
@@ -48,6 +52,9 @@ deflater_impl::deflater_impl(csc::deflater_impl&& move) noexcept
       m_buf_stream(move.m_buf_stream),
       m_state(move.m_state),
       m_compr_level(move.m_compr_level),
+      m_strategy(move.m_strategy),
+      m_mem_level(move.m_mem_level),
+      m_win_bits(move.m_win_bits),
       m_is_init(std::exchange(move.m_is_init, false)) {
 }
 deflater_impl::~deflater_impl() noexcept {
@@ -66,6 +73,9 @@ deflater_impl& deflater_impl::operator=(csc::deflater_impl&& move) noexcept {
   m_compressed = std::move(move.m_compressed);
   m_buf_stream = move.m_buf_stream;
   m_compr_level = move.m_compr_level;
+  m_strategy = move.m_strategy;
+  m_mem_level = move.m_mem_level;
+  m_win_bits = move.m_win_bits;
   return *this;
 }
 
@@ -86,7 +96,13 @@ auto deflater_impl::do_value() const {
 
 void deflater_impl::do_flush(csc::u8buffer_view new_input) {
   if (!m_is_init) {
-    m_state = deflateInit(&m_buf_stream, static_cast<int32_t>(m_compr_level));
+    m_state = deflateInit2(
+        &m_buf_stream,
+        static_cast<int32_t>(m_compr_level),
+        Z_DEFLATED,
+        m_win_bits,
+        m_mem_level,
+        static_cast<int32_t>(m_strategy));
     if (m_state != Z_OK)
       throw cstd::runtime_error("Не удалось инициализировать deflater!");
     m_compressed = csc::make_buffer<uint8_t>(16_kB);

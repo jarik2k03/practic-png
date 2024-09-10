@@ -14,7 +14,12 @@ class deflater : private deflater_impl {
  public:
   explicit deflater() : deflater_impl() {
   }
-  explicit deflater(csc::e_compression_level level) : deflater_impl(level) {
+  explicit deflater(
+      csc::e_compression_level level,
+      csc::e_compression_strategy strategy = e_compression_strategy::default_,
+      int32_t mem_level = 8,
+      int32_t win_bits = 15)
+      : deflater_impl(level, strategy, mem_level, win_bits) {
   }
   ~deflater() noexcept = default;
 

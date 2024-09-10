@@ -21,4 +21,10 @@ enum class e_compression_level : int32_t {
   strongest = Z_BEST_COMPRESSION,
 };
 
+enum class e_compression_strategy : int32_t {
+  default_ = 0,
+  filtered = Z_FILTERED,
+  huffman_only = Z_HUFFMAN_ONLY
+};
+
 } // namespace csc
