@@ -66,7 +66,7 @@ int32_t bring_window_bits(const char* arg) {
 std::unordered_map<std::string, std::string> bring_options(const char* const* const argv, int32_t argc) {
   std::unordered_map<std::string, std::string> args;
   args.reserve(8u);
-  for (uint32_t i = 1u; i < argc - 1u; i += 2u) {
+  for (uint32_t i = 1u; i < argc - 1u; i += 2u) { // счет аргументов с argv[1]
     if (argv[i][0] == '-')
       args.insert({argv[i], argv[i + 1]});
   }
@@ -74,7 +74,7 @@ std::unordered_map<std::string, std::string> bring_options(const char* const* co
 }
 
 auto check_valid_options(const std::unordered_map<std::string, std::string>& have) {
-  const std::unordered_set<std::string> valid{"-i", "-o", "-compress", "-memory_usage", "-window-bits", "-strategy"};
+  const std::unordered_set<std::string> valid{"-i", "-o", "-compress", "-memory_usage", "-window_bits", "-strategy"};
   auto not_valid_option = [&valid](const auto& pair) -> bool { return !valid.contains(pair.first); };
   const auto not_valid_pos = std::ranges::find_if(have, not_valid_option);
   return not_valid_pos;
@@ -83,8 +83,8 @@ auto check_valid_options(const std::unordered_map<std::string, std::string>& hav
 int main(int argc, char** argv) {
   using cstd::operator==;
   if (argc < 2) {
-    cstd::cout << "Usage: " << argv[0] << " -i <input_png_file> -o [output_png_file]\n";
-    cstd::cout << "Special options for \"output_png_file\":\n";
+    cstd::cout << "Использование: " << argv[0] << " -i <input_png_file> -o [output_png_file]\n";
+    cstd::cout << "Дополнительные опции для \"output_png_file\":\n";
     cstd::cout << " -compress <0-9/speed/best> \n";
     cstd::cout << " -memory_usage <1-9> \n";
     cstd::cout << " -window_bits <8-15> \n";
@@ -130,13 +130,19 @@ int main(int argc, char** argv) {
         strategy = bring_strategy(strategy_pos->second.c_str());
 
       csc::serializer png_writer;
-      png_writer.serialize(o_pos->second, file, compress);
-      cstd::cout << "Png saved to: " << o_pos->second << " with compression: " << static_cast<int32_t>(compress)
-                 << '\n';
+      png_writer.serialize(o_pos->second, file, compress, memory_usage, window_bits, strategy);
+      cstd::cout << "Изображение успешно сохранено: " << o_pos->second
+                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
 
+  } catch (const cstd::runtime_error& e) {
+    cstd::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
+    std::exit(1);
+  } catch (const cstd::domain_error& e) {
+    cstd::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
+    std::exit(1);
   } catch (const cstd::exception& e) {
-    cstd::cout << "Cannot process the file: \n - " << e.what() << '\n';
+    cstd::cout << "Ошибка: \n - " << e.what() << '\n';
     std::exit(1);
   }
 }

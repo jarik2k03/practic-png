@@ -15,10 +15,12 @@ import cstd.stl_wrap.ios;
 import cstd.stl_wrap.iostream;
 import cstd.stl_wrap.string;
 
-export import csc.png.picture;
-import csc.png.serializer.produce_chunk;
-export import csc.png.serializer.produce_chunk.deflater;
 import csc.png.serializer.produce_chunk.buf_writer;
+import csc.png.serializer.produce_chunk;
+import csc.png.serializer.produce_chunk.deflater;
+
+export import csc.png.picture;
+export import csc.png.serializer.produce_chunk.deflater.attributes;
 
 import csc.png.commons.buffer_view;
 
@@ -26,13 +28,22 @@ namespace csc {
 
 class serializer_impl {
  public:
-  void do_serialize(cstd::string_view filepath, const csc::picture& image, csc::e_compression_level level);
+  void do_serialize(
+      cstd::string_view fp,
+      const csc::picture& i,
+      csc::e_compression_level l,
+      int32_t m,
+      int32_t wb,
+      csc::e_compression_strategy s);
 };
 
 void serializer_impl::do_serialize(
     cstd::string_view filepath,
     const csc::picture& image,
-    csc::e_compression_level level) {
+    csc::e_compression_level level,
+    int32_t mem_level,
+    int32_t win_bits,
+    csc::e_compression_strategy strategy) {
   cstd::ofstream png_fs;
   png_fs.open(filepath.data(), cstd::ios_base::binary);
   if (!png_fs.is_open())
@@ -56,13 +67,13 @@ void serializer_impl::do_serialize(
   raw_chunk.chunk_name = cstd::array<char, 4>{'I', 'D', 'A', 'T'};
   raw_chunk.buffer = csc::make_buffer<uint8_t>(16384u);
 
-  csc::deflater z_stream(level);
-  const auto input_segments = csc::split_vector_to_chunks<csc::u8buffer_view>(image.m_image_data, 32768u);
+  csc::deflater z_stream(level, strategy, mem_level, win_bits);
+  const auto input_segments = csc::split_vector_to_chunks<csc::u8buffer_view>(image.m_image_data, 256 * 1024);
 
   auto deflate_and_write_to_file = [&](csc::u8buffer_view current) {
     z_stream.flush(current);
     do {
-      z_stream.deflate(32768u);
+      z_stream.deflate(256 * 1024);
       raw_chunk.buffer.resize(std::ranges::distance(z_stream.value())); // обновляем границы буфера (без реаллокаций)
       std::ranges::copy(z_stream.value(), raw_chunk.buffer.begin()); // переносим данные из внутреннего в текущий
       raw_chunk.crc_adler = create_crc32(raw_chunk.chunk_name, raw_chunk.buffer); // контрольная сумма

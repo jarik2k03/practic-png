@@ -5,11 +5,12 @@ module;
 #include <zlib.h>
 module csc.png.serializer.produce_chunk.deflater:impl;
 import cstd.stl_wrap.stdexcept;
+
+export import csc.png.serializer.produce_chunk.deflater.attributes;
 export import csc.png.commons.buffer;
 export import csc.png.commons.buffer_view;
 
 import :utility;
-export import :attributes;
 
 namespace csc {
 

@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <zlib.h>
-export module csc.png.serializer.produce_chunk.deflater:attributes;
+export module csc.png.serializer.produce_chunk.deflater.attributes;
 
 export namespace csc {
 

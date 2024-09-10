@@ -4,9 +4,9 @@ module;
 #include <cstdint>
 
 export module csc.png.serializer.produce_chunk.deflater;
+export import csc.png.serializer.produce_chunk.deflater.attributes;
 
 import :impl;
-export import :attributes;
 
 export namespace csc {
 
