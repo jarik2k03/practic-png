@@ -1,6 +1,7 @@
 module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
+#include <bits/allocator.h>
 #include <cstdint>
 #include <zlib.h>
 module csc.png.serializer:impl;
@@ -67,7 +68,7 @@ void serializer_impl::do_serialize(
   raw_chunk.chunk_name = cstd::array<char, 4>{'I', 'D', 'A', 'T'};
   raw_chunk.buffer = csc::make_buffer<uint8_t>(16384u);
 
-  csc::deflater z_stream(level, strategy, mem_level, win_bits);
+  csc::common_deflater z_stream(level, strategy, mem_level, win_bits);
   const auto input_segments = csc::split_vector_to_chunks<csc::u8buffer_view>(image.m_image_data, 256 * 1024);
 
   auto deflate_and_write_to_file = [&](csc::u8buffer_view current) {

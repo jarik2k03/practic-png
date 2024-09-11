@@ -13,6 +13,7 @@ namespace csc {
 template <class Cont>
 cstd::vector<Cont> split_vector_to_chunks(const cstd::vector<uint8_t>& generic, uint32_t bits) {
   cstd::vector<Cont> partitions;
+  partitions.reserve(generic.size() / bits + 1);
   auto i = 0u;
   if (generic.size() >= bits) {
     for (; i < generic.size() - bits; i += bits) {

@@ -131,6 +131,7 @@ int main(int argc, char** argv) {
 
       csc::serializer png_writer;
       png_writer.serialize(o_pos->second, file, compress, memory_usage, window_bits, strategy);
+      //       std::getchar();
       cstd::cout << "Изображение успешно сохранено: " << o_pos->second
                  << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
