@@ -47,6 +47,6 @@ class deflater : private deflater_impl<Alloc> {
   }
 };
 
-using common_deflater = csc::deflater<std::allocator<uint32_t>>;
+using common_deflater = csc::deflater<std::allocator<uint8_t>>;
 
 } // namespace csc

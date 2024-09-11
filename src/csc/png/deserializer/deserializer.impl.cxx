@@ -60,12 +60,12 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   } while (png_fs.peek() != -1);
   // декодирование изображения
   using cstd::operator<<;
-  csc::inflater z_stream;
+  csc::common_inflater z_stream;
   image.m_image_data.reserve(csc::bring_image_size(image.m_header));
   auto decode_with_inflater = [&image, &z_stream](const auto& chunk) {
     z_stream.flush(chunk.buffer);
     do {
-      z_stream.inflate(Z_NO_FLUSH);
+      z_stream.inflate();
       // cstd::cout << "Инфляция: " << std::ranges::distance(z_stream.value()) << '\n';
       std::ranges::copy(z_stream.value(), std::back_inserter(image.m_image_data));
     } while (!z_stream.done());

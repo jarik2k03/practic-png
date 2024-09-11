@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <utility>
+#include <bits/alloc_traits.h>
 #include <zlib.h>
 export module csc.png.serializer.produce_chunk.deflater:impl;
 // без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
@@ -28,9 +29,11 @@ class deflater_impl {
   int32_t m_mem_level = 8, m_win_bits = 15;
 
   [[no_unique_address]] Alloc m_allocator{}; // аллокатор и хранимые размеры выделенных им блоков памяти
-  csc::stack_alias<uint32_t, Alloc> m_allocated_sizes{}; // изменяется только при zalloc и zfree
 
-  csc::allocator_stack_package<Alloc> m_to_pvoid_package{&m_allocator, &m_allocated_sizes}; // зависим от них
+  using u32_alloc = typename std::allocator_traits<Alloc>::template rebind_alloc<uint32_t>;
+  csc::stack_alias<uint32_t, u32_alloc> m_allocated_sizes{}; // изменяется только при zalloc и zfree
+
+  csc::allocator_stack_package<Alloc, u32_alloc> m_to_pvoid_package{&m_allocator, &m_allocated_sizes}; // зависим от них
 
   bool m_is_init = false;
 
@@ -55,15 +58,15 @@ template <typename Alloc>
 deflater_impl<Alloc>::deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w)
     : m_compr_level(c), m_strategy(s), m_mem_level(m), m_win_bits(w) {
   m_buf_stream.opaque = reinterpret_cast<void*>(&m_to_pvoid_package);
-  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc>;
-  m_buf_stream.zfree = csc::custom_z_free<Alloc>;
+  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc, u32_alloc>;
+  m_buf_stream.zfree = csc::custom_z_free<Alloc, u32_alloc>;
 }
 
 template <typename Alloc>
 deflater_impl<Alloc>::deflater_impl(const Alloc& alctr) : m_allocator(alctr) {
   m_buf_stream.opaque = reinterpret_cast<void*>(&m_to_pvoid_package);
-  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc>;
-  m_buf_stream.zfree = csc::custom_z_free<Alloc>;
+  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc, u32_alloc>;
+  m_buf_stream.zfree = csc::custom_z_free<Alloc, u32_alloc>;
 }
 
 template <typename Alloc>
@@ -78,6 +81,7 @@ deflater_impl<Alloc>::deflater_impl(csc::deflater_impl<Alloc>&& move) noexcept
       m_win_bits(move.m_win_bits),
       m_allocator(std::move(move.m_allocator)),
       m_allocated_sizes(std::move(move.m_allocated_sizes)),
+      m_to_pvoid_package(move.m_to_pvoid_package),
       m_is_init(std::exchange(move.m_is_init, false)) {
 }
 
@@ -99,6 +103,7 @@ deflater_impl<Alloc>& deflater_impl<Alloc>::operator=(csc::deflater_impl<Alloc>&
   m_compressed = std::move(move.m_compressed);
   m_allocator = std::move(move.m_allocator);
   m_allocated_sizes = std::move(move.m_allocated_sizes);
+  m_to_pvoid_package = move.m_to_pvoid_package;
   m_buf_stream = move.m_buf_stream;
   m_compr_level = move.m_compr_level;
   m_strategy = move.m_strategy;
