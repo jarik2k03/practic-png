@@ -1,7 +1,10 @@
 module;
 #include <cstdint>
 #include <zlib.h>
-module csc.png.serializer.produce_chunk.deflater:utility;
+#include <bits/allocator.h>
+#include <stack>
+export module csc.png.serializer.produce_chunk.deflater:utility;
+// без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
 
 namespace csc {
 
@@ -38,6 +41,28 @@ constexpr z_stream init_z_stream() noexcept {
   st.next_in = st.next_out = Z_NULL;
   st.total_in = st.total_out = st.avail_in = st.avail_out = 0u;
   return st;
+}
+
+template <typename Val, typename Alloc2>
+using stack_alias = std::stack<Val, std::deque<Val, Alloc2>>;
+
+template <typename Alloc1, typename Alloc2>
+using allocator_stack_package = std::pair<Alloc1*, csc::stack_alias<uint32_t, Alloc2>*>;
+
+template <typename Alloc1, typename Alloc2>
+void* custom_z_alloc(void* opq, uint32_t cnt, uint32_t size) noexcept {
+  auto& external_data = *reinterpret_cast<allocator_stack_package<Alloc1, Alloc2>*>(opq);
+  external_data.second->push(cnt * size);
+  return external_data.first->allocate(cnt * size);
+}
+
+template <typename Alloc1, typename Alloc2>
+void custom_z_free(void* opq, void* resource) noexcept {
+  auto& external_data = *reinterpret_cast<allocator_stack_package<Alloc1, Alloc2>*>(opq);
+  auto allocated_size = external_data.second->top();
+  external_data.second->pop();
+  using resource_type = std::allocator_traits<Alloc1>::value_type;
+  external_data.first->deallocate(reinterpret_cast<resource_type*>(resource), allocated_size);
 }
 
 } // namespace csc

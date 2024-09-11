@@ -30,13 +30,14 @@ uint8_t pixel_size_from_color_type(csc::e_color_type t) {
     default:
       return 0u;
   }
+  return 0u;
 }
 
 uint32_t bring_image_size(const csc::IHDR& header) {
   const uint8_t pixel_size = static_cast<uint8_t>(std::ceil(header.bit_depth / 8.f));
   const uint32_t channels = csc::pixel_size_from_color_type(header.color_type);
   // (длина * высота * размер * общий размер пикселя + байт на каждую строку) + 10% резерв
-  return (header.width * header.height * pixel_size * channels + (header.height * 1)) * 1.10f;
+  return static_cast<uint32_t>((header.width * header.height * pixel_size * channels + (header.height * 1)) * 1.10f);
 };
 
 csc::v_section init_section(const csc::chunk& ch) {
