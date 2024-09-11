@@ -1,7 +1,8 @@
 module;
 
 #include <cstdint>
-#include <memory>
+#include <utility>
+#include <bits/allocator.h>
 export module csc.png.commons.buffer;
 
 import cstd.stl_wrap.stdexcept;
@@ -11,27 +12,52 @@ export namespace csc {
 
 template <typename Val>
 class basic_buffer_view;
-
+// 4 секунды
 template <typename Val>
 class basic_buffer {
  public:
   explicit basic_buffer() = default;
-  explicit basic_buffer(uint32_t sz) : m_data(std::make_unique<Val[]>(sz)), m_size(sz), m_capacity(sz) {
+  explicit basic_buffer(uint32_t sz) : m_size(sz), m_capacity(sz), m_data(m_alloc.allocate(m_capacity)) {
+  }
+  basic_buffer(basic_buffer<Val>&& move) noexcept
+      : m_alloc(move.m_alloc),
+        m_size(std::exchange(move.m_size, 0u)),
+        m_capacity(std::exchange(move.m_capacity, 0u)),
+        m_data(std::exchange(move.m_data, nullptr)) {
+  }
+  basic_buffer<Val>& operator=(basic_buffer<Val>&& move) noexcept {
+    if (&move == this)
+      return *this;
+    if (m_data != nullptr || m_capacity == 0u) {
+      m_alloc.deallocate(m_data, m_capacity);
+    }
+    m_data = std::exchange(move.m_data, nullptr);
+    m_size = std::exchange(move.m_size, 0u);
+    m_capacity = std::exchange(move.m_capacity, 0u);
+    m_alloc = move.m_alloc;
+    return *this;
+  }
+  basic_buffer(const basic_buffer<Val>& copy) = delete;
+  basic_buffer& operator=(const basic_buffer<Val>& copy) = delete;
+  ~basic_buffer() noexcept {
+    if (m_data != nullptr || m_capacity == 0u) {
+      m_alloc.deallocate(m_data, m_capacity);
+    }
   }
 
  private:
-  std::unique_ptr<Val[]> m_data = nullptr;
+  [[no_unique_address]] std::allocator<Val> m_alloc{};
   uint32_t m_size = 0u;
   uint32_t m_capacity = 0u;
+  Val* m_data = nullptr;
 
  public:
-  // move-конструкторы по умолчанию (size и sentinel_size не влияют на освобождаемость m_data
   Val* data() noexcept {
-    return m_data.get();
+    return m_data;
   }
 
   const Val* data() const noexcept {
-    return m_data.get();
+    return m_data;
   }
   uint32_t size() const noexcept {
     return m_size;
@@ -48,16 +74,16 @@ class basic_buffer {
     return m_size == 0u;
   }
   Val* begin() {
-    return m_data.get();
+    return m_data;
   }
   Val* end() {
-    return m_data.get() + m_size; // нормальный диапазон
+    return m_data + m_size; // нормальный диапазон
   }
   const Val* begin() const {
-    return m_data.get();
+    return m_data;
   }
   const Val* end() const {
-    return m_data.get() + m_size; // то же самое
+    return m_data + m_size; // то же самое
   }
   constexpr operator csc::basic_buffer_view<Val>() const noexcept {
     return csc::basic_buffer_view<Val>(data(), size());
