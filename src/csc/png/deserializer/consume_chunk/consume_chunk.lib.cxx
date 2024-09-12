@@ -1,11 +1,13 @@
 module;
 #include <cstdint>
+#include <bits/stl_iterator.h>
 export module csc.png.deserializer.consume_chunk;
 
 import :utility;
 import :overloads;
 
 export import csc.png.commons.chunk;
+import cstd.stl_wrap.variant;
 
 export namespace csc {
 
@@ -22,15 +24,25 @@ class f_consume_chunk {
     return csc::consume_chunk(b, m_chunk);
   }
   auto operator()(csc::PLTE& b) {
-    const csc::IHDR& header = cstd::get<csc::IHDR>(m_common_deps[0]);
-    return csc::consume_chunk(b, m_chunk, header);
+    const auto header_pos = m_common_deps.cbegin();
+    if (header_pos == m_common_deps.cend())
+      return csc::e_section_code::depends_ihdr; // не нашли зависимость
+    const csc::IHDR* header = cstd::get_if<csc::IHDR>(&*header_pos);
+    if (header == nullptr) // не удалось получить нужную зависимость
+      return csc::e_section_code::depends_ihdr;
+    return csc::consume_chunk(b, m_chunk, *header);
   }
   auto operator()(csc::IEND& b) {
     return csc::consume_chunk(b, m_chunk);
   }
   auto operator()(csc::bKGD& b) {
-    const csc::IHDR& header = cstd::get<csc::IHDR>(m_common_deps[0]);
-    return csc::consume_chunk(b, m_chunk, header);
+    const auto header_pos = m_common_deps.cbegin();
+    if (header_pos == m_common_deps.cend())
+      return csc::e_section_code::depends_ihdr; // не нашли зависимость
+    const csc::IHDR* header = cstd::get_if<csc::IHDR>(&*header_pos);
+    if (header == nullptr) // не удалось получить нужную зависимость
+      return csc::e_section_code::depends_ihdr;
+    return csc::consume_chunk(b, m_chunk, *header);
   }
   auto operator()(csc::tIME& b) {
     return csc::consume_chunk(b, m_chunk);

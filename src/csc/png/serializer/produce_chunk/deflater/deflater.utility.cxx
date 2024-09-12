@@ -8,9 +8,6 @@ export module csc.png.serializer.produce_chunk.deflater:utility;
 
 namespace csc {
 
-constexpr unsigned long long operator"" _kB(unsigned long long koef) {
-  return koef * 1024u;
-}
 constexpr const char* generate_error_message(int32_t status) {
   switch (status) {
     case Z_NEED_DICT:

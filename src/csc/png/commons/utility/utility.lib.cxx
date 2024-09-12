@@ -9,7 +9,8 @@ export namespace csc {
 
 enum class e_section_code : uint32_t {
   success = 0u,
-  error = 1u
+  error = 1u,
+  depends_ihdr
 };
 
 template <typename T>

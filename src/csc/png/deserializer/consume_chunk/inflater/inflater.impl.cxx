@@ -9,6 +9,7 @@ import cstd.stl_wrap.stdexcept;
 
 export import csc.png.commons.buffer;
 export import csc.png.commons.buffer_view;
+export import csc.png.commons.utility.memory_literals;
 
 import :utility;
 
@@ -98,6 +99,7 @@ inflater_impl<Alloc>& inflater_impl<Alloc>::operator=(csc::inflater_impl<Alloc>&
 
 template <typename Alloc>
 void inflater_impl<Alloc>::do_inflate() {
+  using namespace csc::memory_literals;
   m_buf_stream.avail_out = 16_kB;
   m_buf_stream.next_out = m_uncompressed.data();
   m_state = inflate(&m_buf_stream, Z_NO_FLUSH);
@@ -107,15 +109,18 @@ void inflater_impl<Alloc>::do_inflate() {
 }
 template <typename Alloc>
 bool inflater_impl<Alloc>::do_done() const {
-  return m_buf_stream.avail_in == 0 || m_state == Z_STREAM_END;
+  using namespace csc::memory_literals;
+  return m_buf_stream.avail_in == 0_B || m_state == Z_STREAM_END;
 }
 template <typename Alloc>
 auto inflater_impl<Alloc>::do_value() const {
+  using namespace csc::memory_literals;
   return csc::const_u8buffer_range(m_uncompressed.begin(), m_uncompressed.begin() + 16_kB - m_buf_stream.avail_out);
 }
 
 template <typename Alloc>
 void inflater_impl<Alloc>::do_flush(csc::u8buffer_view change) {
+  using namespace csc::memory_literals;
   if (!m_is_init) {
     m_state = inflateInit(&m_buf_stream);
     if (m_state != Z_OK)

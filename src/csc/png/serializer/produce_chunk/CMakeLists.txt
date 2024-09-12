@@ -6,7 +6,7 @@ target_link_libraries(produce_chunk_utility PRIVATE sections buffer_view buffer 
 target_sources(produce_chunk_utility PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES produce_chunk.utility.cxx ) 
 
 add_library(produce_chunk_overloads STATIC produce_chunk.overloads.cxx)
-target_link_libraries(produce_chunk_overloads PRIVATE produce_chunk_utility chunk buf_writer)
+target_link_libraries(produce_chunk_overloads PRIVATE produce_chunk_utility chunk buf_writer crc32)
 target_sources(produce_chunk_overloads PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES produce_chunk.overloads.cxx ) 
 
 add_library(produce_chunk STATIC produce_chunk.lib.cxx)

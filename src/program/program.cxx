@@ -96,9 +96,9 @@ int main(int argc, char** argv) {
     const auto args = bring_options(argv, argc);
     const auto unrecognized_option_pos = check_valid_options(args);
     if (unrecognized_option_pos != args.cend())
-      throw cstd::domain_error(std::string("Неопознанная опция программы: ") + unrecognized_option_pos->first);
+      throw cstd::invalid_argument(std::string("Неопознанная опция программы: ") + unrecognized_option_pos->first);
     if ((argc & 0x1) == 0) // только нечетное кол-во аргументов: program(0) [-option(1) value(2)] [ ] ...
-      throw cstd::domain_error("Аргументы не соответствуют шаблону: [-key value]");
+      throw cstd::invalid_argument("Аргументы не соответствуют шаблону: [-key value]");
 
     const auto i_pos = args.find("-i"), o_pos = args.find("-o");
 
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
     if (i_pos != args.cend()) {
       file = png_executor.deserialize(i_pos->second);
     } else {
-      throw cstd::domain_error("Не назначен входной файл!");
+      throw cstd::invalid_argument("Не назначен входной файл!");
     }
 #ifndef NDEBUG
     cstd::cout << file << '\n';
@@ -139,8 +139,11 @@ int main(int argc, char** argv) {
   } catch (const cstd::runtime_error& e) {
     cstd::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
     std::exit(1);
-  } catch (const cstd::domain_error& e) {
+  } catch (const cstd::invalid_argument& e) {
     cstd::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
+    std::exit(1);
+  } catch (const cstd::domain_error& e) {
+    cstd::cout << "Неправильная структура PNG: \n - " << e.what() << '\n';
     std::exit(1);
   } catch (const cstd::exception& e) {
     cstd::cout << "Ошибка: \n - " << e.what() << '\n';

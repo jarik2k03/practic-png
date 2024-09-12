@@ -8,11 +8,27 @@ module csc.png.deserializer:utility;
 import csc.png.deserializer.consume_chunk.buf_reader;
 import csc.png.commons.chunk;
 import cstd.stl_wrap.array;
+import cstd.stl_wrap.string;
 import cstd.stl_wrap.fstream;
 import cstd.stl_wrap.stdexcept;
 import csc.png.picture;
 
 namespace csc {
+
+constexpr cstd::string generate_section_error_message(csc::e_section_code sec, cstd::array<char, 4> name) noexcept {
+  using cstd::operator+;
+  using namespace cstd::string_literals;
+  using enum csc::e_section_code;
+  switch (sec) {
+    case error:
+      return "Ошибка в представлении сектора: "_s + cstd::string(name.data(), 4);
+    case success:
+      return ""_s;
+    case depends_ihdr:
+      return "Секция "_s + cstd::string(name.data(), 4) + " требует наличия зависимого чанка IHDR";
+  };
+  return "Неизвестная ошибка секции!"_s;
+}
 
 uint8_t pixel_size_from_color_type(csc::e_color_type t) {
   using enum csc::e_color_type;
@@ -81,20 +97,18 @@ csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
   return bufferized;
 }
 void check_for_chunk_errors(const csc::picture& image) {
-  const csc::IHDR& header = cstd::get<csc::IHDR>(image.m_structured[0]);
   const csc::v_sections& sns = image.m_structured;
   const auto is_plte_type = [](const v_section& sn) { return cstd::holds_alternative<csc::PLTE>(sn); };
-
   const auto plte_pos = std::ranges::find_if(sns, is_plte_type);
+  [[unlikely]] if (sns.empty() || image.m_image_data.empty())
+    throw cstd::range_error("Изображение не содержит никаких чанков!");
   [[unlikely]] if (!cstd::holds_alternative<csc::IHDR>(sns.front()))
     throw cstd::domain_error("Блок IHDR не найден. Файл, вероятно, поврежден!");
   [[unlikely]] if (!cstd::holds_alternative<csc::IEND>(sns.back()))
     throw cstd::domain_error("Блок IEND не найден. Файл, вероятно, поврежден!");
+  const csc::IHDR& header = cstd::get<csc::IHDR>(image.m_structured.at(0));
   [[unlikely]] if (plte_pos == sns.cend() && header.color_type == e_color_type::indexed)
     throw cstd::domain_error("Для индексного изображения требуется палитра!");
-  // [[unlikely]] if (image.m_image_data.empty()) - пока не пригодится
-  //   throw cstd::domain_error("Данные изображения пусты. Файл, вероятно,
-  //   поврежден!");
 }
 
 } // namespace csc
