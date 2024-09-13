@@ -52,9 +52,7 @@ void serializer_impl::do_serialize(
   if (!png_fs.is_open())
     throw cstd::runtime_error("Не удалось открыть файл на запись!");
 
-  png_fs.write(reinterpret_cast<const char*>(&image.start()),
-               sizeof(csc::png_signature)); // пнг-подпись
-
+  csc::write_png_signature_to_file(png_fs, image);
   // преобразование секций в чанки
   auto produce_chunk_and_write_to_file = [&png_fs](const auto& v_sec) {
     csc::chunk raw_chunk;
