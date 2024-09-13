@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 export module csc.png.serializer.produce_chunk.buf_writer;
+import csc.png.commons.utility.endian;
 
 import :impl;
 export import :attributes;

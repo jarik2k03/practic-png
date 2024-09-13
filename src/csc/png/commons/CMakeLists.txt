@@ -1,3 +1,4 @@
 add_subdirectory(chunk)
 add_subdirectory(utility)
-add_subdirectory(unique_buffer)
+add_subdirectory(buffer)
+add_subdirectory(buffer_view)

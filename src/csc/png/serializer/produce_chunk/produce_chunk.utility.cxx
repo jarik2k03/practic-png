@@ -2,8 +2,15 @@
 module;
 #include <cstdint>
 #include <ctime>
+#include <zlib.h>
+
 module csc.png.serializer.produce_chunk:utility;
+
 import csc.png.picture.sections;
+import csc.png.commons.buffer_view;
+import csc.png.commons.buffer;
+
+import cstd.stl_wrap.array;
 
 namespace csc {
 

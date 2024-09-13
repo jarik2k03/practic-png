@@ -7,7 +7,7 @@ export import cstd.stl_wrap.array;
 export namespace csc {
 
 struct png_signature {
-  const cstd::array<uint8_t, 8> data = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+  cstd::array<uint8_t, 8> data = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
   int8_t eof_byte() const {
     return data[6];
   }

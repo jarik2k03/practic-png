@@ -1,77 +1,99 @@
 module;
 #include <cstdint>
-#include <memory>
 #include <utility>
+#include <bits/alloc_traits.h>
 #include <zlib.h>
-module csc.png.serializer.produce_chunk.deflater:impl;
-import cstd.stl_wrap.stdexcept;
-export import csc.png.commons.unique_buffer;
-export import cstd.stl_wrap.vector;
+export module csc.png.serializer.produce_chunk.deflater:impl;
+// без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
 
-export import :attributes;
+import cstd.stl_wrap.stdexcept;
+
+export import csc.png.serializer.produce_chunk.deflater.attributes;
+export import csc.png.commons.buffer;
+export import csc.png.commons.buffer_view;
+export import csc.png.commons.utility.memory_literals;
+
+import :utility;
 
 namespace csc {
 
-constexpr const char* generate_error_message(int32_t status) {
-  switch (status) {
-    case Z_NEED_DICT:
-      return "Отсутствует словарь для декодирования изображения.";
-    case Z_STREAM_END:
-      return "Попытка чтения из остановленного потока.";
-    case Z_BUF_ERROR:
-      return "Попытка записать данные в переполненный буфер.";
-    case Z_DATA_ERROR:
-      return "Вероятность повреждения данных. Входной поток не соответствует "
-             "формату zlib";
-    case Z_VERSION_ERROR:
-      return "Неопознанная версия zlib.";
-    case Z_MEM_ERROR:
-      return "Выход за пределы памяти.";
-    case Z_STREAM_ERROR:
-      return "Неопознанная степень сжатия или структура потока неправильно "
-             "инициализирована.";
-    default:
-      return "Неизвестная ошибка.";
-  }
-}
-
-constexpr z_stream init_z_stream() noexcept;
-
+template <typename Alloc>
 class deflater_impl {
  private:
+  csc::u8buffer_view m_decompressed{}; // input buffer (view)
+  csc::u8buffer m_compressed{}; // output buffer
+
+  z_stream m_buf_stream = csc::init_z_stream();
   int32_t m_state = Z_OK;
-  z_stream m_buf_stream = init_z_stream();
-  csc::u8unique_buffer m_compressed{};
-  const cstd::vector<uint8_t>* m_decompressed{};
+  csc::e_compression_level m_compr_level = e_compression_level::default_;
+  csc::e_compression_strategy m_strategy = e_compression_strategy::default_;
+  int32_t m_mem_level = 8, m_win_bits = 15;
+
+  [[no_unique_address]] Alloc m_allocator{}; // аллокатор и хранимые размеры выделенных им блоков памяти
+
+  using u32_alloc = typename std::allocator_traits<Alloc>::template rebind_alloc<uint32_t>;
+  csc::stack_alias<uint32_t, u32_alloc> m_allocated_sizes{}; // изменяется только при zalloc и zfree
+
+  csc::allocator_stack_package<Alloc, u32_alloc> m_to_pvoid_package{&m_allocator, &m_allocated_sizes}; // зависим от них
+
   bool m_is_init = false;
 
  public:
   deflater_impl() = default;
-  ~deflater_impl() noexcept; // implemented
-  deflater_impl(const csc::deflater_impl& copy) = delete;
-  auto& operator=(const csc::deflater_impl& copy) = delete;
-  deflater_impl(csc::deflater_impl&& move) noexcept; // implemented
-  deflater_impl& operator=(csc::deflater_impl&& move) noexcept; // implemented
+  deflater_impl(const Alloc& alctr);
+  deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w);
 
-  void do_set_decompressed_buffer(const cstd::vector<uint8_t>& c);
+  ~deflater_impl() noexcept; // implemented
+  deflater_impl(const csc::deflater_impl<Alloc>& copy) = delete;
+  auto& operator=(const csc::deflater_impl<Alloc>& copy) = delete;
+  deflater_impl(csc::deflater_impl<Alloc>&& move) noexcept; // implemented
+  deflater_impl& operator=(csc::deflater_impl<Alloc>&& move) noexcept; // implemented
+
+  void do_flush(const csc::u8buffer_view c);
   auto do_value() const;
-  void do_deflate(int flush);
+  void do_deflate(uint32_t stride_read);
   bool do_done() const;
 };
 
-deflater_impl::deflater_impl(csc::deflater_impl&& move) noexcept
-    : m_state(move.m_state),
-      m_buf_stream(move.m_buf_stream),
+template <typename Alloc>
+deflater_impl<Alloc>::deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w)
+    : m_compr_level(c), m_strategy(s), m_mem_level(m), m_win_bits(w) {
+  m_buf_stream.opaque = reinterpret_cast<void*>(&m_to_pvoid_package);
+  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc, u32_alloc>;
+  m_buf_stream.zfree = csc::custom_z_free<Alloc, u32_alloc>;
+}
+
+template <typename Alloc>
+deflater_impl<Alloc>::deflater_impl(const Alloc& alctr) : m_allocator(alctr) {
+  m_buf_stream.opaque = reinterpret_cast<void*>(&m_to_pvoid_package);
+  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc, u32_alloc>;
+  m_buf_stream.zfree = csc::custom_z_free<Alloc, u32_alloc>;
+}
+
+template <typename Alloc>
+deflater_impl<Alloc>::deflater_impl(csc::deflater_impl<Alloc>&& move) noexcept
+    : m_decompressed(move.m_decompressed),
       m_compressed(std::move(move.m_compressed)),
-      m_decompressed(move.m_decompressed),
+      m_buf_stream(move.m_buf_stream),
+      m_state(move.m_state),
+      m_compr_level(move.m_compr_level),
+      m_strategy(move.m_strategy),
+      m_mem_level(move.m_mem_level),
+      m_win_bits(move.m_win_bits),
+      m_allocator(std::move(move.m_allocator)),
+      m_allocated_sizes(std::move(move.m_allocated_sizes)),
+      m_to_pvoid_package(move.m_to_pvoid_package),
       m_is_init(std::exchange(move.m_is_init, false)) {
 }
-deflater_impl::~deflater_impl() noexcept {
+
+template <typename Alloc>
+deflater_impl<Alloc>::~deflater_impl() noexcept {
   if (m_is_init) {
     deflateEnd(&m_buf_stream);
   }
 }
-deflater_impl& deflater_impl::operator=(csc::deflater_impl&& move) noexcept {
+template <typename Alloc>
+deflater_impl<Alloc>& deflater_impl<Alloc>::operator=(csc::deflater_impl<Alloc>&& move) noexcept {
   if (this == &move)
     return *this;
   if (m_is_init) {
@@ -80,45 +102,57 @@ deflater_impl& deflater_impl::operator=(csc::deflater_impl&& move) noexcept {
   m_is_init = std::exchange(move.m_is_init, false);
   m_state = move.m_state, m_decompressed = move.m_decompressed;
   m_compressed = std::move(move.m_compressed);
+  m_allocator = std::move(move.m_allocator);
+  m_allocated_sizes = std::move(move.m_allocated_sizes);
+  m_to_pvoid_package = move.m_to_pvoid_package;
   m_buf_stream = move.m_buf_stream;
+  m_compr_level = move.m_compr_level;
+  m_strategy = move.m_strategy;
+  m_mem_level = move.m_mem_level;
+  m_win_bits = move.m_win_bits;
   return *this;
 }
 
-void deflater_impl::do_deflate(int flush) {
-  m_buf_stream.avail_out = 8_kB;
-  m_buf_stream.next_out = m_compressed.data.get();
-  m_state = deflate(&m_buf_stream, flush);
+template <typename Alloc>
+void deflater_impl<Alloc>::do_deflate(uint32_t stride_read) {
+  using namespace csc::memory_literals;
+  m_buf_stream.avail_out = 16_kB;
+  m_buf_stream.next_out = m_compressed.data();
+
+  m_state = deflate(&m_buf_stream, (m_decompressed.size() == stride_read) ? Z_SYNC_FLUSH : Z_FINISH);
   if (m_state < 0)
     throw cstd::runtime_error(csc::generate_error_message(m_state));
 }
-bool deflater_impl::do_done() const {
-  return m_buf_stream.avail_in == 0 && m_state == Z_STREAM_END;
+template <typename Alloc>
+bool deflater_impl<Alloc>::do_done() const {
+  using namespace csc::memory_literals;
+  return m_state == Z_STREAM_END || m_buf_stream.avail_out != 0_B;
 }
-auto deflater_impl::do_value() const {
-  return csc::const_u8unique_buffer_range(m_compressed.begin(), m_compressed.begin() + 8_kB - m_buf_stream.avail_out);
+template <typename Alloc>
+auto deflater_impl<Alloc>::do_value() const {
+  using namespace csc::memory_literals;
+  return csc::const_u8buffer_range(m_compressed.begin(), m_compressed.begin() + 16_kB - m_buf_stream.avail_out);
 }
 
-void deflater_impl::do_set_decompressed_buffer(const cstd::vector<uint8_t>& c) {
+template <typename Alloc>
+void deflater_impl<Alloc>::do_flush(csc::u8buffer_view new_input) {
+  using namespace csc::memory_literals;
   if (!m_is_init) {
-    m_state = deflateInit(&m_buf_stream, 9);
+    m_state = deflateInit2(
+        &m_buf_stream,
+        static_cast<int32_t>(m_compr_level),
+        Z_DEFLATED,
+        m_win_bits,
+        m_mem_level,
+        static_cast<int32_t>(m_strategy));
     if (m_state != Z_OK)
       throw cstd::runtime_error("Не удалось инициализировать deflater!");
-    m_compressed = csc::make_unique_buffer<uint8_t>(8_kB);
+    m_compressed = csc::make_buffer<uint8_t>(16_kB);
     m_is_init = true;
   }
-  m_decompressed = &c;
-  m_buf_stream.avail_in = m_decompressed->size();
-  m_buf_stream.next_in = const_cast<uint8_t*>(m_decompressed->data());
-}
-
-constexpr z_stream init_z_stream() noexcept {
-  z_stream st;
-  st.zalloc = Z_NULL;
-  st.zfree = Z_NULL;
-  st.opaque = Z_NULL;
-  st.next_in = st.next_out = Z_NULL;
-  st.total_in = st.total_out = st.avail_in = st.avail_out = 0u;
-  return st;
+  m_decompressed = new_input;
+  m_buf_stream.avail_in = m_decompressed.size();
+  m_buf_stream.next_in = const_cast<uint8_t*>(m_decompressed.data());
 }
 
 } // namespace csc

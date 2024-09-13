@@ -10,6 +10,6 @@ target_link_libraries(consume_chunk_overloads PRIVATE consume_chunk_utility chun
 target_sources(consume_chunk_overloads PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES consume_chunk.overloads.cxx ) 
 
 add_library(consume_chunk STATIC consume_chunk.lib.cxx)
-target_link_libraries(consume_chunk PRIVATE consume_chunk_overloads)
+target_link_libraries(consume_chunk PRIVATE consume_chunk_overloads stl_variant)
 target_sources(consume_chunk PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES consume_chunk.lib.cxx ) 
 

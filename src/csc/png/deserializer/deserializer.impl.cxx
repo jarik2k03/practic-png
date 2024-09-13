@@ -3,7 +3,6 @@ module;
 #include <bits/stl_construct.h>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
-#include <zlib.h>
 #include <cstdint>
 export module csc.png.deserializer:impl;
 import cstd.stl_wrap.string_view;
@@ -13,7 +12,6 @@ import cstd.stl_wrap.stdexcept;
 import cstd.stl_wrap.variant;
 import cstd.stl_wrap.vector;
 import cstd.stl_wrap.ios;
-import cstd.stl_wrap.iostream; // отлаживал
 
 import :utility;
 
@@ -22,7 +20,6 @@ export import csc.png.picture;
 import csc.png.commons.chunk;
 import csc.png.deserializer.consume_chunk;
 import csc.png.deserializer.consume_chunk.inflater;
-import csc.png.deserializer.consume_chunk.buf_reader;
 
 namespace csc {
 
@@ -35,56 +32,38 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   using cstd::operator+;
   using cstd::operator==;
   cstd::ifstream png_fs;
-  png_fs.open(filepath.data(), cstd::ios_base::binary);
   csc::picture image;
+  csc::common_inflater z_stream;
+  png_fs.open(filepath.data(), cstd::ios_base::binary);
   if (!png_fs.is_open())
     throw cstd::runtime_error("Не существует файла в указанной директории!");
 
-  png_fs.read(reinterpret_cast<char*>(&image.start()), sizeof(csc::png_signature));
-  if (image.start() != csc::png_signature())
-    throw cstd::runtime_error("Ошибка чтения png - предзаголовочная подпись не проинициализирована!");
-
-  cstd::vector<csc::chunk> saved_idat;
-  do {
-    auto chunk = csc::read_chunk_from_ifstream(png_fs);
-    auto v_section = csc::init_section(chunk);
-    const auto result = cstd::visit(csc::f_consume_chunk(chunk, image.m_structured), v_section);
-    if (result != e_section_code::success) {
-      const cstd::string err_msg = "Ошибка в представлении сектора: " + cstd::string(chunk.chunk_name.data(), 4);
-      throw cstd::domain_error(err_msg);
-    }
-    if (chunk.chunk_name != cstd::array<char, 4>{'I', 'D', 'A', 'T'})
-      image.m_structured.emplace_back(std::move(v_section));
-    else
-      saved_idat.emplace_back(std::move(chunk));
-  } while (png_fs.peek() != -1);
-  // декодирование изображения
-  using cstd::operator<<;
-  csc::inflater z_stream;
-  image.m_image_data.reserve(csc::f_calc_image_size(image.m_header));
-  auto decode_with_inflater = [&image, &z_stream](const auto& chunk) {
-    z_stream.set_compressed_buffer(chunk.buffer);
-    do {
-      z_stream.inflate(Z_NO_FLUSH);
-      // cstd::cout << "Инфляция: " << std::ranges::distance(z_stream.value()) << '\n';
-      std::ranges::copy(z_stream.value(), std::back_inserter(image.m_image_data));
-    } while (!z_stream.done());
-  };
+  csc::read_png_signature_from_file(png_fs, image);
   try {
-    std::ranges::for_each(saved_idat, decode_with_inflater);
+    auto header_chunk = csc::read_chunk_from_ifstream(png_fs);
+    consume_chunk_and_write_to_image(header_chunk, image), check_sum(header_chunk);
+    image.m_image_data.reserve(csc::bring_image_size(cstd::get<IHDR>(image.m_structured.at(0))));
+    while (png_fs.peek() != -1) {
+      auto chunk = csc::read_chunk_from_ifstream(png_fs);
+      if (chunk.chunk_name == cstd::array<char, 4>{'I', 'D', 'A', 'T'}) {
+        inflate_fragment_to_image(chunk, image, z_stream), check_sum(chunk);
+      } else {
+        consume_chunk_and_write_to_image(chunk, image), check_sum(chunk);
+      }
+    }
+    png_fs.close();
   } catch (const cstd::runtime_error& e) {
-    using namespace cstd::string_literals;
-    throw cstd::runtime_error("Недесериализован блок данных (IDAT): "_s + e.what());
+    throw cstd::domain_error(cstd::string("Недесериализован блок данных (IDAT): ") + e.what());
+  } catch (const cstd::domain_error& e) {
+    throw cstd::domain_error(cstd::string("Недесериализован чанк: ") + e.what());
+  } catch (const cstd::exception& e) {
+    throw cstd::domain_error(cstd::string("Ошибка на этапе десериализации: ") + e.what());
   }
-
-  // проверка правильности расположения секторов
   try {
     csc::check_for_chunk_errors(image);
   } catch (const cstd::domain_error& e) {
-    using namespace cstd::string_literals;
-    throw cstd::domain_error("PNG-изображение не прошло проверку: "_s + e.what());
+    throw cstd::domain_error(cstd::string("PNG-изображение не прошло пост-проверку: ") + e.what());
   }
-  png_fs.close();
   return image;
 }
 } // namespace csc
