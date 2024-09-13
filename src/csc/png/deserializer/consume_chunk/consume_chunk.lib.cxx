@@ -17,7 +17,7 @@ class f_consume_chunk {
   const csc::v_sections& m_common_deps;
 
  public:
-  f_consume_chunk(const csc::chunk& ch, const csc::v_sections& cd) : m_chunk(ch), m_common_deps(cd) {
+  constexpr f_consume_chunk(const csc::chunk& ch, const csc::v_sections& cd) : m_chunk(ch), m_common_deps(cd) {
   }
   // статический полиморфизм
   auto operator()(csc::IHDR& b) {
