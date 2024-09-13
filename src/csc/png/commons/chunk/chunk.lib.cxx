@@ -1,13 +1,14 @@
 module;
 
 #include <cstdint>
-#include <memory>
 export module csc.png.commons.chunk;
+export import :attributes;
 
 export import csc.png.commons.buffer;
 export import cstd.stl_wrap.array;
 
 export namespace csc {
+
 struct chunk {
   cstd::array<char, 4> chunk_name = {'\0', '\0', '\0', '\0'};
   csc::u8buffer buffer{};

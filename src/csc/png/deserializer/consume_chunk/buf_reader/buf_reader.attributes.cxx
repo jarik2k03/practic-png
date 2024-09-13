@@ -3,7 +3,7 @@ module;
 #include <cstdint>
 export module csc.png.deserializer.consume_chunk.buf_reader:attributes;
 
-export import csc.png.commons.utility;
+import csc.png.commons.utility.endian;
 
 export namespace csc {
 

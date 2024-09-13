@@ -4,7 +4,7 @@ module;
 #include <cstring>
 export module csc.png.serializer.produce_chunk.buf_writer:impl;
 export import :attributes;
-import csc.png.commons.utility;
+import csc.png.commons.utility.endian;
 
 namespace csc {
 
