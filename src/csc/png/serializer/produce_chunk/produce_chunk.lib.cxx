@@ -14,7 +14,7 @@ class f_produce_chunk {
   csc::chunk& m_chunk;
 
  public:
-  f_produce_chunk(csc::chunk& ch) : m_chunk(ch) {
+  constexpr f_produce_chunk(csc::chunk& ch) : m_chunk(ch) {
   }
   // статический полиморфизм
   auto operator()(const csc::IHDR& b) {

@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 export module csc.png.deserializer.consume_chunk.buf_reader;
+import csc.png.commons.utility.endian;
 
 import :impl;
 export import :attributes;

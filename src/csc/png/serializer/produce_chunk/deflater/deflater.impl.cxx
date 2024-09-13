@@ -11,6 +11,7 @@ import cstd.stl_wrap.stdexcept;
 export import csc.png.serializer.produce_chunk.deflater.attributes;
 export import csc.png.commons.buffer;
 export import csc.png.commons.buffer_view;
+export import csc.png.commons.utility.memory_literals;
 
 import :utility;
 
@@ -114,6 +115,7 @@ deflater_impl<Alloc>& deflater_impl<Alloc>::operator=(csc::deflater_impl<Alloc>&
 
 template <typename Alloc>
 void deflater_impl<Alloc>::do_deflate(uint32_t stride_read) {
+  using namespace csc::memory_literals;
   m_buf_stream.avail_out = 16_kB;
   m_buf_stream.next_out = m_compressed.data();
 
@@ -123,15 +125,18 @@ void deflater_impl<Alloc>::do_deflate(uint32_t stride_read) {
 }
 template <typename Alloc>
 bool deflater_impl<Alloc>::do_done() const {
-  return m_state == Z_STREAM_END || m_buf_stream.avail_out != 0;
+  using namespace csc::memory_literals;
+  return m_state == Z_STREAM_END || m_buf_stream.avail_out != 0_B;
 }
 template <typename Alloc>
 auto deflater_impl<Alloc>::do_value() const {
+  using namespace csc::memory_literals;
   return csc::const_u8buffer_range(m_compressed.begin(), m_compressed.begin() + 16_kB - m_buf_stream.avail_out);
 }
 
 template <typename Alloc>
 void deflater_impl<Alloc>::do_flush(csc::u8buffer_view new_input) {
+  using namespace csc::memory_literals;
   if (!m_is_init) {
     m_state = deflateInit2(
         &m_buf_stream,
