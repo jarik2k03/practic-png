@@ -3,10 +3,10 @@ Language:        Cpp
 # BasedOnStyle:  Chromium 
 AccessModifierOffset: -1 
 AlignAfterOpenBracket: AlwaysBreak 
-AlignConsecutiveMacros: None 
-AlignConsecutiveAssignments: None 
-AlignConsecutiveBitFields: None 
-AlignConsecutiveDeclarations: None 
+AlignConsecutiveMacros: false 
+AlignConsecutiveAssignments: false 
+AlignConsecutiveBitFields: false 
+AlignConsecutiveDeclarations: false 
 AlignEscapedNewlines: Left 
 AlignOperands:   DontAlign 
 AlignTrailingComments: false 
@@ -16,11 +16,11 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortEnumsOnASingleLine: false 
 AllowShortBlocksOnASingleLine: Never 
 AllowShortCaseLabelsOnASingleLine: false 
-AllowShortFunctionsOnASingleLine: None 
+AllowShortFunctionsOnASingleLine: false 
 AllowShortLambdasOnASingleLine: All 
 AllowShortIfStatementsOnASingleLine: Never 
 AllowShortLoopsOnASingleLine: false 
-AlwaysBreakAfterDefinitionReturnType: None 
+AlwaysBreakAfterDefinitionReturnType: false 
 AlwaysBreakAfterReturnType: None 
 AlwaysBreakBeforeMultilineStrings: true 
 AlwaysBreakTemplateDeclarations: Yes 
@@ -47,7 +47,7 @@ BraceWrapping:
   SplitEmptyFunction: true 
   SplitEmptyRecord: true 
   SplitEmptyNamespace: true 
-BreakBeforeBinaryOperators: None 
+BreakBeforeBinaryOperators: false 
 BreakBeforeConceptDeclarations: true 
 BreakBeforeBraces: Attach 
 BreakBeforeInheritanceComma: false 
@@ -76,26 +76,6 @@ ForEachMacros:
   - BOOST_FOREACH 
 StatementAttributeLikeMacros: 
   - Q_EMIT 
-IncludeBlocks:   Preserve 
-IncludeCategories: 
-  - Regex:           '^<ext/.*\.h>' 
-    Priority:        2 
-    SortPriority:    0 
-    CaseSensitive:   false 
-  - Regex:           '^<.*\.h>' 
-    Priority:        1 
-    SortPriority:    0 
-    CaseSensitive:   false 
-  - Regex:           '^<.*' 
-    Priority:        2 
-    SortPriority:    0 
-    CaseSensitive:   false 
-  - Regex:           '.*' 
-    Priority:        3 
-    SortPriority:    0 
-    CaseSensitive:   false 
-IncludeIsMainRegex: '(-_)?$' 
-IncludeIsMainSourceRegex: '' 
 IndentCaseLabels: true 
 IndentCaseBlocks: false 
 IndentGotoLabels: true 
@@ -140,3 +120,5 @@ RawStringFormats:
     CanonicalDelimiter: '' 
     BasedOnStyle:    google 
   - Language:        TextProto
+SortIncludes: false
+
