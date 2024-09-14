@@ -3,8 +3,8 @@ module;
 export module csc.png.picture.sections.PLTE;
 
 export import cstd.stl_wrap.vector;
+export import csc.png.commons.utility.pixel_formats;
 
-export import :attributes;
 export namespace csc {
 
 struct PLTE {

@@ -59,8 +59,14 @@ class f_consume_chunk {
   auto operator()(csc::pHYs& b) {
     return csc::consume_chunk(b, m_chunk);
   }
-  auto operator()(csc::dummy&) {
-    return csc::e_section_code::success;
+  auto operator()(csc::tRNS& b) {
+    const auto header_pos = m_common_deps.cbegin();
+    if (header_pos == m_common_deps.cend())
+      return csc::e_section_code::depends_ihdr; // не нашли зависимость
+    const csc::IHDR* header = cstd::get_if<csc::IHDR>(&*header_pos);
+    if (header == nullptr) // не удалось получить нужную зависимость
+      return csc::e_section_code::depends_ihdr;
+    return csc::consume_chunk(b, m_chunk, *header);
   }
 };
 

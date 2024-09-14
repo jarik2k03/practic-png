@@ -1,6 +1,7 @@
 module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
+#include <optional>
 #include <cstdint>
 #include <cmath>
 module csc.png.deserializer:utility;
@@ -61,7 +62,7 @@ constexpr uint32_t bring_image_size(const csc::IHDR& header) {
   return static_cast<uint32_t>((header.width * header.height * pixel_size * channels + (header.height * 1)) * 1.10f);
 };
 
-constexpr csc::v_section init_section(const csc::chunk& ch) {
+constexpr std::optional<csc::v_section> init_section(const csc::chunk& ch) {
   using cstd::operator==;
   if (ch.chunk_name == cstd::array<char, 4>{'I', 'H', 'D', 'R'})
     return csc::v_section(csc::IHDR());
@@ -81,8 +82,10 @@ constexpr csc::v_section init_section(const csc::chunk& ch) {
     return csc::v_section(csc::hIST());
   else if (ch.chunk_name == cstd::array<char, 4>{'p', 'H', 'Y', 's'})
     return csc::v_section(csc::pHYs());
+  else if (ch.chunk_name == cstd::array<char, 4>{'t', 'R', 'N', 'S'})
+    return csc::v_section(csc::tRNS());
   else
-    return csc::v_section(csc::dummy());
+    return std::nullopt; // не распознаётся
 }
 
 csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
@@ -110,10 +113,12 @@ void read_png_signature_from_file(cstd::ifstream& fs, csc::picture& image) {
 }
 constexpr void consume_chunk_and_write_to_image(const csc::chunk& chunk, csc::picture& image) {
   auto v_section = csc::init_section(chunk);
-  const auto result = cstd::visit(csc::f_consume_chunk(chunk, image.m_structured), v_section);
+  if (v_section == std::nullopt)
+    return; // нет ничего ошибочного в том, что секцию не распознаёт программа
+  const auto result = cstd::visit(csc::f_consume_chunk(chunk, image.m_structured), *v_section);
   if (result != e_section_code::success)
     throw cstd::domain_error(csc::generate_section_error_message(result, chunk.chunk_name));
-  image.m_structured.emplace_back(std::move(v_section));
+  image.m_structured.emplace_back(std::move(*v_section));
 }
 
 void check_sum(const csc::chunk& chunk) {
@@ -136,9 +141,9 @@ constexpr void check_for_chunk_errors(const csc::picture& image) {
   [[unlikely]] if (sns.empty() || image.m_image_data.empty())
     throw cstd::range_error("Изображение не содержит никаких чанков!");
   [[unlikely]] if (!cstd::holds_alternative<csc::IHDR>(sns.front()))
-    throw cstd::domain_error("Блок IHDR не найден. Файл, вероятно, поврежден!");
+    throw cstd::domain_error("Блок IHDR не найден. Файл поврежден!");
   [[unlikely]] if (!cstd::holds_alternative<csc::IEND>(sns.back()))
-    throw cstd::domain_error("Блок IEND не найден. Файл, вероятно, поврежден!");
+    throw cstd::domain_error("Блок IEND не найден. Файл поврежден!");
   const csc::IHDR& header = cstd::get<csc::IHDR>(image.m_structured.at(0));
   [[unlikely]] if (plte_pos == sns.cend() && header.color_type == e_color_type::indexed)
     throw cstd::domain_error("Для индексного изображения требуется палитра!");

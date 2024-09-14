@@ -2,15 +2,13 @@
 module;
 #include <cstdint>
 #include <ctime>
-#include <zlib.h>
 
 module csc.png.serializer.produce_chunk:utility;
 
 import csc.png.picture.sections;
-import csc.png.commons.buffer_view;
-import csc.png.commons.buffer;
 
 import cstd.stl_wrap.array;
+import cstd.stl_wrap.variant;
 
 namespace csc {
 
@@ -58,6 +56,24 @@ constexpr uint32_t calc_size_for_chunk(const csc::bKGD& s) noexcept {
 constexpr uint32_t calc_size_for_chunk(const csc::cHRM& s) noexcept {
   return sizeof(s.white_x) + sizeof(s.white_y) + sizeof(s.red_x) + sizeof(s.red_y) + sizeof(s.green_x) +
       sizeof(s.green_y) + sizeof(s.blue_x) + sizeof(s.blue_y);
+}
+constexpr uint32_t calc_size_for_chunk(const csc::tRNS& s) noexcept {
+  using enum csc::e_pixel_view_trns_id;
+  const auto* const indices = cstd::get_if<static_cast<uint8_t>(plte_indices)>(&s.color);
+  switch (s.color_type) {
+    case rgb8:
+      return sizeof(csc::rgb16); // rgb в чанке хранится с запасом - 2 байта на цвет
+    case rgb16:
+      return sizeof(csc::rgb16);
+    case bw8:
+      return sizeof(csc::bw16); // bw в чанке хранится с запасом - 2 байта на яркость
+    case bw16:
+      return sizeof(csc::bw16);
+    case plte_indices:
+      return (indices != nullptr) ? sizeof(csc::plte_index) * indices->size() : 0u;
+    default:
+      return 0u; // так принято.
+  }
 }
 
 int8_t bring_utc_offset() noexcept {

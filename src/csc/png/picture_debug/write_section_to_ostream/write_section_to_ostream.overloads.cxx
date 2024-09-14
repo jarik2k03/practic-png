@@ -1,6 +1,8 @@
 module;
 
 #include <bits/stl_iterator.h>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 #include <cstdint>
 #include <ctime>
 
@@ -155,6 +157,38 @@ void write_section_to_ostream(const csc::pHYs& phys, cstd::ostream& os) {
   const char* specifier = (phys.unit_type == csc::unit_specifier::metric) ? "метр" : "единицy";
   os << phys.pixels_per_unit_x << " пикселей на " << specifier << " по оси X\n";
   os << phys.pixels_per_unit_y << " пикселей на " << specifier << " по оси Y\n";
+}
+void write_section_to_ostream(const csc::tRNS& trns, cstd::ostream& os, uint8_t bit_depth) {
+  using cstd::operator<<;
+  os << "Значение(-я) псевдо-прозрачности:\n";
+  const auto max_pixel_value = static_cast<uint16_t>((1ul << bit_depth) - 1);
+  if (trns.color_type == csc::e_pixel_view_trns_id::rgb8) {
+    constexpr const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_trns_id::rgb8);
+    const auto& pixel = cstd::get<variant_idx>(trns.color);
+    os << "Красный: " << +pixel.r << " Зелёный: " << +pixel.g << " Синий: " << +pixel.b << " (Max: " << max_pixel_value
+       << ")\n";
+  } else if (trns.color_type == csc::e_pixel_view_trns_id::rgb16) {
+    constexpr const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_trns_id::rgb16);
+    const auto& pixel = cstd::get<variant_idx>(trns.color);
+    os << "Красный: " << +pixel.r << " Зелёный: " << +pixel.g << " Синий: " << +pixel.b << " (Max: " << max_pixel_value
+       << ")\n";
+  } else if (trns.color_type == csc::e_pixel_view_trns_id::bw8) {
+    constexpr const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_trns_id::bw8);
+    const auto& pixel = cstd::get<variant_idx>(trns.color);
+    os << "Яркость: " << +pixel.bw << " (Max: " << max_pixel_value << ")\n";
+  } else if (trns.color_type == csc::e_pixel_view_trns_id::bw16) {
+    constexpr const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_trns_id::bw16);
+    const auto& pixel = cstd::get<variant_idx>(trns.color);
+    os << "Яркость: " << pixel.bw << " (Max: " << max_pixel_value << ")\n";
+  } else if (trns.color_type == csc::e_pixel_view_trns_id::plte_indices) {
+    constexpr const auto variant_idx = static_cast<uint8_t>(csc::e_pixel_view_trns_id::plte_indices);
+    const auto& pixels = cstd::get<variant_idx>(trns.color);
+    for (auto pixel : pixels) {
+      os << cstd::hex << +pixel.idx << ' ';
+    }
+    os << cstd::dec << "(Max: " << max_pixel_value << ")\n";
+  }
+
 }
 
 } // namespace csc
