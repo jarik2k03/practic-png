@@ -44,8 +44,8 @@ class f_produce_chunk {
   auto operator()(const csc::pHYs& b) {
     return csc::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::dummy&) {
-    return csc::e_section_code::success;
+  auto operator()(const csc::tRNS& b) {
+    return csc::produce_chunk(b, m_chunk);
   }
 };
 

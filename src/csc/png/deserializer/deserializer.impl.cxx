@@ -12,6 +12,7 @@ import cstd.stl_wrap.stdexcept;
 import cstd.stl_wrap.variant;
 import cstd.stl_wrap.vector;
 import cstd.stl_wrap.ios;
+import cstd.stl_wrap.iostream;
 
 import :utility;
 
@@ -25,10 +26,10 @@ namespace csc {
 
 class deserializer_impl {
  public:
-  csc::picture do_deserialize(cstd::string_view filepath);
+  csc::picture do_deserialize(cstd::string_view filepath, bool ignore_checksum);
 };
 
-csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
+csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath, bool ignore_checksum) {
   using cstd::operator+;
   using cstd::operator==;
   cstd::ifstream png_fs;
@@ -37,19 +38,25 @@ csc::picture deserializer_impl::do_deserialize(cstd::string_view filepath) {
   png_fs.open(filepath.data(), cstd::ios_base::binary);
   if (!png_fs.is_open())
     throw cstd::runtime_error("Не существует файла в указанной директории!");
-
   csc::read_png_signature_from_file(png_fs, image);
   try {
     auto header_chunk = csc::read_chunk_from_ifstream(png_fs);
     consume_chunk_and_write_to_image(header_chunk, image), check_sum(header_chunk);
     image.m_image_data.reserve(csc::bring_image_size(cstd::get<IHDR>(image.m_structured.at(0))));
-    while (png_fs.peek() != -1) {
+    while (png_fs.tellg() != -1) {
       auto chunk = csc::read_chunk_from_ifstream(png_fs);
+      using cstd::operator==;
       if (chunk.chunk_name == cstd::array<char, 4>{'I', 'D', 'A', 'T'}) {
-        inflate_fragment_to_image(chunk, image, z_stream), check_sum(chunk);
+        inflate_fragment_to_image(chunk, image, z_stream);
+        if (ignore_checksum == false)
+          check_sum(chunk);
       } else {
-        consume_chunk_and_write_to_image(chunk, image), check_sum(chunk);
+        consume_chunk_and_write_to_image(chunk, image);
+        if (ignore_checksum == false)
+          check_sum(chunk);
       }
+      [[unlikely]] if (chunk.chunk_name == cstd::array<char, 4>{'I', 'E', 'N', 'D'})
+        break; // чтобы уж точно ничего не сломалось
     }
     png_fs.close();
   } catch (const cstd::runtime_error& e) {

@@ -8,9 +8,5 @@ target_sources(picture_signature PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES 
 add_library(picture STATIC picture.lib.cxx)
 target_link_libraries(picture PRIVATE sections picture_signature)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-target_link_libraries(picture PRIVATE stl_iostream stl_ios)
-endif()
-
 target_sources(picture PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES picture.lib.cxx ) 
 

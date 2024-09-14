@@ -74,7 +74,7 @@ std::unordered_map<std::string, std::string> bring_options(const char* const* co
 }
 
 auto check_valid_options(const std::unordered_map<std::string, std::string>& have) {
-  const std::unordered_set<std::string> valid{"-i", "-o", "-compress", "-memory_usage", "-window_bits", "-strategy"};
+  const std::unordered_set<std::string> valid{"-i", "-o", "-compress", "-memory_usage", "-window_bits", "-strategy", "-force"};
   auto not_valid_option = [&valid](const auto& pair) -> bool { return !valid.contains(pair.first); };
   const auto not_valid_pos = std::ranges::find_if(have, not_valid_option);
   return not_valid_pos;
@@ -84,6 +84,8 @@ int main(int argc, char** argv) {
   using cstd::operator==;
   if (argc < 2) {
     cstd::cout << "Использование: " << argv[0] << " -i <input_png_file> -o [output_png_file]\n";
+    cstd::cout << "Дополнительные опции для \"input_png_file\":\n";
+    cstd::cout << " -force <true> \n";
     cstd::cout << "Дополнительные опции для \"output_png_file\":\n";
     cstd::cout << " -compress <0-9/speed/best> \n";
     cstd::cout << " -memory_usage <1-9> \n";
@@ -102,15 +104,17 @@ int main(int argc, char** argv) {
 
     const auto i_pos = args.find("-i"), o_pos = args.find("-o");
 
-    csc::picture file;
+    csc::picture png;
     csc::deserializer png_executor;
     if (i_pos != args.cend()) {
-      file = png_executor.deserialize(i_pos->second);
+      const auto force_pos = args.find("-force");
+      const bool ignore_checksum = force_pos != args.end();
+      png = png_executor.deserialize(i_pos->second, ignore_checksum);
     } else {
       throw cstd::invalid_argument("Не назначен входной файл!");
     }
 #ifndef NDEBUG
-    cstd::cout << file << '\n';
+    cstd::cout << png << '\n';
 #endif
     if (o_pos != args.cend()) {
       const auto compress_pos = args.find("-compress"), memory_usage_pos = args.find("-memory_usage");
@@ -130,7 +134,7 @@ int main(int argc, char** argv) {
         strategy = bring_strategy(strategy_pos->second.c_str());
 
       csc::serializer png_writer;
-      png_writer.serialize(o_pos->second, file, compress, memory_usage, window_bits, strategy);
+      png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
       //       std::getchar();
       cstd::cout << "Изображение успешно сохранено: " << o_pos->second
                  << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';

@@ -14,8 +14,8 @@ class deserializer : private deserializer_impl {
   }
   ~deserializer() = default;
 
-  csc::picture deserialize(cstd::string_view filepath) {
-    return do_deserialize(filepath);
+  csc::picture deserialize(cstd::string_view filepath, bool ignore_checksum) {
+    return do_deserialize(filepath, ignore_checksum);
   }
 };
 

@@ -10,10 +10,6 @@ export import :signature;
 
 export import csc.png.picture.sections;
 
-#ifndef NDEBUG
-import cstd.stl_wrap.ios;
-import cstd.stl_wrap.iostream;
-#endif
 import cstd.stl_wrap.variant;
 import cstd.stl_wrap.vector;
 

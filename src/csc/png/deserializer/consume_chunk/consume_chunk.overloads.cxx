@@ -1,6 +1,5 @@
 module;
-#include <bits/stl_algo.h>
-#include <bits/ranges_algo.h>
+#include <bits/move.h>
 #include <cstdint>
 #include <ctime>
 module csc.png.deserializer.consume_chunk:overloads;
@@ -122,4 +121,32 @@ csc::e_section_code consume_chunk(csc::IEND&, const csc::chunk&) noexcept {
   return csc::e_section_code::success;
 }
 
+csc::e_section_code consume_chunk(csc::tRNS& s, const csc::chunk& blob, const csc::IHDR& header) noexcept {
+  csc::buf_reader rdr(blob.buffer.data());
+  using enum csc::e_color_type;
+  const auto& type = header.color_type;
+  if ((type == rgb || type == rgba) && header.bit_depth == 8) {
+    const auto r16 = rdr.read<uint16_t>(), g16 = rdr.read<uint16_t>(), b16 = rdr.read<uint16_t>();
+    s.color = csc::rgb8{static_cast<uint8_t>(r16), static_cast<uint8_t>(g16), static_cast<uint8_t>(b16)};
+    s.color_type = csc::e_pixel_view_trns_id::rgb8;
+  } else if ((type == rgb || type == rgba) && header.bit_depth == 16) {
+    const auto r16 = rdr.read<uint16_t>(), g16 = rdr.read<uint16_t>(), b16 = rdr.read<uint16_t>();
+    s.color = csc::rgb16{r16, g16, b16}, s.color_type = csc::e_pixel_view_trns_id::rgb16;
+  } else if ((type == bw || type == bwa) && header.bit_depth <= 8) {
+    const auto bw16 = rdr.read<uint16_t>();
+    s.color = csc::bw8{static_cast<uint8_t>(bw16)}, s.color_type = csc::e_pixel_view_trns_id::bw8;
+  } else if ((type == bw || type == bwa) && header.bit_depth == 16) {
+    const auto bw16 = rdr.read<uint16_t>();
+    s.color = csc::bw16{bw16}, s.color_type = csc::e_pixel_view_trns_id::bw16;
+  } else if (type == indexed) {
+    cstd::vector<csc::plte_index> color_indices; // равносильно vector<uint8_t>
+    color_indices.reserve(256u);
+    for (const auto _ : blob.buffer) {
+      const auto idx8 = rdr.read<uint8_t>();
+      color_indices.emplace_back(csc::plte_index{idx8});
+    }
+    s.color = std::move(color_indices), s.color_type = csc::e_pixel_view_trns_id::plte_indices;
+  }
+  return csc::e_section_code::success;
+}
 } // namespace csc
