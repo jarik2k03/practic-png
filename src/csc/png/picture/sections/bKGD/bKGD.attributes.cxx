@@ -7,7 +7,6 @@ export import csc.png.commons.utility.pixel_formats;
 
 export namespace csc {
 
-
 using v_pixel_view = cstd::variant<rgb8, rgb16, bw8, bw16, plte_index>;
 
 enum class e_pixel_view_id : uint8_t {

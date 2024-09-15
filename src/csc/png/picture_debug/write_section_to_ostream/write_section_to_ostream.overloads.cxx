@@ -188,7 +188,6 @@ void write_section_to_ostream(const csc::tRNS& trns, cstd::ostream& os, uint8_t 
     }
     os << cstd::dec << "(Max: " << max_pixel_value << ")\n";
   }
-
 }
 
 } // namespace csc

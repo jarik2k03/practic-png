@@ -11,6 +11,7 @@ import csc.png.picture_debug;
 #endif
 
 import csc.png;
+import csc.pngine;
 import cstd.stl_wrap.string_view;
 // import cstd.stl_wrap.string;
 import cstd.stl_wrap.iostream;
@@ -74,7 +75,8 @@ std::unordered_map<std::string, std::string> bring_options(const char* const* co
 }
 
 auto check_valid_options(const std::unordered_map<std::string, std::string>& have) {
-  const std::unordered_set<std::string> valid{"-i", "-o", "-compress", "-memory_usage", "-window_bits", "-strategy", "-force"};
+  const std::unordered_set<std::string> valid{
+      "-i", "-o", "-compress", "-memory_usage", "-window_bits", "-strategy", "-force"};
   auto not_valid_option = [&valid](const auto& pair) -> bool { return !valid.contains(pair.first); };
   const auto not_valid_pos = std::ranges::find_if(have, not_valid_option);
   return not_valid_pos;
@@ -109,7 +111,16 @@ int main(int argc, char** argv) {
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
+      csc::pngine::pngine core("PNG-viewer", csc::pngine::bring_version(1u, 3u, 256u));
+      cstd::cout << "Движок: " << core.get_engine_name() << '\n';
+      const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
+      cstd::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
+      cstd::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
+      cstd::cout << "Инициализация экземпляра Vulkan... \n";
+      core.init_instance();
+      cstd::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
+
     } else {
       throw cstd::invalid_argument("Не назначен входной файл!");
     }
