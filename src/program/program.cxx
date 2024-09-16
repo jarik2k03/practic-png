@@ -11,10 +11,10 @@ import csc.png.picture_debug;
 
 import csc.png;
 import csc.pngine;
-import stl.stl_wrap.string_view;
-import stl.stl_wrap.string;
-import stl.stl_wrap.iostream;
-import stl.stl_wrap.stdexcept;
+import stl.string_view;
+import stl.string;
+import stl.iostream;
+import stl.stdexcept;
 
 csc::e_compression_level bring_compression_level(const char* arg) {
   const std::string compr_level_str(arg);

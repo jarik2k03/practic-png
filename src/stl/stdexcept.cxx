@@ -1,6 +1,6 @@
 module;
 #include <stdexcept>
-export module stl.stl_wrap.stdexcept;
+export module stl.stdexcept;
 
 export namespace std {
 using exception = std::exception;

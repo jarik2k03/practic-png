@@ -5,7 +5,7 @@ module;
 #include <bits/allocator.h>
 export module csc.png.commons.buffer;
 
-import stl.stl_wrap.stdexcept;
+import stl.stdexcept;
 export import :range;
 
 export namespace csc {

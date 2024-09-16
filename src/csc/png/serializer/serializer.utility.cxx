@@ -4,8 +4,8 @@ module;
 module csc.png.serializer:utility;
 
 import csc.png.picture;
-import stl.stl_wrap.vector;
-import stl.stl_wrap.fstream;
+import stl.vector;
+import stl.fstream;
 import csc.png.commons.chunk;
 import csc.png.serializer.produce_chunk.buf_writer;
 import csc.png.commons.utility.memory_literals;

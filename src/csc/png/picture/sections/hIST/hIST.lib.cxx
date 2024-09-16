@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections.hIST;
 
-export import stl.stl_wrap.vector;
+export import stl.vector;
 export import :attributes;
 export namespace csc {
 

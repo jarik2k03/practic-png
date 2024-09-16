@@ -3,7 +3,6 @@ module;
 #include <bits/ranges_algo.h>
 #include <cstdint>
 #include <ctime>
-#include <zlib.h>
 module csc.png.serializer.produce_chunk:overloads;
 
 import :utility;

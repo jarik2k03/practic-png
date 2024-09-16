@@ -5,7 +5,7 @@ module;
 #include <zlib.h>
 export module csc.png.deserializer.consume_chunk.inflater:impl;
 // без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
-import stl.stl_wrap.stdexcept;
+import stl.stdexcept;
 
 export import csc.png.commons.buffer;
 export import csc.png.commons.buffer_view;

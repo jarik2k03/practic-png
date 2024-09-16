@@ -5,7 +5,7 @@ export module csc.pngine;
 export import :attributes;
 import :impl;
 
-import stl.stl_wrap.string_view;
+import stl.string_view;
 
 export namespace csc {
 namespace pngine {

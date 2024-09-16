@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections.bKGD:attributes;
 
-export import stl.stl_wrap.variant;
+export import stl.variant;
 export import csc.png.commons.utility.pixel_formats;
 
 export namespace csc {

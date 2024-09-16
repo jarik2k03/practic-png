@@ -3,12 +3,12 @@ module;
 #include <cstdlib>
 #include <bits/stl_iterator.h>
 module csc.pngine.instance:utility;
-import stl.stl_wrap.vector;
-import stl.stl_wrap.string;
+import stl.vector;
+import stl.string;
 export import vulkan_hpp;
 
 #ifndef NDEBUG
-import stl.stl_wrap.iostream;
+import stl.iostream;
 #endif
 
 namespace csc {

@@ -3,7 +3,7 @@ module;
 export module csc.png.serializer;
 
 export import csc.png.picture;
-import stl.stl_wrap.string_view;
+import stl.string_view;
 import :impl;
 export import csc.png.serializer.produce_chunk.deflater.attributes;
 

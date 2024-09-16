@@ -1,6 +1,6 @@
 module;
 #include <array>
-export module stl.stl_wrap.array;
+export module stl.array;
 
 export namespace std {
 

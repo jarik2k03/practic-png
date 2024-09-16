@@ -6,7 +6,7 @@ import :overloads;
 
 import csc.png.picture;
 
-import stl.stl_wrap.ostream;
+import stl.ostream;
 
 export namespace csc {
 

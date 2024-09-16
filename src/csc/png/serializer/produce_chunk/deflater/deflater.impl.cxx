@@ -6,7 +6,7 @@ module;
 export module csc.png.serializer.produce_chunk.deflater:impl;
 // без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
 
-import stl.stl_wrap.stdexcept;
+import stl.stdexcept;
 
 export import csc.png.serializer.produce_chunk.deflater.attributes;
 export import csc.png.commons.buffer;

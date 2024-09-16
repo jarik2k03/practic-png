@@ -2,8 +2,8 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections.tRNS:attributes;
 
-export import stl.stl_wrap.variant;
-export import stl.stl_wrap.vector;
+export import stl.variant;
+export import stl.vector;
 export import csc.png.commons.utility.pixel_formats;
 
 export namespace csc {

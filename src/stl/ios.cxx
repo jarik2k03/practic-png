@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <ios>
-export module stl.stl_wrap.ios;
+export module stl.ios;
 
 export namespace std {
 

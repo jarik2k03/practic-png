@@ -5,7 +5,7 @@ module;
 export module csc.png.commons.utility.adler32;
 import csc.png.commons.buffer_view;
 
-import stl.stl_wrap.array;
+import stl.array;
 
 export namespace csc {
 

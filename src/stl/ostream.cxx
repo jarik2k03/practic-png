@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <ostream>
-export module stl.stl_wrap.ostream;
+export module stl.ostream;
 
 export namespace std {
 using std::basic_ostream;

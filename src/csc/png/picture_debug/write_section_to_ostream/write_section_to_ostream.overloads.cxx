@@ -10,8 +10,8 @@ module csc.png.picture_debug.write_section_to_ostream:overloads;
 
 import csc.png.picture;
 
-import stl.stl_wrap.ios;
-import stl.stl_wrap.ostream;
+import stl.ios;
+import stl.ostream;
 
 namespace csc {
 constexpr const char* bring_color_type(csc::e_color_type t) {

@@ -3,17 +3,16 @@ module;
 #include <bits/ranges_algo.h>
 #include <bits/allocator.h>
 #include <cstdint>
-#include <zlib.h>
 module csc.png.serializer:impl;
 
 import :utility;
 
-import stl.stl_wrap.string_view;
-import stl.stl_wrap.fstream;
-import stl.stl_wrap.stdexcept;
-import stl.stl_wrap.variant;
-import stl.stl_wrap.ios;
-import stl.stl_wrap.string;
+import stl.string_view;
+import stl.fstream;
+import stl.stdexcept;
+import stl.variant;
+import stl.ios;
+import stl.string;
 
 import csc.png.serializer.produce_chunk.buf_writer;
 import csc.png.serializer.produce_chunk;

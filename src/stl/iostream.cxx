@@ -1,10 +1,9 @@
 module;
-#include <cstdint>
 #include <iostream>
-export module stl.stl_wrap.iostream;
+export module stl.iostream;
 
-export import stl.stl_wrap.istream;
-export import stl.stl_wrap.ostream;
+export import stl.istream;
+export import stl.ostream;
 
 export namespace std {
 

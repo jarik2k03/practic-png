@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <string>
-export module stl.stl_wrap.string;
+export module stl.string;
 
 export namespace std {
 

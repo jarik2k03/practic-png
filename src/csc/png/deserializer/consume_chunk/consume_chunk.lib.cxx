@@ -7,7 +7,7 @@ import :utility;
 import :overloads;
 
 export import csc.png.commons.chunk;
-import stl.stl_wrap.variant;
+import stl.variant;
 
 export namespace csc {
 

@@ -5,14 +5,14 @@ module;
 #include <bits/ranges_algo.h>
 #include <cstdint>
 export module csc.png.deserializer:impl;
-import stl.stl_wrap.string_view;
-import stl.stl_wrap.string;
-import stl.stl_wrap.fstream;
-import stl.stl_wrap.stdexcept;
-import stl.stl_wrap.variant;
-import stl.stl_wrap.vector;
-import stl.stl_wrap.ios;
-import stl.stl_wrap.iostream;
+import stl.string_view;
+import stl.string;
+import stl.fstream;
+import stl.stdexcept;
+import stl.variant;
+import stl.vector;
+import stl.ios;
+import stl.iostream;
 
 import :utility;
 

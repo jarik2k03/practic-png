@@ -4,7 +4,7 @@ export module csc.png.deserializer;
 
 import :impl;
 export import csc.png.picture;
-import stl.stl_wrap.string_view;
+import stl.string_view;
 
 export namespace csc {
 

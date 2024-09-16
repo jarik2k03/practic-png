@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <variant>
-export module stl.stl_wrap.variant;
+export module stl.variant;
 
 export namespace std {
 

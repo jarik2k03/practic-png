@@ -5,7 +5,7 @@ export module csc.png.commons.chunk;
 export import :attributes;
 
 export import csc.png.commons.buffer;
-export import stl.stl_wrap.array;
+export import stl.array;
 
 export namespace csc {
 

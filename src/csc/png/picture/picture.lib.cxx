@@ -1,17 +1,14 @@
 module;
 
-#include <algorithm>
 #include <cstdint>
-#include <ctime>
-#include <ranges>
 
 export module csc.png.picture;
 export import :signature;
 
 export import csc.png.picture.sections;
 
-import stl.stl_wrap.variant;
-import stl.stl_wrap.vector;
+import stl.variant;
+import stl.vector;
 
 export namespace csc {
 

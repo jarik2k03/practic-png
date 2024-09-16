@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <istream>
-export module stl.stl_wrap.istream;
+export module stl.istream;
 
 export namespace std {
 

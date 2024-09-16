@@ -7,8 +7,8 @@ module csc.png.serializer.produce_chunk:utility;
 
 import csc.png.picture.sections;
 
-import stl.stl_wrap.array;
-import stl.stl_wrap.variant;
+import stl.array;
+import stl.variant;
 
 namespace csc {
 

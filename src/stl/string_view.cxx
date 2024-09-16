@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <string_view>
-export module stl.stl_wrap.string_view;
+export module stl.string_view;
 
 export namespace std {
 

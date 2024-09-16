@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 export module csc.png.picture:signature;
 
-export import stl.stl_wrap.array;
+export import stl.array;
 
 export namespace csc {
 

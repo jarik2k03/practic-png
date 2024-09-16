@@ -6,9 +6,9 @@ export module csc.png.picture_debug;
 export import csc.png.picture;
 
 import csc.png.picture_debug.write_section_to_ostream;
-import stl.stl_wrap.ios;
-import stl.stl_wrap.ostream;
-import stl.stl_wrap.variant;
+import stl.ios;
+import stl.ostream;
+import stl.variant;
 
 export namespace csc {
 

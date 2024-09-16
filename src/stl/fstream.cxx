@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <fstream>
-export module stl.stl_wrap.fstream;
+export module stl.fstream;
 
 export namespace std {
 

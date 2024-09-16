@@ -2,8 +2,8 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections;
 
-import stl.stl_wrap.vector;
-import stl.stl_wrap.variant;
+import stl.vector;
+import stl.variant;
 
 export import csc.png.picture.sections.IHDR;
 export import csc.png.picture.sections.PLTE;
