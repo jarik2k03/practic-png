@@ -10,8 +10,8 @@ export import :signature;
 
 export import csc.png.picture.sections;
 
-import cstd.stl_wrap.variant;
-import cstd.stl_wrap.vector;
+import stl.stl_wrap.variant;
+import stl.stl_wrap.vector;
 
 export namespace csc {
 
@@ -19,7 +19,7 @@ class picture {
  public:
   csc::png_signature m_start;
   csc::v_sections m_structured{};
-  cstd::vector<uint8_t> m_image_data{};
+  std::vector<uint8_t> m_image_data{};
   csc::IHDR m_header;
   csc::IEND m_eof_block;
 

@@ -2,8 +2,8 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections;
 
-import cstd.stl_wrap.vector;
-import cstd.stl_wrap.variant;
+import stl.stl_wrap.vector;
+import stl.stl_wrap.variant;
 
 export import csc.png.picture.sections.IHDR;
 export import csc.png.picture.sections.PLTE;
@@ -18,7 +18,7 @@ export import csc.png.picture.sections.pHYs;
 export import csc.png.picture.sections.tRNS;
 export namespace csc {
 
-using v_section = cstd::variant<
+using v_section = std::variant<
     csc::IHDR,
     csc::PLTE,
     csc::IEND,
@@ -29,6 +29,6 @@ using v_section = cstd::variant<
     csc::hIST,
     csc::pHYs,
     csc::tRNS>;
-using v_sections = cstd::vector<v_section>;
+using v_sections = std::vector<v_section>;
 
 } // namespace csc

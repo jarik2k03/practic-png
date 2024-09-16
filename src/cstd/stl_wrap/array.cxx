@@ -1,20 +1,11 @@
 module;
 #include <array>
-export module cstd.stl_wrap.array;
+export module stl.stl_wrap.array;
 
-export namespace cstd {
+export namespace std {
 
-template <typename Tp, std::size_t N>
-using array = std::array<Tp, N>;
+using std::array;
+using std::operator==;
+using std::operator<=>;
 
-template <typename Tp, std::size_t N>
-constexpr inline bool operator==(const cstd::array<Tp, N>& one, const cstd::array<Tp, N>& two) {
-  return std::operator==(one, two);
-}
-
-template <typename Tp, std::size_t N>
-constexpr inline auto operator<=>(const cstd::array<Tp, N>& one, const cstd::array<Tp, N>& two) {
-  return std::operator<=>(one, two);
-}
-
-} // namespace cstd
+} // namespace stl

@@ -1,125 +1,60 @@
 module;
 #include <cstdint>
 #include <ios>
-export module cstd.stl_wrap.ios;
+export module stl.stl_wrap.ios;
 
-export namespace cstd {
+export namespace std {
 
-template <class StateT>
-using fpos = std::fpos<StateT>;
+using std::fpos;
+using std::ios_base;
+using std::basic_ios;
 
-using ios_base = std::ios_base;
+using std::ios;
+using std::wios;
 
-template <class CharT, class Traits = std::char_traits<CharT>>
-using basic_ios = std::basic_ios<CharT, Traits>;
+using std::boolalpha;
+using std::noboolalpha;
 
-using ios = cstd::basic_ios<char>;
-using wios = cstd::basic_ios<wchar_t>;
+using std::showbase;
+using std::noshowbase;
 
-// manipulators
-cstd::ios_base& boolalpha(cstd::ios_base& str) {
-  return std::boolalpha(str);
-}
-cstd::ios_base& noboolalpha(cstd::ios_base& str) {
-  return std::noboolalpha(str);
-}
+using std::showpoint;
+using std::noshowpoint;
 
-cstd::ios_base& showbase(cstd::ios_base& str) {
-  return std::showbase(str);
-}
-cstd::ios_base& noshowbase(cstd::ios_base& str) {
-  return std::noshowbase(str);
-}
+using std::showpos;
+using std::noshowpos;
 
-cstd::ios_base& showpoint(cstd::ios_base& str) {
-  return std::showpoint(str);
-}
-cstd::ios_base& noshowpoint(cstd::ios_base& str) {
-  return std::noshowpoint(str);
-}
+using std::skipws;
+using std::noskipws;
 
-cstd::ios_base& showpos(cstd::ios_base& str) {
-  return std::showpos(str);
-}
-cstd::ios_base& noshowpos(cstd::ios_base& str) {
-  return std::noshowpos(str);
-}
+using std::uppercase;
+using std::nouppercase;
 
-cstd::ios_base& skipws(cstd::ios_base& str) {
-  return std::skipws(str);
-}
-cstd::ios_base& noskipws(cstd::ios_base& str) {
-  return std::noskipws(str);
-}
-
-cstd::ios_base& uppercase(cstd::ios_base& str) {
-  return std::uppercase(str);
-}
-cstd::ios_base& nouppercase(cstd::ios_base& str) {
-  return std::nouppercase(str);
-}
-
-cstd::ios_base& unitbuf(cstd::ios_base& str) {
-  return std::unitbuf(str);
-}
-cstd::ios_base& nounitbuf(cstd::ios_base& str) {
-  return std::nounitbuf(str);
-}
-
+using std::unitbuf;
+using std::nounitbuf;
 // adjustfield
-cstd::ios_base& internal(cstd::ios_base& str) {
-  return std::internal(str);
-}
-cstd::ios_base& left(cstd::ios_base& str) {
-  return std::left(str);
-}
-cstd::ios_base& right(cstd::ios_base& str) {
-  return std::right(str);
-}
-
+using std::internal;
+using std::left;
+using std::right;
 // basefield
-cstd::ios_base& dec(cstd::ios_base& str) {
-  return std::dec(str);
-}
-cstd::ios_base& hex(cstd::ios_base& str) {
-  return std::hex(str);
-}
-cstd::ios_base& oct(cstd::ios_base& str) {
-  return std::oct(str);
-}
-
+using std::dec;
+using std::hex;
+using std::oct;
 // floatfield
-cstd::ios_base& fixed(cstd::ios_base& str) {
-  return std::fixed(str);
-}
-cstd::ios_base& scientific(cstd::ios_base& str) {
-  return std::scientific(str);
-}
-cstd::ios_base& hexfloat(cstd::ios_base& str) {
-  return std::hexfloat(str);
-}
-cstd::ios_base& defaultfloat(cstd::ios_base& str) {
-  return std::defaultfloat(str);
-}
+using std::fixed;
+using std::scientific;
+using std::hexfloat;
+using std::defaultfloat;
 
 // error reporting
-using io_errc = std::io_errc;
+using std::io_errc;
+using std::error_code;
+using std::error_condition;
+using std::error_category;
 
-using error_code = std::error_code;
-using error_condition = std::error_condition;
-using error_category = std::error_category;
+using std::is_error_code_enum;
+using std::make_error_code;
+using std::make_error_condition;
+using std::iostream_category;
 
-template <typename ErrEnum>
-using is_error_code_enum = std::is_error_code_enum<ErrEnum>;
-
-cstd::error_code make_error_code(cstd::io_errc e) noexcept {
-  return std::make_error_code(e);
-}
-cstd::error_condition make_error_condition(cstd::io_errc e) noexcept {
-  return std::make_error_condition(e);
-}
-const cstd::error_category& iostream_category() noexcept {
-  return std::iostream_category();
-}
-
-} // namespace cstd
+} // namespace stl

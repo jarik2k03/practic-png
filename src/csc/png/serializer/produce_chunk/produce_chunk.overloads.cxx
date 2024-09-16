@@ -17,7 +17,7 @@ import csc.png.commons.utility.crc32;
 namespace csc {
 
 csc::e_section_code produce_chunk(const csc::gAMA& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'g', 'A', 'M', 'A'};
+  blob.chunk_name = std::array<char, 4>{'g', 'A', 'M', 'A'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -29,7 +29,7 @@ csc::e_section_code produce_chunk(const csc::gAMA& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::pHYs& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'p', 'H', 'Y', 's'};
+  blob.chunk_name = std::array<char, 4>{'p', 'H', 'Y', 's'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -42,7 +42,7 @@ csc::e_section_code produce_chunk(const csc::pHYs& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::hIST& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'h', 'I', 'S', 'T'};
+  blob.chunk_name = std::array<char, 4>{'h', 'I', 'S', 'T'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -55,7 +55,7 @@ csc::e_section_code produce_chunk(const csc::hIST& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::cHRM& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'c', 'H', 'R', 'M'};
+  blob.chunk_name = std::array<char, 4>{'c', 'H', 'R', 'M'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -70,28 +70,28 @@ csc::e_section_code produce_chunk(const csc::cHRM& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::bKGD& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'b', 'K', 'G', 'D'};
+  blob.chunk_name = std::array<char, 4>{'b', 'K', 'G', 'D'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
   csc::buf_writer wrt(blob.buffer.data());
-  if (cstd::holds_alternative<csc::rgb8>(s.color)) {
-    const auto& color = cstd::get<csc::rgb8>(s.color);
+  if (std::holds_alternative<csc::rgb8>(s.color)) {
+    const auto& color = std::get<csc::rgb8>(s.color);
     wrt.write(static_cast<uint16_t>(color.r)); // rgb8 хранится в файле как rgb16
     wrt.write(static_cast<uint16_t>(color.g)); // rgb8 хранится в файле как rgb16
     wrt.write(static_cast<uint16_t>(color.b)); // rgb8 хранится в файле как rgb16
-  } else if (cstd::holds_alternative<csc::rgb16>(s.color)) {
-    const auto& color = cstd::get<csc::rgb16>(s.color);
+  } else if (std::holds_alternative<csc::rgb16>(s.color)) {
+    const auto& color = std::get<csc::rgb16>(s.color);
     wrt.write(color.r), wrt.write(color.g),
         wrt.write(color.b); // rgb16 записываем как есть
-  } else if (cstd::holds_alternative<csc::bw8>(s.color)) {
-    const auto& color = cstd::get<csc::bw8>(s.color);
+  } else if (std::holds_alternative<csc::bw8>(s.color)) {
+    const auto& color = std::get<csc::bw8>(s.color);
     wrt.write(static_cast<uint16_t>(color.bw)); // bw8 хранится в файле как bw16
-  } else if (cstd::holds_alternative<csc::bw16>(s.color)) {
-    const auto& color = cstd::get<csc::bw16>(s.color);
+  } else if (std::holds_alternative<csc::bw16>(s.color)) {
+    const auto& color = std::get<csc::bw16>(s.color);
     wrt.write(color.bw); // bw16 записываем как есть
-  } else if (cstd::holds_alternative<csc::plte_index>(s.color)) {
-    const auto& color = cstd::get<csc::plte_index>(s.color);
+  } else if (std::holds_alternative<csc::plte_index>(s.color)) {
+    const auto& color = std::get<csc::plte_index>(s.color);
     wrt.write(color.idx); // записываем индекс
   }
 
@@ -100,7 +100,7 @@ csc::e_section_code produce_chunk(const csc::bKGD& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::tIME& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'t', 'I', 'M', 'E'};
+  blob.chunk_name = std::array<char, 4>{'t', 'I', 'M', 'E'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -117,7 +117,7 @@ csc::e_section_code produce_chunk(const csc::tIME& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::IHDR& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'I', 'H', 'D', 'R'};
+  blob.chunk_name = std::array<char, 4>{'I', 'H', 'D', 'R'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -131,7 +131,7 @@ csc::e_section_code produce_chunk(const csc::IHDR& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::PLTE& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'P', 'L', 'T', 'E'};
+  blob.chunk_name = std::array<char, 4>{'P', 'L', 'T', 'E'};
   const auto chunk_size = csc::calc_size_for_chunk(s);
   blob.buffer = csc::make_buffer<uint8_t>(chunk_size);
 
@@ -144,31 +144,31 @@ csc::e_section_code produce_chunk(const csc::PLTE& s, csc::chunk& blob) noexcept
 }
 
 csc::e_section_code produce_chunk(const csc::IEND&, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'I', 'E', 'N', 'D'};
+  blob.chunk_name = std::array<char, 4>{'I', 'E', 'N', 'D'};
   blob.crc_adler = csc::crc32_for_chunk(blob.chunk_name, blob.buffer);
   return csc::e_section_code::success;
 }
 csc::e_section_code produce_chunk(const csc::tRNS& s, csc::chunk& blob) noexcept {
-  blob.chunk_name = cstd::array<char, 4>{'t', 'R', 'N', 'S'};
+  blob.chunk_name = std::array<char, 4>{'t', 'R', 'N', 'S'};
   blob.buffer = csc::make_buffer<uint8_t>(csc::calc_size_for_chunk(s));
   csc::buf_writer wrt(blob.buffer.data());
-  if (cstd::holds_alternative<csc::rgb8>(s.color)) {
-    const auto& color = cstd::get<csc::rgb8>(s.color);
+  if (std::holds_alternative<csc::rgb8>(s.color)) {
+    const auto& color = std::get<csc::rgb8>(s.color);
     wrt.write(static_cast<uint16_t>(color.r)); // rgb8 хранится в файле как rgb16
     wrt.write(static_cast<uint16_t>(color.g)); // rgb8 хранится в файле как rgb16
     wrt.write(static_cast<uint16_t>(color.b)); // rgb8 хранится в файле как rgb16
-  } else if (cstd::holds_alternative<csc::rgb16>(s.color)) {
-    const auto& color = cstd::get<csc::rgb16>(s.color);
+  } else if (std::holds_alternative<csc::rgb16>(s.color)) {
+    const auto& color = std::get<csc::rgb16>(s.color);
     wrt.write(color.r), wrt.write(color.g),
         wrt.write(color.b); // rgb16 записываем как есть
-  } else if (cstd::holds_alternative<csc::bw8>(s.color)) {
-    const auto& color = cstd::get<csc::bw8>(s.color);
+  } else if (std::holds_alternative<csc::bw8>(s.color)) {
+    const auto& color = std::get<csc::bw8>(s.color);
     wrt.write(static_cast<uint16_t>(color.bw)); // bw8 хранится в файле как bw16
-  } else if (cstd::holds_alternative<csc::bw16>(s.color)) {
-    const auto& color = cstd::get<csc::bw16>(s.color);
+  } else if (std::holds_alternative<csc::bw16>(s.color)) {
+    const auto& color = std::get<csc::bw16>(s.color);
     wrt.write(color.bw); // bw16 записываем как есть
-  } else if (cstd::holds_alternative<cstd::vector<csc::plte_index>>(s.color)) {
-    const auto& colors = cstd::get<cstd::vector<csc::plte_index>>(s.color);
+  } else if (std::holds_alternative<std::vector<csc::plte_index>>(s.color)) {
+    const auto& colors = std::get<std::vector<csc::plte_index>>(s.color);
     auto write_trns_unit = [&wrt](const auto& unit) { wrt.write(unit.idx); };
     std::ranges::for_each(colors, write_trns_unit);
   }

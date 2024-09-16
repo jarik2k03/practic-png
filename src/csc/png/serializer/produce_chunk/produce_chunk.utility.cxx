@@ -7,8 +7,8 @@ module csc.png.serializer.produce_chunk:utility;
 
 import csc.png.picture.sections;
 
-import cstd.stl_wrap.array;
-import cstd.stl_wrap.variant;
+import stl.stl_wrap.array;
+import stl.stl_wrap.variant;
 
 namespace csc {
 
@@ -59,7 +59,7 @@ constexpr uint32_t calc_size_for_chunk(const csc::cHRM& s) noexcept {
 }
 constexpr uint32_t calc_size_for_chunk(const csc::tRNS& s) noexcept {
   using enum csc::e_pixel_view_trns_id;
-  const auto* const indices = cstd::get_if<static_cast<uint8_t>(plte_indices)>(&s.color);
+  const auto* const indices = std::get_if<static_cast<uint8_t>(plte_indices)>(&s.color);
   switch (s.color_type) {
     case rgb8:
       return sizeof(csc::rgb16); // rgb в чанке хранится с запасом - 2 байта на цвет

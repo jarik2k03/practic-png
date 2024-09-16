@@ -1,9 +1,12 @@
 module;
 #include <vector>
-export module cstd.stl_wrap.vector;
+export module stl.stl_wrap.vector;
 
-export namespace cstd {
+export namespace std {
 
-template <typename Tp, typename Alloc = std::allocator<Tp>>
-using vector = std::vector<Tp, Alloc>;
-} // namespace cstd
+using std::vector;
+namespace pmr {
+using std::pmr::vector;
+}
+
+} // namespace stl

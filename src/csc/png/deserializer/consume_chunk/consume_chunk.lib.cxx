@@ -7,7 +7,7 @@ import :utility;
 import :overloads;
 
 export import csc.png.commons.chunk;
-import cstd.stl_wrap.variant;
+import stl.stl_wrap.variant;
 
 export namespace csc {
 
@@ -27,7 +27,7 @@ class f_consume_chunk {
     const auto header_pos = m_common_deps.cbegin();
     if (header_pos == m_common_deps.cend())
       return csc::e_section_code::depends_ihdr; // не нашли зависимость
-    const csc::IHDR* header = cstd::get_if<csc::IHDR>(&*header_pos);
+    const csc::IHDR* header = std::get_if<csc::IHDR>(&*header_pos);
     if (header == nullptr) // не удалось получить нужную зависимость
       return csc::e_section_code::depends_ihdr;
     return csc::consume_chunk(b, m_chunk, *header);
@@ -39,7 +39,7 @@ class f_consume_chunk {
     const auto header_pos = m_common_deps.cbegin();
     if (header_pos == m_common_deps.cend())
       return csc::e_section_code::depends_ihdr; // не нашли зависимость
-    const csc::IHDR* header = cstd::get_if<csc::IHDR>(&*header_pos);
+    const csc::IHDR* header = std::get_if<csc::IHDR>(&*header_pos);
     if (header == nullptr) // не удалось получить нужную зависимость
       return csc::e_section_code::depends_ihdr;
     return csc::consume_chunk(b, m_chunk, *header);
@@ -63,7 +63,7 @@ class f_consume_chunk {
     const auto header_pos = m_common_deps.cbegin();
     if (header_pos == m_common_deps.cend())
       return csc::e_section_code::depends_ihdr; // не нашли зависимость
-    const csc::IHDR* header = cstd::get_if<csc::IHDR>(&*header_pos);
+    const csc::IHDR* header = std::get_if<csc::IHDR>(&*header_pos);
     if (header == nullptr) // не удалось получить нужную зависимость
       return csc::e_section_code::depends_ihdr;
     return csc::consume_chunk(b, m_chunk, *header);

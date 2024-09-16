@@ -8,10 +8,10 @@ module csc.png.deserializer:utility;
 
 import csc.png.deserializer.consume_chunk.buf_reader;
 import csc.png.commons.chunk;
-import cstd.stl_wrap.array;
-import cstd.stl_wrap.string;
-import cstd.stl_wrap.fstream;
-import cstd.stl_wrap.stdexcept;
+import stl.stl_wrap.array;
+import stl.stl_wrap.string;
+import stl.stl_wrap.fstream;
+import stl.stl_wrap.stdexcept;
 
 import csc.png.picture;
 import csc.png.deserializer.consume_chunk;
@@ -21,19 +21,19 @@ import csc.png.deserializer.consume_chunk.buf_reader;
 
 namespace csc {
 
-constexpr cstd::string generate_section_error_message(csc::e_section_code sec, cstd::array<char, 4> name) noexcept {
-  using cstd::operator+;
-  using namespace cstd::string_literals;
+constexpr std::string generate_section_error_message(csc::e_section_code sec, std::array<char, 4> name) noexcept {
+  using std::operator+;
+  using namespace std::string_literals;
   using enum csc::e_section_code;
   switch (sec) {
     case error:
-      return "Ошибка в представлении сектора: "_s + cstd::string(name.data(), 4);
+      return "Ошибка в представлении сектора: "s + std::string(name.data(), 4);
     case success:
-      return ""_s;
+      return ""s;
     case depends_ihdr:
-      return "Секция "_s + cstd::string(name.data(), 4) + " требует наличия зависимого чанка IHDR";
+      return "Секция "s + std::string(name.data(), 4) + " требует наличия зависимого чанка IHDR";
   };
-  return "Неизвестная ошибка секции!"_s;
+  return "Неизвестная ошибка секции!"s;
 }
 
 constexpr uint8_t pixel_size_from_color_type(csc::e_color_type t) {
@@ -63,32 +63,32 @@ constexpr uint32_t bring_image_size(const csc::IHDR& header) {
 };
 
 constexpr std::optional<csc::v_section> init_section(const csc::chunk& ch) {
-  using cstd::operator==;
-  if (ch.chunk_name == cstd::array<char, 4>{'I', 'H', 'D', 'R'})
+  using std::operator==;
+  if (ch.chunk_name == std::array<char, 4>{'I', 'H', 'D', 'R'})
     return csc::v_section(csc::IHDR());
-  else if (ch.chunk_name == cstd::array<char, 4>{'P', 'L', 'T', 'E'})
+  else if (ch.chunk_name == std::array<char, 4>{'P', 'L', 'T', 'E'})
     return csc::v_section(csc::PLTE());
-  else if (ch.chunk_name == cstd::array<char, 4>{'I', 'E', 'N', 'D'})
+  else if (ch.chunk_name == std::array<char, 4>{'I', 'E', 'N', 'D'})
     return csc::v_section(csc::IEND());
-  else if (ch.chunk_name == cstd::array<char, 4>{'b', 'K', 'G', 'D'})
+  else if (ch.chunk_name == std::array<char, 4>{'b', 'K', 'G', 'D'})
     return csc::v_section(csc::bKGD());
-  else if (ch.chunk_name == cstd::array<char, 4>{'t', 'I', 'M', 'E'})
+  else if (ch.chunk_name == std::array<char, 4>{'t', 'I', 'M', 'E'})
     return csc::v_section(csc::tIME());
-  else if (ch.chunk_name == cstd::array<char, 4>{'c', 'H', 'R', 'M'})
+  else if (ch.chunk_name == std::array<char, 4>{'c', 'H', 'R', 'M'})
     return csc::v_section(csc::cHRM());
-  else if (ch.chunk_name == cstd::array<char, 4>{'g', 'A', 'M', 'A'})
+  else if (ch.chunk_name == std::array<char, 4>{'g', 'A', 'M', 'A'})
     return csc::v_section(csc::gAMA());
-  else if (ch.chunk_name == cstd::array<char, 4>{'h', 'I', 'S', 'T'})
+  else if (ch.chunk_name == std::array<char, 4>{'h', 'I', 'S', 'T'})
     return csc::v_section(csc::hIST());
-  else if (ch.chunk_name == cstd::array<char, 4>{'p', 'H', 'Y', 's'})
+  else if (ch.chunk_name == std::array<char, 4>{'p', 'H', 'Y', 's'})
     return csc::v_section(csc::pHYs());
-  else if (ch.chunk_name == cstd::array<char, 4>{'t', 'R', 'N', 'S'})
+  else if (ch.chunk_name == std::array<char, 4>{'t', 'R', 'N', 'S'})
     return csc::v_section(csc::tRNS());
   else
     return std::nullopt; // не распознаётся
 }
 
-csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
+csc::chunk read_chunk_from_ifstream(std::ifstream& is) {
   csc::chunk bufferized;
   // длина недесериализованного блока в чанке
   uint32_t chunk_size;
@@ -106,25 +106,25 @@ csc::chunk read_chunk_from_ifstream(cstd::ifstream& is) {
 }
 
 // функции-фабрикаторы top-level
-void read_png_signature_from_file(cstd::ifstream& fs, csc::picture& image) {
+void read_png_signature_from_file(std::ifstream& fs, csc::picture& image) {
   fs.read(reinterpret_cast<char*>(&image.start()), sizeof(csc::png_signature));
   if (image.start() != csc::png_signature())
-    throw cstd::domain_error("Ошибка чтения png. Это не PNG файл!");
+    throw std::domain_error("Ошибка чтения png. Это не PNG файл!");
 }
 constexpr void consume_chunk_and_write_to_image(const csc::chunk& chunk, csc::picture& image) {
   auto v_section = csc::init_section(chunk);
   if (v_section == std::nullopt)
     return; // нет ничего ошибочного в том, что секцию не распознаёт программа
-  const auto result = cstd::visit(csc::f_consume_chunk(chunk, image.m_structured), *v_section);
+  const auto result = std::visit(csc::f_consume_chunk(chunk, image.m_structured), *v_section);
   if (result != e_section_code::success)
-    throw cstd::domain_error(csc::generate_section_error_message(result, chunk.chunk_name));
+    throw std::domain_error(csc::generate_section_error_message(result, chunk.chunk_name));
   image.m_structured.emplace_back(std::move(*v_section));
 }
 
 void check_sum(const csc::chunk& chunk) {
-  using cstd::operator+;
+  using std::operator+;
   [[unlikely]] if (chunk.crc_adler != csc::crc32_for_chunk(chunk.chunk_name, chunk.buffer)) {
-    throw cstd::domain_error("ЦРЦ дизматчь: " + cstd::string(chunk.chunk_name.data(), 4));
+    throw std::domain_error("ЦРЦ дизматчь: " + std::string(chunk.chunk_name.data(), 4));
   }
 }
 void inflate_fragment_to_image(const auto& chunk, csc::picture& image, csc::common_inflater& inflater) {
@@ -136,17 +136,17 @@ void inflate_fragment_to_image(const auto& chunk, csc::picture& image, csc::comm
 }
 constexpr void check_for_chunk_errors(const csc::picture& image) {
   const csc::v_sections& sns = image.m_structured;
-  const auto is_plte_type = [](const v_section& sn) { return cstd::holds_alternative<csc::PLTE>(sn); };
+  const auto is_plte_type = [](const v_section& sn) { return std::holds_alternative<csc::PLTE>(sn); };
   const auto plte_pos = std::ranges::find_if(sns, is_plte_type);
   [[unlikely]] if (sns.empty() || image.m_image_data.empty())
-    throw cstd::range_error("Изображение не содержит никаких чанков!");
-  [[unlikely]] if (!cstd::holds_alternative<csc::IHDR>(sns.front()))
-    throw cstd::domain_error("Блок IHDR не найден. Файл поврежден!");
-  [[unlikely]] if (!cstd::holds_alternative<csc::IEND>(sns.back()))
-    throw cstd::domain_error("Блок IEND не найден. Файл поврежден!");
-  const csc::IHDR& header = cstd::get<csc::IHDR>(image.m_structured.at(0));
+    throw std::range_error("Изображение не содержит никаких чанков!");
+  [[unlikely]] if (!std::holds_alternative<csc::IHDR>(sns.front()))
+    throw std::domain_error("Блок IHDR не найден. Файл поврежден!");
+  [[unlikely]] if (!std::holds_alternative<csc::IEND>(sns.back()))
+    throw std::domain_error("Блок IEND не найден. Файл поврежден!");
+  const csc::IHDR& header = std::get<csc::IHDR>(image.m_structured.at(0));
   [[unlikely]] if (plte_pos == sns.cend() && header.color_type == e_color_type::indexed)
-    throw cstd::domain_error("Для индексного изображения требуется палитра!");
+    throw std::domain_error("Для индексного изображения требуется палитра!");
 }
 
 } // namespace csc

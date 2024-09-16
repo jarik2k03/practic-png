@@ -1,23 +1,21 @@
 module;
 #include <cstdint>
 #include <fstream>
-export module cstd.stl_wrap.fstream;
+export module stl.stl_wrap.fstream;
 
-export namespace cstd {
+export namespace std {
 
-template <typename CharT, typename Traits = std::char_traits<CharT>>
-using basic_fstream = std::basic_fstream<CharT, Traits>;
-using fstream = cstd::basic_fstream<char>;
-using wfstream = cstd::basic_fstream<wchar_t>;
+using std::basic_fstream;
+using std::fstream;
+using std::wfstream;
 
-template <typename CharT, typename Traits = std::char_traits<CharT>>
-using basic_ifstream = std::basic_ifstream<CharT, Traits>;
-using ifstream = cstd::basic_ifstream<char>;
-using wifstream = cstd::basic_ifstream<wchar_t>;
+using std::basic_ifstream;
+using std::ifstream;
+using std::wifstream;
 
-template <typename CharT, typename Traits = std::char_traits<CharT>>
-using basic_ofstream = std::basic_ofstream<CharT, Traits>;
-using ofstream = cstd::basic_ofstream<char>;
-using wofstream = cstd::basic_ofstream<wchar_t>;
+using std::basic_ofstream;
+using std::ofstream;
+using std::wofstream;
 
-} // namespace cstd
+using std::char_traits;
+} // namespace stl

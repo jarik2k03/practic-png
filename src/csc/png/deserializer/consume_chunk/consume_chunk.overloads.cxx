@@ -139,7 +139,7 @@ csc::e_section_code consume_chunk(csc::tRNS& s, const csc::chunk& blob, const cs
     const auto bw16 = rdr.read<uint16_t>();
     s.color = csc::bw16{bw16}, s.color_type = csc::e_pixel_view_trns_id::bw16;
   } else if (type == indexed) {
-    cstd::vector<csc::plte_index> color_indices; // равносильно vector<uint8_t>
+    std::vector<csc::plte_index> color_indices; // равносильно vector<uint8_t>
     color_indices.reserve(256u);
     for (const auto _ : blob.buffer) {
       const auto idx8 = rdr.read<uint8_t>();

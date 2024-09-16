@@ -5,7 +5,7 @@ export module csc.pngine;
 export import :attributes;
 import :impl;
 
-import cstd.stl_wrap.string_view;
+import stl.stl_wrap.string_view;
 
 export namespace csc {
 namespace pngine {
@@ -20,7 +20,7 @@ class pngine : private pngine_impl {
   void init_instance() {
     this->do_init_instance();
   }
-  cstd::string_view get_app_name() const noexcept {
+  std::string_view get_app_name() const noexcept {
     return this->do_get_app_name();
   }
   const char* get_engine_name() const noexcept {

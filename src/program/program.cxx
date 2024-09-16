@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
-#include <string>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 
@@ -12,15 +11,12 @@ import csc.png.picture_debug;
 
 import csc.png;
 import csc.pngine;
-import cstd.stl_wrap.string_view;
-// import cstd.stl_wrap.string;
-import cstd.stl_wrap.iostream;
-import cstd.stl_wrap.stdexcept;
-
-using cstd::operator<<;
+import stl.stl_wrap.string_view;
+import stl.stl_wrap.string;
+import stl.stl_wrap.iostream;
+import stl.stl_wrap.stdexcept;
 
 csc::e_compression_level bring_compression_level(const char* arg) {
-  using cstd::operator==;
   const std::string compr_level_str(arg);
   if (compr_level_str == "speed")
     return csc::e_compression_level::weakest;
@@ -35,7 +31,6 @@ csc::e_compression_level bring_compression_level(const char* arg) {
 }
 
 csc::e_compression_strategy bring_strategy(const char* arg) {
-  using cstd::operator==;
   const std::string strategy_str(arg);
   if (strategy_str == "huffman")
     return csc::e_compression_strategy::huffman_only;
@@ -83,16 +78,15 @@ auto check_valid_options(const std::unordered_map<std::string, std::string>& hav
 }
 
 int main(int argc, char** argv) {
-  using cstd::operator==;
   if (argc < 2) {
-    cstd::cout << "Использование: " << argv[0] << " -i <input_png_file> -o [output_png_file]\n";
-    cstd::cout << "Дополнительные опции для \"input_png_file\":\n";
-    cstd::cout << " -force <true> \n";
-    cstd::cout << "Дополнительные опции для \"output_png_file\":\n";
-    cstd::cout << " -compress <0-9/speed/best> \n";
-    cstd::cout << " -memory_usage <1-9> \n";
-    cstd::cout << " -window_bits <8-15> \n";
-    cstd::cout << " -strategy <huffman/filter/default> \n";
+    std::cout << "Использование: " << argv[0] << " -i <input_png_file> -o [output_png_file]\n";
+    std::cout << "Дополнительные опции для \"input_png_file\":\n";
+    std::cout << " -force <true> \n";
+    std::cout << "Дополнительные опции для \"output_png_file\":\n";
+    std::cout << " -compress <0-9/speed/best> \n";
+    std::cout << " -memory_usage <1-9> \n";
+    std::cout << " -window_bits <8-15> \n";
+    std::cout << " -strategy <huffman/filter/default> \n";
     std::exit(0);
   }
 
@@ -100,9 +94,9 @@ int main(int argc, char** argv) {
     const auto args = bring_options(argv, argc);
     const auto unrecognized_option_pos = check_valid_options(args);
     if (unrecognized_option_pos != args.cend())
-      throw cstd::invalid_argument(std::string("Неопознанная опция программы: ") + unrecognized_option_pos->first);
+      throw std::invalid_argument(std::string("Неопознанная опция программы: ") + unrecognized_option_pos->first);
     if ((argc & 0x1) == 0) // только нечетное кол-во аргументов: program(0) [-option(1) value(2)] [ ] ...
-      throw cstd::invalid_argument("Аргументы не соответствуют шаблону: [-key value]");
+      throw std::invalid_argument("Аргументы не соответствуют шаблону: [-key value]");
 
     const auto i_pos = args.find("-i"), o_pos = args.find("-o");
 
@@ -112,20 +106,20 @@ int main(int argc, char** argv) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
       csc::pngine::pngine core("PNG-viewer", csc::pngine::bring_version(1u, 3u, 256u));
-      cstd::cout << "Движок: " << core.get_engine_name() << '\n';
+      std::cout << "Движок: " << core.get_engine_name() << '\n';
       const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
-      cstd::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
-      cstd::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
-      cstd::cout << "Инициализация экземпляра Vulkan... \n";
+      std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
+      std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
+      std::cout << "Инициализация экземпляра Vulkan... \n";
       core.init_instance();
-      cstd::cout << "Загрузка изображения в память...\n";
+      std::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
 
     } else {
-      throw cstd::invalid_argument("Не назначен входной файл!");
+      throw std::invalid_argument("Не назначен входной файл!");
     }
 #ifndef NDEBUG
-    cstd::cout << png << '\n';
+    std::cout << png << '\n';
 #endif
     if (o_pos != args.cend()) {
       const auto compress_pos = args.find("-compress"), memory_usage_pos = args.find("-memory_usage");
@@ -147,21 +141,21 @@ int main(int argc, char** argv) {
       csc::serializer png_writer;
       png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
       //       std::getchar();
-      cstd::cout << "Изображение успешно сохранено: " << o_pos->second
+      std::cout << "Изображение успешно сохранено: " << o_pos->second
                  << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
 
-  } catch (const cstd::runtime_error& e) {
-    cstd::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
+  } catch (const std::runtime_error& e) {
+    std::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
     std::exit(1);
-  } catch (const cstd::invalid_argument& e) {
-    cstd::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
+  } catch (const std::invalid_argument& e) {
+    std::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
     std::exit(1);
-  } catch (const cstd::domain_error& e) {
-    cstd::cout << "Неправильная структура PNG: \n - " << e.what() << '\n';
+  } catch (const std::domain_error& e) {
+    std::cout << "Неправильная структура PNG: \n - " << e.what() << '\n';
     std::exit(1);
-  } catch (const cstd::exception& e) {
-    cstd::cout << "Ошибка: \n - " << e.what() << '\n';
+  } catch (const std::exception& e) {
+    std::cout << "Ошибка: \n - " << e.what() << '\n';
     std::exit(1);
   }
 }

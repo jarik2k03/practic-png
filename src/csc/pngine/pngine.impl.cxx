@@ -3,10 +3,10 @@ module;
 #include <optional>
 module csc.pngine:impl;
 export import :attributes;
-import cstd.stl_wrap.string;
-export import cstd.stl_wrap.string_view;
+import stl.stl_wrap.string;
+export import stl.stl_wrap.string_view;
 #ifndef NDEBUG
-import cstd.stl_wrap.iostream;
+import stl.stl_wrap.iostream;
 #endif
 import csc.pngine.instance;
 import vulkan_hpp;
@@ -16,7 +16,7 @@ namespace pngine {
 
 class pngine_impl {
  private:
-  cstd::string m_app_name{"Application"};
+  std::string m_app_name{"Application"};
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
 
   pngine::instance m_instance{};
@@ -32,7 +32,7 @@ class pngine_impl {
   const char* do_get_engine_name() const noexcept;
   pngine::human_version do_get_engine_version() const noexcept;
   pngine::human_version do_get_vk_api_version() const noexcept;
-  cstd::string_view do_get_app_name() const noexcept;
+  std::string_view do_get_app_name() const noexcept;
 };
 
 pngine_impl::pngine_impl(const char* nm, version vav) : m_app_name(nm), m_vk_api_version(vav) {
@@ -54,7 +54,7 @@ const char* pngine_impl::do_get_engine_name() const noexcept {
 pngine::human_version pngine_impl::do_get_engine_version() const noexcept {
   return pngine::bring_human_version(bring_engine_version()); // статично, на этапе компиляции
 }
-cstd::string_view pngine_impl::do_get_app_name() const noexcept {
+std::string_view pngine_impl::do_get_app_name() const noexcept {
   return m_app_name;
 }
 pngine::human_version pngine_impl::do_get_vk_api_version() const noexcept {

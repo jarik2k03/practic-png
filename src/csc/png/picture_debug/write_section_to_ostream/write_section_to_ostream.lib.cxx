@@ -6,17 +6,17 @@ import :overloads;
 
 import csc.png.picture;
 
-import cstd.stl_wrap.ostream;
+import stl.stl_wrap.ostream;
 
 export namespace csc {
 
 class f_write_section_to_ostream {
  private:
-  cstd::ostream& m_debug;
+  std::ostream& m_debug;
   uint8_t m_bit_depth;
 
  public:
-  f_write_section_to_ostream(cstd::ostream& os, uint8_t bd) : m_debug(os), m_bit_depth(bd) {
+  f_write_section_to_ostream(std::ostream& os, uint8_t bd) : m_debug(os), m_bit_depth(bd) {
   }
   // статический полиморфизм
   void operator()(const csc::IHDR& b) {

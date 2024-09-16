@@ -8,12 +8,12 @@ module csc.png.serializer:impl;
 
 import :utility;
 
-import cstd.stl_wrap.string_view;
-import cstd.stl_wrap.fstream;
-import cstd.stl_wrap.stdexcept;
-import cstd.stl_wrap.variant;
-import cstd.stl_wrap.ios;
-import cstd.stl_wrap.string;
+import stl.stl_wrap.string_view;
+import stl.stl_wrap.fstream;
+import stl.stl_wrap.stdexcept;
+import stl.stl_wrap.variant;
+import stl.stl_wrap.ios;
+import stl.stl_wrap.string;
 
 import csc.png.serializer.produce_chunk.buf_writer;
 import csc.png.serializer.produce_chunk;
@@ -31,7 +31,7 @@ namespace csc {
 class serializer_impl {
  public:
   void do_serialize(
-      cstd::string_view fp,
+      std::string_view fp,
       const csc::picture& i,
       csc::e_compression_level l,
       int32_t m,
@@ -40,23 +40,23 @@ class serializer_impl {
 };
 
 void serializer_impl::do_serialize(
-    cstd::string_view filepath,
+    std::string_view filepath,
     const csc::picture& image,
     csc::e_compression_level level,
     int32_t mem_level,
     int32_t win_bits,
     csc::e_compression_strategy strategy) {
   using namespace csc::memory_literals;
-  cstd::ofstream png_fs;
-  png_fs.open(filepath.data(), cstd::ios_base::binary);
+  std::ofstream png_fs;
+  png_fs.open(filepath.data(), std::ios_base::binary);
   if (!png_fs.is_open())
-    throw cstd::runtime_error("Не удалось открыть файл на запись!");
+    throw std::runtime_error("Не удалось открыть файл на запись!");
 
   csc::write_png_signature_to_file(png_fs, image);
   // преобразование секций в чанки
   auto produce_chunk_and_write_to_file = [&png_fs](const auto& v_sec) {
     csc::chunk raw_chunk;
-    cstd::visit(csc::f_produce_chunk(raw_chunk), v_sec);
+    std::visit(csc::f_produce_chunk(raw_chunk), v_sec);
     if (raw_chunk != csc::chunk())
       csc::write_chunk_to_ofstream(png_fs, raw_chunk);
   };

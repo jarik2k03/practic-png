@@ -3,7 +3,7 @@ module;
 export module csc.png.serializer;
 
 export import csc.png.picture;
-import cstd.stl_wrap.string_view;
+import stl.stl_wrap.string_view;
 import :impl;
 export import csc.png.serializer.produce_chunk.deflater.attributes;
 
@@ -16,7 +16,7 @@ class serializer : private serializer_impl {
   ~serializer() = default;
 
   void serialize(
-      cstd::string_view filepath,
+      std::string_view filepath,
       const csc::picture& image,
       e_compression_level level = csc::e_compression_level::default_,
       int32_t memory_usage = 8,

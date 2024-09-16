@@ -1,28 +1,23 @@
 module;
 #include <cstdint>
 #include <string_view>
-export module cstd.stl_wrap.string_view;
+export module stl.stl_wrap.string_view;
 
-export namespace cstd {
+export namespace std {
 
-template <typename CharT, typename Traits = std::char_traits<CharT>>
-using basic_string_view = std::basic_string_view<CharT, Traits>;
+using std::basic_string_view;
 
-using string_view = cstd::basic_string_view<char>;
-using wstring_view = cstd::basic_string_view<wchar_t>;
-using u8string_view = cstd::basic_string_view<char8_t>;
-using u16string_view = cstd::basic_string_view<char16_t>;
-using u32string_view = cstd::basic_string_view<char32_t>;
+using std::string_view;
+using std::wstring_view;
+using std::u8string_view;
+using std::u16string_view;
+using std::u32string_view;
 
-template <typename CharT, typename Traits>
-constexpr bool operator==(cstd::basic_string_view<CharT, Traits> x, cstd::basic_string_view<CharT, Traits> y) noexcept {
-  return std::operator==(x, y);
+using std::operator==;
+using std::operator<=>;
+
+inline namespace string_view_literals {
+  using std::string_view_literals::operator""sv;
 }
 
-template <typename CharT, typename Traits>
-constexpr auto operator<=>(
-    cstd::basic_string_view<CharT, Traits> x,
-    cstd::basic_string_view<CharT, Traits> y) noexcept {
-  return std::operator<=>(x, y);
-}
-} // namespace cstd
+} // namespace stl

@@ -5,7 +5,7 @@ module;
 #include <bits/allocator.h>
 export module csc.png.commons.buffer;
 
-import cstd.stl_wrap.stdexcept;
+import stl.stl_wrap.stdexcept;
 export import :range;
 
 export namespace csc {
@@ -64,7 +64,7 @@ class basic_buffer {
   }
   void resize(uint32_t new_size) {
     if (new_size > m_capacity)
-      throw cstd::out_of_range("Осуществлена попытка увеличить размер буфера (new_size > capacity)");
+      throw std::out_of_range("Осуществлена попытка увеличить размер буфера (new_size > capacity)");
     m_size = new_size; // задаём новый диапазон считываемых значений в текущем буфере
   }
   uint32_t capacity() const noexcept {

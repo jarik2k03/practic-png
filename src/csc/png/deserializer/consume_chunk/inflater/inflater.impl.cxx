@@ -5,7 +5,7 @@ module;
 #include <zlib.h>
 export module csc.png.deserializer.consume_chunk.inflater:impl;
 // без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
-import cstd.stl_wrap.stdexcept;
+import stl.stl_wrap.stdexcept;
 
 export import csc.png.commons.buffer;
 export import csc.png.commons.buffer_view;
@@ -105,7 +105,7 @@ void inflater_impl<Alloc>::do_inflate() {
   m_state = inflate(&m_buf_stream, Z_NO_FLUSH);
 
   if (m_state < 0)
-    throw cstd::runtime_error(csc::generate_error_message(m_state));
+    throw std::runtime_error(csc::generate_error_message(m_state));
 }
 template <typename Alloc>
 bool inflater_impl<Alloc>::do_done() const {
@@ -124,7 +124,7 @@ void inflater_impl<Alloc>::do_flush(csc::u8buffer_view change) {
   if (!m_is_init) {
     m_state = inflateInit(&m_buf_stream);
     if (m_state != Z_OK)
-      throw cstd::runtime_error("Не удалось инициализировать inflater!");
+      throw std::runtime_error("Не удалось инициализировать inflater!");
     m_uncompressed = csc::make_buffer<uint8_t>(16_kB);
     m_is_init = true;
   }

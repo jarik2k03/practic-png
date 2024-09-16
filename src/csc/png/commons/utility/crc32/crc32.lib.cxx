@@ -5,11 +5,11 @@ module;
 export module csc.png.commons.utility.crc32;
 import csc.png.commons.buffer_view;
 
-import cstd.stl_wrap.array;
+import stl.stl_wrap.array;
 
 export namespace csc {
 
-uint32_t crc32_for_chunk(const cstd::array<char, 4>& name, csc::u8buffer_view data) noexcept {
+uint32_t crc32_for_chunk(const std::array<char, 4>& name, csc::u8buffer_view data) noexcept {
   uint32_t crc = ::crc32(0ul, reinterpret_cast<const uint8_t*>(name.cbegin()), name.size());
   if (data.size() != 0u)
     crc = ::crc32(crc, data.data(), data.size());

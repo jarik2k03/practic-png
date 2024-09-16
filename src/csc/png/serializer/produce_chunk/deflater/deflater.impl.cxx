@@ -6,7 +6,7 @@ module;
 export module csc.png.serializer.produce_chunk.deflater:impl;
 // без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
 
-import cstd.stl_wrap.stdexcept;
+import stl.stl_wrap.stdexcept;
 
 export import csc.png.serializer.produce_chunk.deflater.attributes;
 export import csc.png.commons.buffer;
@@ -121,7 +121,7 @@ void deflater_impl<Alloc>::do_deflate(uint32_t stride_read) {
 
   m_state = deflate(&m_buf_stream, (m_decompressed.size() == stride_read) ? Z_SYNC_FLUSH : Z_FINISH);
   if (m_state < 0)
-    throw cstd::runtime_error(csc::generate_error_message(m_state));
+    throw std::runtime_error(csc::generate_error_message(m_state));
 }
 template <typename Alloc>
 bool deflater_impl<Alloc>::do_done() const {
@@ -146,7 +146,7 @@ void deflater_impl<Alloc>::do_flush(csc::u8buffer_view new_input) {
         m_mem_level,
         static_cast<int32_t>(m_strategy));
     if (m_state != Z_OK)
-      throw cstd::runtime_error("Не удалось инициализировать deflater!");
+      throw std::runtime_error("Не удалось инициализировать deflater!");
     m_compressed = csc::make_buffer<uint8_t>(16_kB);
     m_is_init = true;
   }
