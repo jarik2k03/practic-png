@@ -3,6 +3,7 @@ module;
 #include <cstdint>
 export module csc.pngine.instance;
 
+import vulkan_hpp;
 import :impl;
 export namespace csc {
 namespace pngine {
@@ -17,6 +18,12 @@ class instance : private instance_impl {
   }
   instance& operator=(instance&& move) noexcept {
     return static_cast<instance&>(instance_impl::operator=(std::move(move)));
+  }
+  vk::Instance& get() {
+    return this->do_get();
+  }
+  const vk::Instance& get() const {
+    return this->do_get();
   }
   ~instance() = default;
 };

@@ -27,6 +27,9 @@ class instance_impl {
   instance_impl(instance_impl&& move) noexcept = default;
   instance_impl& operator=(instance_impl&& move) noexcept = default;
   explicit instance_impl(const vk::ApplicationInfo& app_info);
+
+  vk::Instance& do_get();
+  const vk::Instance& do_get() const;
 };
 
 instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
@@ -57,6 +60,13 @@ instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
   m_description.ppEnabledExtensionNames = m_enabled_extensions.data();
 
   m_instance = vk::createInstance(m_description, nullptr);
+}
+
+vk::Instance& instance_impl::do_get() {
+  return m_instance;
+}
+const vk::Instance& instance_impl::do_get() const {
+  return m_instance;
 }
 
 } // namespace pngine

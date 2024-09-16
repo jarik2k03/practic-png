@@ -20,6 +20,9 @@ class pngine : private pngine_impl {
   void init_instance() {
     this->do_init_instance();
   }
+  void init_debug_report() {
+    this->do_init_debug_report();
+  }
   std::string_view get_app_name() const noexcept {
     return this->do_get_app_name();
   }
