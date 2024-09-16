@@ -21,8 +21,8 @@ struct chunk {
   chunk& operator=(chunk&& move) = default;
 
   inline bool operator==(const csc::chunk& two) const {
-    using std::operator==; // благодаря контрольным суммам нет необходимости
-                            // сравнивать буферы друг с другом
+    // благодаря контрольным суммам нет необходимости
+    // сравнивать буферы друг с другом
     return this->chunk_name == two.chunk_name && this->crc_adler == two.crc_adler;
   }
   inline bool operator!=(const csc::chunk& two) const {

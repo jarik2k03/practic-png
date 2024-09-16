@@ -69,7 +69,6 @@ struct time_info_format {
 };
 
 void write_section_to_ostream(const csc::IHDR& ihdr, std::ostream& os) {
-  using std::operator<<;
   os << "Длина: " << std::dec << ihdr.width << " Ширина: " << ihdr.height << '\n';
   os << "Битовая глубина: " << +ihdr.bit_depth << '\n';
   os << "Цветность: " << csc::bring_color_type(ihdr.color_type) << '\n';
@@ -80,7 +79,6 @@ void write_section_to_ostream(const csc::IHDR& ihdr, std::ostream& os) {
 }
 
 void write_section_to_ostream(const csc::PLTE& plte, std::ostream& os, uint8_t bit_depth) {
-  using std::operator<<;
   os << "Данные палитры: \n";
   const auto& p = plte.full_palette;
   for (auto unit_it = p.begin(), last_row_it = unit_it - 1; unit_it != p.end(); ++unit_it) {
@@ -95,7 +93,6 @@ void write_section_to_ostream(const csc::IEND&, std::ostream&) {
 }
 
 void write_section_to_ostream(const csc::bKGD& bkgd, std::ostream& os, uint8_t bit_depth) {
-  using std::operator<<;
   os << "Заливка прозрачного фона: \n";
   const auto max_pixel_value = static_cast<uint16_t>((1ul << bit_depth) - 1);
   if (bkgd.color_type == csc::e_pixel_view_id::rgb8) {
@@ -124,7 +121,6 @@ void write_section_to_ostream(const csc::bKGD& bkgd, std::ostream& os, uint8_t b
 }
 
 void write_section_to_ostream(const csc::cHRM& chrm, std::ostream& os) {
-  using std::operator<<;
   os << "Значения основных цветов и белой точки:\n";
   os << "Белый - [ " << chrm.white_x / 100'000.f << " ; " << chrm.white_y / 100'000.f << " ]" << '\n';
   os << "Красный - [ " << chrm.red_x / 100'000.f << " ; " << chrm.red_y / 100'000.f << " ]" << '\n';
@@ -132,19 +128,16 @@ void write_section_to_ostream(const csc::cHRM& chrm, std::ostream& os) {
   os << "Синий - [ " << chrm.blue_x / 100'000.f << " ; " << chrm.blue_y / 100'000.f << " ]" << '\n';
 }
 void write_section_to_ostream(const csc::tIME& time, std::ostream& os) {
-  using std::operator<<;
   os << "Дата-время изменения файла: \n";
   auto time_copy = time.time_data;
   const time_info_format display(time_copy);
   os << display.buffer << '\n';
 }
 void write_section_to_ostream(const csc::gAMA& gama, std::ostream& os) {
-  using std::operator<<;
   os << "Значения гаммы:\n";
   os << "Гамма: " << gama.gamma / 100'000.f << '\n';
 }
 void write_section_to_ostream(const csc::hIST& hist, std::ostream& os) {
-  using std::operator<<;
   os << "Гистограмма:\n";
   for (const auto& frequency : hist.histogram) {
     os << frequency << ' ';
@@ -152,14 +145,12 @@ void write_section_to_ostream(const csc::hIST& hist, std::ostream& os) {
   os << "\n Размер гистограммы: " << hist.histogram.size() << '\n';
 }
 void write_section_to_ostream(const csc::pHYs& phys, std::ostream& os) {
-  using std::operator<<;
   os << "Фактический размер изображения в пикселях:\n";
   const char* specifier = (phys.unit_type == csc::unit_specifier::metric) ? "метр" : "единицy";
   os << phys.pixels_per_unit_x << " пикселей на " << specifier << " по оси X\n";
   os << phys.pixels_per_unit_y << " пикселей на " << specifier << " по оси Y\n";
 }
 void write_section_to_ostream(const csc::tRNS& trns, std::ostream& os, uint8_t bit_depth) {
-  using std::operator<<;
   os << "Значение(-я) псевдо-прозрачности:\n";
   const auto max_pixel_value = static_cast<uint16_t>((1ul << bit_depth) - 1);
   if (trns.color_type == csc::e_pixel_view_trns_id::rgb8) {

@@ -14,7 +14,6 @@ struct png_signature {
 };
 
 constexpr inline bool operator==(const csc::png_signature& one, const csc::png_signature& two) {
-  using std::operator==;
   return one.data == two.data;
 }
 constexpr inline bool operator!=(const csc::png_signature& one, const csc::png_signature& two) {

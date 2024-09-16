@@ -8,4 +8,4 @@ using std::array;
 using std::operator==;
 using std::operator<=>;
 
-} // namespace stl
+} // namespace std

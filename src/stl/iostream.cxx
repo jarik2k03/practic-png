@@ -7,14 +7,14 @@ export import stl.ostream;
 
 export namespace std {
 
-using std::cout;
 using std::cerr;
-using std::clog;
 using std::cin;
+using std::clog;
+using std::cout;
 
-using std::wcout;
 using std::wcerr;
-using std::wclog;
 using std::wcin;
+using std::wclog;
+using std::wcout;
 
-} // namespace stl
+} // namespace std

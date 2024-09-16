@@ -16,7 +16,7 @@ namespace pngine {
 
 const char* bring_surface_extension() noexcept {
 #ifndef NDEBUG // для отладки
-  using std::operator<<;
+
 #endif
 
 #ifdef _WIN32
@@ -25,7 +25,7 @@ const char* bring_surface_extension() noexcept {
 #endif // для отладки
   return "VK_KHR_win32_surface";
 #else
-  using std::operator==;
+
   const char* const session_ty = ::secure_getenv("XDG_SESSION_TYPE");
   if (session_ty == nullptr) {
 #ifndef NDEBUG // для отладки

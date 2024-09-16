@@ -6,9 +6,8 @@ export namespace std {
 
 using std::initializer_list;
 
-using std::set;
 using std::multiset;
-
+using std::set;
 
 using std::less;
 
@@ -20,9 +19,8 @@ using std::swap;
 using std::erase_if;
 
 namespace pmr {
-using std::pmr::set;
 using std::pmr::multiset;
-}
+using std::pmr::set;
+} // namespace pmr
 
-} // namespace stl
-
+} // namespace std

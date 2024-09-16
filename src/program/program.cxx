@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
       png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
       //       std::getchar();
       std::cout << "Изображение успешно сохранено: " << o_pos->second
-                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
+                << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
 
   } catch (const std::runtime_error& e) {

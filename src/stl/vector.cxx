@@ -11,8 +11,8 @@ using std::vector;
 using std::operator==;
 using std::operator<=>;
 
-using std::swap;
 using std::hash;
+using std::swap;
 
 using std::erase;
 using std::erase_if;
@@ -21,4 +21,4 @@ namespace pmr {
 using std::pmr::vector;
 }
 
-} // namespace stl
+} // namespace std

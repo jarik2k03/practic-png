@@ -14,5 +14,4 @@ using std::operator<=>;
 using std::swap;
 using std::uses_allocator;
 
-} // namespace stl
-
+} // namespace std

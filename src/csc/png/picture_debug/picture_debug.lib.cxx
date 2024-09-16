@@ -13,7 +13,6 @@ import stl.variant;
 export namespace csc {
 
 std::ostream& operator<<(std::ostream& os, const csc::picture& image) {
-  using std::operator<<;
   os << "Данные текущего png-файла: \n";
   os << "Сигнатура: \n";
   for (uint8_t byte : image.start().data) {

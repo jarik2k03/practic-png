@@ -30,8 +30,6 @@ class deserializer_impl {
 };
 
 csc::picture deserializer_impl::do_deserialize(std::string_view filepath, bool ignore_checksum) {
-  using std::operator+;
-  using std::operator==;
   std::ifstream png_fs;
   csc::picture image;
   csc::common_inflater z_stream;
@@ -45,7 +43,7 @@ csc::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
     image.m_image_data.reserve(csc::bring_image_size(std::get<IHDR>(image.m_structured.at(0))));
     while (png_fs.tellg() != -1) {
       auto chunk = csc::read_chunk_from_ifstream(png_fs);
-      using std::operator==;
+
       if (chunk.chunk_name == std::array<char, 4>{'I', 'D', 'A', 'T'}) {
         inflate_fragment_to_image(chunk, image, z_stream);
         if (ignore_checksum == false)
