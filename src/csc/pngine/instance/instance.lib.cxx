@@ -13,12 +13,10 @@ class instance : private instance_impl {
   }
   explicit instance(const vk::ApplicationInfo& app_info) : instance_impl(app_info) {
   }
-  instance(instance&& move) noexcept = default;
+  instance(instance&& move) noexcept : instance_impl(std::move(move)) {
+  }
   instance& operator=(instance&& move) noexcept {
-    if (this == &move)
-      return *this;
-    *this = std::move(move);
-    return *this;
+    return static_cast<instance&>(instance_impl::operator=(std::move(move)));
   }
   ~instance() = default;
 };

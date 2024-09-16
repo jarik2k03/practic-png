@@ -5,7 +5,9 @@ module csc.pngine:impl;
 export import :attributes;
 import cstd.stl_wrap.string;
 export import cstd.stl_wrap.string_view;
-
+#ifndef NDEBUG
+import cstd.stl_wrap.iostream;
+#endif
 import csc.pngine.instance;
 import vulkan_hpp;
 
