@@ -16,7 +16,7 @@ class pngine : private pngine_impl {
 
   pngine(const char* app_name, version vk_api_version) : pngine_impl(app_name, vk_api_version) {
   }
-  ~pngine() = default;
+  ~pngine() noexcept = default;
   void init_instance() {
     this->do_init_instance();
   }

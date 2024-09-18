@@ -9,7 +9,6 @@ export import stl.string_view;
 import stl.iostream;
 #endif
 import csc.pngine.instance;
-import csc.pngine.debug_reportEXT;
 import vulkan_hpp;
 
 namespace csc {
@@ -21,13 +20,12 @@ class pngine_impl {
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
 
   pngine::instance m_instance{};
-  pngine::debug_reportEXT m_debug_report{};
   vk::ApplicationInfo m_app_info{};
 
  public:
   pngine_impl() = delete;
   pngine_impl(const char* app_name, version vk_api_version);
-  ~pngine_impl() = default;
+  ~pngine_impl() noexcept = default;
 
   void do_init_instance();
   void do_init_debug_report();
@@ -52,7 +50,9 @@ void pngine_impl::do_init_instance() {
 }
 
 void pngine_impl::do_init_debug_report() {
-  m_debug_report = pngine::debug_reportEXT(m_instance.get());
+#ifndef NDEBUG
+  m_instance.create_debug_reportEXT();
+#endif
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {

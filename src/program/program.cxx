@@ -112,6 +112,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Инициализация экземпляра Vulkan... \n";
       core.init_instance();
+      core.init_debug_report();
       std::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
 
@@ -140,7 +141,6 @@ int main(int argc, char** argv) {
 
       csc::serializer png_writer;
       png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
-      //       std::getchar();
       std::cout << "Изображение успешно сохранено: " << o_pos->second
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
@@ -150,12 +150,12 @@ int main(int argc, char** argv) {
     std::exit(1);
   } catch (const std::invalid_argument& e) {
     std::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
-    std::exit(1);
+    std::exit(2);
   } catch (const std::domain_error& e) {
     std::cout << "Неправильная структура PNG: \n - " << e.what() << '\n';
-    std::exit(1);
+    std::exit(3);
   } catch (const std::exception& e) {
     std::cout << "Ошибка: \n - " << e.what() << '\n';
-    std::exit(1);
+    std::exit(9);
   }
 }

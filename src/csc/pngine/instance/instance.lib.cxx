@@ -19,13 +19,18 @@ class instance : private instance_impl {
   instance& operator=(instance&& move) noexcept {
     return static_cast<instance&>(instance_impl::operator=(std::move(move)));
   }
+#ifndef NDEBUG
+  void create_debug_reportEXT() {
+    return this->do_create_debug_reportEXT();
+  }
+#endif
   vk::Instance& get() {
     return this->do_get();
   }
   const vk::Instance& get() const {
     return this->do_get();
   }
-  ~instance() = default;
+  ~instance() noexcept = default;
 };
 
 } // namespace pngine

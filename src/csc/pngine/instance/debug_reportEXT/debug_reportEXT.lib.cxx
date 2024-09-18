@@ -1,7 +1,7 @@
 module;
 #include <bits/move.h>
 #include <cstdint>
-export module csc.pngine.debug_reportEXT;
+export module csc.pngine.instance.debug_reportEXT;
 
 import :impl;
 export namespace csc {
@@ -11,7 +11,7 @@ class debug_reportEXT : private debug_reportEXT_impl {
  public:
   explicit debug_reportEXT() : debug_reportEXT_impl() {
   }
-  explicit debug_reportEXT(vk::Instance& instance) : debug_reportEXT_impl(instance) {
+  explicit debug_reportEXT(const vk::Instance& instance) : debug_reportEXT_impl(instance) {
   }
   debug_reportEXT(debug_reportEXT&& move) noexcept : debug_reportEXT_impl(std::move(move)) {
   }
@@ -20,6 +20,10 @@ class debug_reportEXT : private debug_reportEXT_impl {
   }
   ~debug_reportEXT() = default;
 };
+
+vk::DebugReportCallbackCreateInfoEXT pnext_debug_messenger_configuration(vk::DebugReportFlagsEXT flags) noexcept {
+  return pngine::pnext_debug_messenger_configuration_impl(flags);
+}
 
 } // namespace pngine
 } // namespace csc
