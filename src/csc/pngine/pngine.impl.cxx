@@ -29,6 +29,8 @@ class pngine_impl {
 
   void do_init_instance();
   void do_init_debug_report();
+  void do_enumerate_physical_devices();
+  void do_init_device();
 
   const char* do_get_engine_name() const noexcept;
   pngine::human_version do_get_engine_version() const noexcept;
@@ -53,6 +55,14 @@ void pngine_impl::do_init_debug_report() {
 #ifndef NDEBUG
   m_instance.create_debug_reportEXT();
 #endif
+}
+
+void pngine_impl::do_enumerate_physical_devices() {
+  m_instance.bring_physical_devices();
+}
+
+void pngine_impl::do_init_device() {
+  m_instance.create_device();
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {

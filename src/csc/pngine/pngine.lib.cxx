@@ -23,6 +23,12 @@ class pngine : private pngine_impl {
   void init_debug_report() {
     this->do_init_debug_report();
   }
+  void enumerate_physical_devices() {
+    this->do_enumerate_physical_devices();
+  }
+  void init_device() {
+    this->do_init_device();
+  }
   std::string_view get_app_name() const noexcept {
     return this->do_get_app_name();
   }

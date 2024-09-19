@@ -113,6 +113,8 @@ int main(int argc, char** argv) {
       std::cout << "Инициализация экземпляра Vulkan... \n";
       core.init_instance();
       core.init_debug_report();
+      core.enumerate_physical_devices();
+      core.init_device();
       std::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
 

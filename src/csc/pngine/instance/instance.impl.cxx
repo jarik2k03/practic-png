@@ -1,13 +1,18 @@
 module;
-#include <cstdint>
+#include <bits/stl_iterator.h>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 module csc.pngine.instance:impl;
 
 import stl.vector;
 import stl.string;
 import stl.set;
+
 #ifndef NDEBUG
 import csc.pngine.instance.debug_reportEXT;
 #endif
+import csc.pngine.instance.device;
+
 export import vulkan_hpp;
 
 import :utility;
@@ -19,9 +24,11 @@ class instance_impl {
   std::set<std::string>* m_vk_extensions{};
   std::vector<const char*> m_enabled_extensions{};
   std::vector<const char*> m_enabled_layers{};
+  std::vector<vk::PhysicalDevice> m_phys_devices{};
   // внутренние компоненты
 #ifndef NDEBUG
   pngine::debug_reportEXT m_debug_report{};
+  pngine::device m_device{};
 #endif
  public:
   explicit instance_impl() = default;
@@ -33,6 +40,8 @@ class instance_impl {
 #ifndef NDEBUG
   void do_create_debug_reportEXT();
 #endif
+  void do_create_device();
+  void do_bring_physical_devices();
   vk::Instance& do_get();
   const vk::Instance& do_get() const;
 };
@@ -82,6 +91,14 @@ void instance_impl::do_create_debug_reportEXT() {
   m_debug_report = pngine::debug_reportEXT(m_instance);
 }
 #endif
+
+void instance_impl::do_create_device() {
+  m_device = pngine::device(m_phys_devices.front()); // для начала - пока так
+}
+
+void instance_impl::do_bring_physical_devices() {
+  m_phys_devices = m_instance.enumeratePhysicalDevices();
+}
 
 } // namespace pngine
 } // namespace csc

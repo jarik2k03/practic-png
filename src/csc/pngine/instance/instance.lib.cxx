@@ -1,6 +1,5 @@
 module;
 #include <bits/move.h>
-#include <cstdint>
 export module csc.pngine.instance;
 
 import vulkan_hpp;
@@ -24,6 +23,12 @@ class instance : private instance_impl {
     return this->do_create_debug_reportEXT();
   }
 #endif
+  void create_device() {
+    return this->do_create_device();
+  }
+  void bring_physical_devices() {
+    return this->do_bring_physical_devices();
+  }
   vk::Instance& get() {
     return this->do_get();
   }
