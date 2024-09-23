@@ -6,6 +6,7 @@ export import :attributes;
 import :impl;
 
 import stl.string_view;
+import stl.string;
 
 export namespace csc {
 namespace pngine {
@@ -14,21 +15,10 @@ class pngine : private pngine_impl {
  public:
   pngine() = delete;
 
-  pngine(const char* app_name, version vk_api_version) : pngine_impl(app_name, vk_api_version) {
+  pngine(std::string app_name, version app_version, std::string gpu_name)
+      : pngine_impl(app_name, app_version, gpu_name) {
   }
   ~pngine() noexcept = default;
-  void init_instance() {
-    this->do_init_instance();
-  }
-  void init_debug_report() {
-    this->do_init_debug_report();
-  }
-  void enumerate_physical_devices() {
-    this->do_enumerate_physical_devices();
-  }
-  void init_device() {
-    this->do_init_device();
-  }
   std::string_view get_app_name() const noexcept {
     return this->do_get_app_name();
   }

@@ -13,7 +13,7 @@ target_link_libraries(${INSTANCE}_utility PRIVATE vk_vulkan stl_vector stl_strin
 
 add_library(${INSTANCE}_impl STATIC instance.impl.cxx)
 target_sources(${INSTANCE}_impl PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES instance.impl.cxx )
-target_link_libraries(${INSTANCE}_impl PRIVATE ${INSTANCE}_utility ${DEVICE} stl_set)
+target_link_libraries(${INSTANCE}_impl PRIVATE ${INSTANCE}_utility ${DEVICE} stl_set stl_string_view)
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   target_link_libraries(${INSTANCE}_impl PRIVATE ${DEBUG_REPORTEXT})
 endif()

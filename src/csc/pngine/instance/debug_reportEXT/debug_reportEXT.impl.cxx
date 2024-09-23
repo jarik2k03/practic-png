@@ -1,5 +1,5 @@
 module;
-#include <cstdint>
+#include <utility>
 module csc.pngine.instance.debug_reportEXT:impl;
 
 import stl.iostream;
@@ -12,14 +12,34 @@ class debug_reportEXT_impl {
  private:
   pngine::debug_dispatch m_dispatcher{};
   vk::DebugReportCallbackEXT m_debug_report{};
+  vk::Bool32 m_is_created = false;
+  const vk::Instance* m_instance = nullptr;
 
  public:
   explicit debug_reportEXT_impl() = default;
-  ~debug_reportEXT_impl() noexcept = default;
+  ~debug_reportEXT_impl() noexcept;
   debug_reportEXT_impl(debug_reportEXT_impl&& move) noexcept = default;
-  debug_reportEXT_impl& operator=(debug_reportEXT_impl&& move) noexcept = default;
+  debug_reportEXT_impl& operator=(debug_reportEXT_impl&& move) noexcept;
   explicit debug_reportEXT_impl(const vk::Instance& instance);
 };
+
+debug_reportEXT_impl& debug_reportEXT_impl::operator=(debug_reportEXT_impl&& move) noexcept {
+  [[unlikely]] if (&move == this)
+    return *this;
+  if (m_is_created != false)
+    m_instance->destroyDebugReportCallbackEXT(m_debug_report, nullptr, m_dispatcher);
+  m_debug_report = move.m_debug_report;
+  m_dispatcher = move.m_dispatcher;
+  m_is_created = std::exchange(move.m_is_created, false);
+  m_instance = move.m_instance;
+  return *this;
+}
+
+debug_reportEXT_impl::~debug_reportEXT_impl() noexcept {
+  if (m_is_created != false) {
+    m_instance->destroyDebugReportCallbackEXT(m_debug_report, nullptr, m_dispatcher);
+  }
+}
 
 debug_reportEXT_impl::debug_reportEXT_impl(const vk::Instance& instance) {
   m_dispatcher.vkCreateDebugReportCallbackEXT =
@@ -35,6 +55,8 @@ debug_reportEXT_impl::debug_reportEXT_impl(const vk::Instance& instance) {
   description.pUserData = nullptr;
 
   m_debug_report = instance.createDebugReportCallbackEXT(description, nullptr, m_dispatcher);
+  m_instance = &instance;
+  m_is_created = true;
 }
 
 vk::DebugReportCallbackCreateInfoEXT pnext_debug_messenger_configuration_impl(vk::DebugReportFlagsEXT flags) noexcept {

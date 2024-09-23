@@ -105,18 +105,16 @@ int main(int argc, char** argv) {
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
-      csc::pngine::pngine core("PNG-viewer", csc::pngine::bring_version(1u, 3u, 256u));
+      png = png_executor.deserialize(i_pos->second, ignore_checksum);
+      // движок на Vulkan для рендеринга картинки
+      std::cout << "Инициализация экземпляра Vulkan... \n";
+      csc::pngine::pngine core(
+          "PNG-viewer", csc::pngine::bring_version(1u, 0u, 1u), "Intel(R) HD Graphics 2500 (IVB GT1)");
       std::cout << "Движок: " << core.get_engine_name() << '\n';
       const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
-      std::cout << "Инициализация экземпляра Vulkan... \n";
-      core.init_instance();
-      core.init_debug_report();
-      core.enumerate_physical_devices();
-      core.init_device();
       std::cout << "Загрузка изображения в память...\n";
-      png = png_executor.deserialize(i_pos->second, ignore_checksum);
 
     } else {
       throw std::invalid_argument("Не назначен входной файл!");

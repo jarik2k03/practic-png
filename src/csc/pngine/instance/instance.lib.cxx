@@ -2,6 +2,8 @@ module;
 #include <bits/move.h>
 export module csc.pngine.instance;
 
+import stl.string_view;
+
 import vulkan_hpp;
 import :impl;
 export namespace csc {
@@ -23,8 +25,8 @@ class instance : private instance_impl {
     return this->do_create_debug_reportEXT();
   }
 #endif
-  void create_device() {
-    return this->do_create_device();
+  void create_device(std::string_view gpu_name) {
+    return this->do_create_device(gpu_name);
   }
   void bring_physical_devices() {
     return this->do_bring_physical_devices();
