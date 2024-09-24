@@ -21,13 +21,13 @@ class debug_reportEXT_impl {
   debug_reportEXT_impl(debug_reportEXT_impl&& move) noexcept = default;
   debug_reportEXT_impl& operator=(debug_reportEXT_impl&& move) noexcept;
   explicit debug_reportEXT_impl(const vk::Instance& instance);
+  void do_clear() noexcept;
 };
 
 debug_reportEXT_impl& debug_reportEXT_impl::operator=(debug_reportEXT_impl&& move) noexcept {
   [[unlikely]] if (&move == this)
     return *this;
-  if (m_is_created != false)
-    m_instance->destroyDebugReportCallbackEXT(m_debug_report, nullptr, m_dispatcher);
+  do_clear();
   m_debug_report = move.m_debug_report;
   m_dispatcher = move.m_dispatcher;
   m_is_created = std::exchange(move.m_is_created, false);
@@ -35,10 +35,15 @@ debug_reportEXT_impl& debug_reportEXT_impl::operator=(debug_reportEXT_impl&& mov
   return *this;
 }
 
-debug_reportEXT_impl::~debug_reportEXT_impl() noexcept {
+void debug_reportEXT_impl::do_clear() noexcept {
   if (m_is_created != false) {
     m_instance->destroyDebugReportCallbackEXT(m_debug_report, nullptr, m_dispatcher);
+    m_is_created = false;
   }
+}
+
+debug_reportEXT_impl::~debug_reportEXT_impl() noexcept {
+  do_clear();
 }
 
 debug_reportEXT_impl::debug_reportEXT_impl(const vk::Instance& instance) {
@@ -50,7 +55,7 @@ debug_reportEXT_impl::debug_reportEXT_impl(const vk::Instance& instance) {
   vk::DebugReportCallbackCreateInfoEXT description{};
   description.sType = vk::StructureType::eDebugReportCreateInfoEXT;
   description.pNext = nullptr;
-  description.flags = eError | eWarning | eDebug | eInformation;
+  description.flags = eError | eWarning | eDebug | eInformation | ePerformanceWarning;
   description.pfnCallback = &pngine::custom_debug_report_callback;
   description.pUserData = nullptr;
 

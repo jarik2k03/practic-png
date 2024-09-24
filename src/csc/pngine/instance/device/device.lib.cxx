@@ -20,6 +20,9 @@ class device : private device_impl {
     return static_cast<device&>(device_impl::operator=(std::move(move)));
   }
   ~device() noexcept = default;
+  void clear() noexcept {
+    this->do_clear();
+  }
 };
 
 } // namespace pngine

@@ -19,6 +19,9 @@ class debug_reportEXT : private debug_reportEXT_impl {
     return static_cast<debug_reportEXT&>(debug_reportEXT_impl::operator=(std::move(move)));
   }
   ~debug_reportEXT() = default;
+  void clear() noexcept {
+    this->do_clear();
+  }
 };
 
 vk::DebugReportCallbackCreateInfoEXT pnext_debug_messenger_configuration(vk::DebugReportFlagsEXT flags) noexcept {

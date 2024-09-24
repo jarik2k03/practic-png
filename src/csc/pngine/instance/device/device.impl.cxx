@@ -24,17 +24,16 @@ class device_impl {
   device_impl(device_impl&& move) noexcept = default;
   device_impl& operator=(device_impl&& move) noexcept;
   explicit device_impl(const vk::PhysicalDevice& dev);
+  void do_clear() noexcept;
 };
 
 device_impl::~device_impl() noexcept {
-  if (m_is_created != false)
-    m_device.destroy();
+  do_clear();
 }
 device_impl& device_impl::operator=(device_impl&& move) noexcept {
   if (this == &move)
     return *this;
-  if (m_is_created != false)
-    m_device.destroy();
+  do_clear();
   m_device = move.m_device;
   m_indices = move.m_indices;
   m_enabled_extensions = std::move(move.m_enabled_extensions);
@@ -65,6 +64,13 @@ device_impl::device_impl(const vk::PhysicalDevice& dev) {
 
   m_device = dev.createDevice(description);
   m_is_created = true; // если кинет исключение - не будет is created
+}
+
+void device_impl::do_clear() noexcept {
+  if (m_is_created != false) {
+    m_device.destroy();
+    m_is_created = false;
+  }
 }
 
 } // namespace pngine

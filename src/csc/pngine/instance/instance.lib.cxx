@@ -31,6 +31,9 @@ class instance : private instance_impl {
   void bring_physical_devices() {
     return this->do_bring_physical_devices();
   }
+  void clear() noexcept {
+    return this->do_clear();
+  }
   vk::Instance& get() {
     return this->do_get();
   }

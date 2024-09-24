@@ -7,5 +7,6 @@ int main() {
   vk::Flags<vk::DebugReportFlagBitsEXT> flags;
   auto dev = instance.enumeratePhysicalDevices();
   dev[0].getQueueFamilyProperties().at(0).queueFlags;
+  vk::DebugReportFlagBitsEXT;
 //   dev[0].getProperties().
 }

@@ -50,19 +50,17 @@ class instance_impl {
   void do_bring_physical_devices();
   vk::Instance& do_get();
   const vk::Instance& do_get() const;
+  void do_clear() noexcept;
 };
 
 instance_impl::~instance_impl() noexcept {
-  if (m_is_created) {
-    //      m_instance.destroy();
-  }
+  do_clear();
 }
 
 instance_impl& instance_impl::operator=(instance_impl&& move) noexcept {
   [[unlikely]] if (&move == this)
     return *this;
-  //   if (m_is_created != false)
-  //     m_instance.destroy();
+  do_clear();
   m_instance = std::move(move.m_instance);
 #ifndef NDEBUG
   m_debug_report = std::move(move.m_debug_report);
@@ -94,7 +92,7 @@ instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
   vk::InstanceCreateInfo description{};
 #ifndef NDEBUG
   using enum vk::DebugReportFlagBitsEXT;
-  const auto config = pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug});
+  const auto config = pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug | ePerformanceWarning});
   description.setPNext(&config); // в debug - config
 #else
   description.setPNext(nullptr); // в release - nullptr
@@ -115,6 +113,17 @@ vk::Instance& instance_impl::do_get() {
 }
 const vk::Instance& instance_impl::do_get() const {
   return m_instance;
+}
+
+void instance_impl::do_clear() noexcept {
+  if (m_is_created) {
+#ifndef NDEBUG
+    m_debug_report.clear();
+#endif
+    m_device.clear();
+    m_instance.destroy(); // прежде чем очищать устройство, надо очистить его вложенности
+    m_is_created = false;
+  }
 }
 
 #ifndef NDEBUG
