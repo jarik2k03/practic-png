@@ -14,6 +14,7 @@ import stl.string_view;
 
 import csc.pngine.instance.debug_reportEXT;
 import csc.pngine.instance.device;
+import csc.pngine.instance.surfaceKHR;
 
 export import vulkan_hpp;
 
@@ -31,6 +32,7 @@ class instance_impl {
   // внутренние компоненты
   pngine::debug_reportEXT m_debug_report{};
   pngine::device m_device{};
+  pngine::surfaceKHR m_surface{};
 
  public:
   explicit instance_impl() = default;
@@ -41,6 +43,7 @@ class instance_impl {
 
   void do_create_debug_reportEXT();
   void do_create_device(std::string_view dev_name);
+  void do_create_surfaceKHR();
   void do_bring_physical_devices();
   vk::Instance& do_get();
   const vk::Instance& do_get() const;
@@ -121,6 +124,10 @@ void instance_impl::do_create_debug_reportEXT() {
   if constexpr (pngine::is_debug_build()) {
     m_debug_report = pngine::debug_reportEXT(m_instance);
   }
+}
+
+void instance_impl::do_create_surfaceKHR() {
+    m_surface = pngine::surfaceKHR(m_instance);
 }
 
 void instance_impl::do_create_device(std::string_view gpu_name) {

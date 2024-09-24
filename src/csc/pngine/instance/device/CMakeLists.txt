@@ -1,5 +1,7 @@
 include(pngine_short_paths)
 
+# add_subdirectory(queues)
+
 add_library(${DEVICE}_utility STATIC device.utility.cxx)
 target_sources(${DEVICE}_utility PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES device.utility.cxx)
 target_link_libraries(${DEVICE}_utility PRIVATE vk_vulkan stl_optional)

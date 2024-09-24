@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstdint>
+#include <stdio.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <bits/stl_algo.h>
@@ -144,7 +145,6 @@ int main(int argc, char** argv) {
       std::cout << "Изображение успешно сохранено: " << o_pos->second
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
-
   } catch (const std::runtime_error& e) {
     std::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
     std::exit(1);
