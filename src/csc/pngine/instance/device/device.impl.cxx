@@ -17,7 +17,7 @@ class device_impl {
 
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
-  // внутренние компоненты
+
  public:
   explicit device_impl() = default;
   ~device_impl() noexcept;

@@ -9,12 +9,13 @@ import :utility;
 namespace csc {
 namespace pngine {
 class debug_reportEXT_impl {
+#ifndef NDEBUG
  private:
   pngine::debug_dispatch m_dispatcher{};
   vk::DebugReportCallbackEXT m_debug_report{};
   vk::Bool32 m_is_created = false;
   const vk::Instance* m_instance = nullptr;
-
+#endif
  public:
   explicit debug_reportEXT_impl() = default;
   ~debug_reportEXT_impl() noexcept;
@@ -24,7 +25,8 @@ class debug_reportEXT_impl {
   void do_clear() noexcept;
 };
 
-debug_reportEXT_impl& debug_reportEXT_impl::operator=(debug_reportEXT_impl&& move) noexcept {
+debug_reportEXT_impl& debug_reportEXT_impl::operator=([[maybe_unused]] debug_reportEXT_impl&& move) noexcept {
+#ifndef NDEBUG
   [[unlikely]] if (&move == this)
     return *this;
   do_clear();
@@ -32,21 +34,27 @@ debug_reportEXT_impl& debug_reportEXT_impl::operator=(debug_reportEXT_impl&& mov
   m_dispatcher = move.m_dispatcher;
   m_is_created = std::exchange(move.m_is_created, false);
   m_instance = move.m_instance;
+#endif
   return *this;
 }
 
 void debug_reportEXT_impl::do_clear() noexcept {
+#ifndef NDEBUG
   if (m_is_created != false) {
     m_instance->destroyDebugReportCallbackEXT(m_debug_report, nullptr, m_dispatcher);
     m_is_created = false;
   }
+#endif
 }
 
 debug_reportEXT_impl::~debug_reportEXT_impl() noexcept {
+#ifndef NDEBUG
   do_clear();
+#endif
 }
 
-debug_reportEXT_impl::debug_reportEXT_impl(const vk::Instance& instance) {
+debug_reportEXT_impl::debug_reportEXT_impl([[maybe_unused]] const vk::Instance& instance) {
+#ifndef NDEBUG
   m_dispatcher.vkCreateDebugReportCallbackEXT =
       reinterpret_cast<pngine::pfn_create>(instance.getProcAddr("vkCreateDebugReportCallbackEXT"));
   m_dispatcher.vkDestroyDebugReportCallbackEXT =
@@ -62,6 +70,7 @@ debug_reportEXT_impl::debug_reportEXT_impl(const vk::Instance& instance) {
   m_debug_report = instance.createDebugReportCallbackEXT(description, nullptr, m_dispatcher);
   m_instance = &instance;
   m_is_created = true;
+#endif
 }
 
 vk::DebugReportCallbackCreateInfoEXT pnext_debug_messenger_configuration_impl(vk::DebugReportFlagsEXT flags) noexcept {

@@ -20,11 +20,9 @@ class instance : private instance_impl {
   instance& operator=(instance&& move) noexcept {
     return static_cast<instance&>(instance_impl::operator=(std::move(move)));
   }
-#ifndef NDEBUG
   void create_debug_reportEXT() {
     return this->do_create_debug_reportEXT();
   }
-#endif
   void create_device(std::string_view gpu_name) {
     return this->do_create_device(gpu_name);
   }

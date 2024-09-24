@@ -12,9 +12,7 @@ import stl.set;
 import stl.stdexcept;
 import stl.string_view;
 
-#ifndef NDEBUG
 import csc.pngine.instance.debug_reportEXT;
-#endif
 import csc.pngine.instance.device;
 
 export import vulkan_hpp;
@@ -31,9 +29,7 @@ class instance_impl {
   std::vector<vk::PhysicalDevice> m_phys_devices{};
   vk::Bool32 m_is_created = false;
   // внутренние компоненты
-#ifndef NDEBUG
   pngine::debug_reportEXT m_debug_report{};
-#endif
   pngine::device m_device{};
 
  public:
@@ -43,9 +39,7 @@ class instance_impl {
   instance_impl& operator=(instance_impl&& move) noexcept;
   explicit instance_impl(const vk::ApplicationInfo& app_info);
 
-#ifndef NDEBUG
   void do_create_debug_reportEXT();
-#endif
   void do_create_device(std::string_view dev_name);
   void do_bring_physical_devices();
   vk::Instance& do_get();
@@ -62,9 +56,7 @@ instance_impl& instance_impl::operator=(instance_impl&& move) noexcept {
     return *this;
   do_clear();
   m_instance = std::move(move.m_instance);
-#ifndef NDEBUG
   m_debug_report = std::move(move.m_debug_report);
-#endif
   m_device = std::move(move.m_device);
   m_phys_devices = std::move(move.m_phys_devices);
   m_vk_extensions = move.m_vk_extensions;
@@ -83,20 +75,19 @@ instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
     m_enabled_extensions.emplace_back("VK_KHR_surface");
     m_enabled_extensions.emplace_back(surface_ext);
   }
-#ifndef NDEBUG
-  m_enabled_layers.reserve(256ul);
-  m_enabled_layers.emplace_back("VK_LAYER_KHRONOS_validation");
-  m_enabled_extensions.emplace_back("VK_EXT_debug_report");
-#endif
-
+  if constexpr (pngine::is_debug_build()) {
+    m_enabled_layers.reserve(256ul);
+    m_enabled_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+    m_enabled_extensions.emplace_back("VK_EXT_debug_report");
+  }
   vk::InstanceCreateInfo description{};
-#ifndef NDEBUG
-  using enum vk::DebugReportFlagBitsEXT;
-  const auto config = pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug | ePerformanceWarning});
-  description.setPNext(&config); // в debug - config
-#else
-  description.setPNext(nullptr); // в release - nullptr
-#endif
+  if constexpr (pngine::is_debug_build()) {
+    using enum vk::DebugReportFlagBitsEXT;
+    const auto config = pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug | ePerformanceWarning});
+    description.setPNext(&config); // в debug - config
+  } else {
+    description.setPNext(nullptr); // в release - nullptr
+  }
   description.sType = vk::StructureType::eInstanceCreateInfo;
   description.pApplicationInfo = &app_info;
   description.enabledLayerCount = m_enabled_layers.size();
@@ -117,20 +108,20 @@ const vk::Instance& instance_impl::do_get() const {
 
 void instance_impl::do_clear() noexcept {
   if (m_is_created) {
-#ifndef NDEBUG
-    m_debug_report.clear();
-#endif
+    if constexpr (pngine::is_debug_build()) {
+      m_debug_report.clear();
+    }
     m_device.clear();
     m_instance.destroy(); // прежде чем очищать устройство, надо очистить его вложенности
     m_is_created = false;
   }
 }
 
-#ifndef NDEBUG
 void instance_impl::do_create_debug_reportEXT() {
-  m_debug_report = pngine::debug_reportEXT(m_instance);
+  if constexpr (pngine::is_debug_build()) {
+    m_debug_report = pngine::debug_reportEXT(m_instance);
+  }
 }
-#endif
 
 void instance_impl::do_create_device(std::string_view gpu_name) {
   [[unlikely]] if (m_phys_devices.size() == 0ul) {

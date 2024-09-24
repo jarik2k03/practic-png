@@ -10,6 +10,14 @@ export import vulkan_hpp;
 namespace csc {
 namespace pngine {
 
+consteval bool is_debug_build() noexcept {
+#ifndef NDEBUG
+  return true;
+#else
+  return false;
+#endif
+}
+
 const char* bring_surface_extension() noexcept {
 #ifdef _WIN32
   return "VK_KHR_win32_surface";
