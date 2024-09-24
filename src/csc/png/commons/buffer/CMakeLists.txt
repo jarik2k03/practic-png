@@ -1,7 +1,9 @@
-add_library(buffer_range OBJECT buffer.range.cxx)
-target_sources(buffer_range PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buffer.range.cxx ) 
+include(png_short_paths)
 
-add_library(buffer STATIC buffer.lib.cxx)
-target_sources(buffer PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buffer.lib.cxx ) 
-target_link_libraries(buffer PRIVATE buffer_range stl_stdexcept)
+add_library(${BUFFER}_range OBJECT buffer.range.cxx)
+target_sources(${BUFFER}_range PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buffer.range.cxx ) 
+
+add_library(${BUFFER} STATIC buffer.lib.cxx)
+target_sources(${BUFFER} PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buffer.lib.cxx ) 
+target_link_libraries(${BUFFER} PRIVATE ${BUFFER}_range stl_stdexcept)
 

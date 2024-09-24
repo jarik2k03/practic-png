@@ -1,14 +1,16 @@
-add_library(buf_writer_attributes STATIC buf_writer.attributes.cxx)
-target_sources(buf_writer_attributes PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_writer.attributes.cxx) 
-target_link_libraries(buf_writer_attributes PRIVATE endian)
+include(png_short_paths)
 
-add_library(buf_writer_impl STATIC buf_writer.impl.cxx)
-target_sources(buf_writer_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_writer.impl.cxx ) 
-target_link_libraries(buf_writer_impl PRIVATE buf_writer_attributes)
+add_library(${BUF_WRITER}_attributes STATIC buf_writer.attributes.cxx)
+target_sources(${BUF_WRITER}_attributes PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_writer.attributes.cxx) 
+target_link_libraries(${BUF_WRITER}_attributes PRIVATE ${ENDIAN})
 
-add_library(buf_writer STATIC buf_writer.lib.cxx)
-target_sources(buf_writer PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_writer.lib.cxx ) 
-target_link_libraries(buf_writer PRIVATE buf_writer_impl)
+add_library(${BUF_WRITER}_impl STATIC buf_writer.impl.cxx)
+target_sources(${BUF_WRITER}_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_writer.impl.cxx ) 
+target_link_libraries(${BUF_WRITER}_impl PRIVATE ${BUF_WRITER}_attributes)
+
+add_library(${BUF_WRITER} STATIC buf_writer.lib.cxx)
+target_sources(${BUF_WRITER} PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_writer.lib.cxx ) 
+target_link_libraries(${BUF_WRITER} PRIVATE ${BUF_WRITER}_impl)
 
 
 

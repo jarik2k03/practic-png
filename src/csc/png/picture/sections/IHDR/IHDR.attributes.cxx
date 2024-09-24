@@ -3,6 +3,7 @@ module;
 export module csc.png.picture.sections.IHDR:attributes;
 
 export namespace csc {
+namespace png {
 
 enum class e_compression : uint8_t {
   deflate = 0
@@ -22,4 +23,5 @@ enum class e_filter : uint8_t {
   adaptive = 0
 };
 
+} // namespace png
 } // namespace csc

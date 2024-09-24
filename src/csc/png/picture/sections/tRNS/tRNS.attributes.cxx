@@ -2,14 +2,14 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections.tRNS:attributes;
 
-export import cstd.stl_wrap.variant;
-export import cstd.stl_wrap.vector;
+export import stl.variant;
+export import stl.vector;
 export import csc.png.commons.utility.pixel_formats;
 
 export namespace csc {
+namespace png {
 
-
-using v_pixel_view_trns = cstd::variant<rgb8, rgb16, bw8, bw16, cstd::vector<plte_index>>;
+using v_pixel_view_trns = std::variant<rgb8, rgb16, bw8, bw16, std::vector<plte_index>>;
 
 enum class e_pixel_view_trns_id : uint8_t {
   rgb8 = 0,
@@ -19,5 +19,5 @@ enum class e_pixel_view_trns_id : uint8_t {
   plte_indices
 };
 
+} // namespace png
 } // namespace csc
-

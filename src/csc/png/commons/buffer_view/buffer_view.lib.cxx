@@ -8,6 +8,7 @@ export module csc.png.commons.buffer_view;
 export import :range;
 
 export namespace csc {
+namespace png {
 
 template <typename Val>
 class basic_buffer_view {
@@ -36,13 +37,14 @@ class basic_buffer_view {
     return m_size;
   }
 };
-using u8buffer_view = csc::basic_buffer_view<uint8_t>;
-using s8buffer_view = csc::basic_buffer_view<int8_t>;
-using u16buffer_view = csc::basic_buffer_view<uint16_t>;
-using s16buffer_view = csc::basic_buffer_view<int16_t>;
-using u32buffer_view = csc::basic_buffer_view<uint32_t>;
-using s32buffer_view = csc::basic_buffer_view<int32_t>;
-using u64buffer_view = csc::basic_buffer_view<uint64_t>;
-using s64buffer_view = csc::basic_buffer_view<int64_t>;
+using u8buffer_view = png::basic_buffer_view<uint8_t>;
+using s8buffer_view = png::basic_buffer_view<int8_t>;
+using u16buffer_view = png::basic_buffer_view<uint16_t>;
+using s16buffer_view = png::basic_buffer_view<int16_t>;
+using u32buffer_view = png::basic_buffer_view<uint32_t>;
+using s32buffer_view = png::basic_buffer_view<int32_t>;
+using u64buffer_view = png::basic_buffer_view<uint64_t>;
+using s64buffer_view = png::basic_buffer_view<int64_t>;
 
+} // namespace png
 } // namespace csc

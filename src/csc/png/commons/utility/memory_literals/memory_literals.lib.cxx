@@ -4,6 +4,7 @@ module;
 export module csc.png.commons.utility.memory_literals;
 
 export namespace csc {
+namespace png {
 namespace memory_literals {
 
 constexpr inline unsigned long long operator"" _B(unsigned long long koef) {
@@ -17,4 +18,5 @@ constexpr inline unsigned long long operator"" _MB(unsigned long long koef) {
 }
 
 } // namespace memory_literals
+} // namespace png
 } // namespace csc
