@@ -7,16 +7,18 @@ import :impl;
 export import :attributes;
 
 export namespace csc {
+namespace png {
 
-class buf_writer : private csc::buf_writer_impl {
+class buf_writer : private png::buf_writer_impl {
  public:
   buf_writer() = delete;
-  explicit buf_writer(uint8_t* const s) : csc::buf_writer_impl(s) {
+  explicit buf_writer(uint8_t* const s) : png::buf_writer_impl(s) {
   }
-  template <csc::number Val>
+  template <png::number Val>
   void write(Val val) {
     return this->do_write(val);
   }
 };
 
+} // namespace png
 } // namespace csc

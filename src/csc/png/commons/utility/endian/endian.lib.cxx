@@ -5,22 +5,25 @@ export module csc.png.commons.utility.endian;
 export import :attributes;
 
 export namespace csc {
+namespace png {
 
 consteval bool is_valid_endian() noexcept;
 
-template <csc::number T>
+template <png::number T>
 T swap_endian(T num) noexcept;
 
+} // namespace png
 } // namespace csc
 
 namespace csc {
+namespace png {
 
 consteval bool is_valid_endian() noexcept {
   using enum std::endian;
   return native == big || native == little;
 }
 
-template <csc::number T>
+template <png::number T>
 T swap_endian(T num) noexcept {
   union {
     T t_value;
@@ -33,4 +36,5 @@ T swap_endian(T num) noexcept {
 
   return dest.t_value;
 }
+} // namespace png
 } // namespace csc

@@ -6,6 +6,7 @@ export import stl.variant;
 export import csc.png.commons.utility.pixel_formats;
 
 export namespace csc {
+namespace png {
 
 using v_pixel_view = std::variant<rgb8, rgb16, bw8, bw16, plte_index>;
 
@@ -17,4 +18,5 @@ enum class e_pixel_view_id : uint8_t {
   plte_index
 };
 
+} // namespace png
 } // namespace csc

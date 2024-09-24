@@ -16,62 +16,63 @@ export import csc.png.commons.utility.memory_literals;
 import :utility;
 
 namespace csc {
+namespace png {
 
 template <typename Alloc>
 class deflater_impl {
  private:
-  csc::u8buffer_view m_decompressed{}; // input buffer (view)
-  csc::u8buffer m_compressed{}; // output buffer
+  png::u8buffer_view m_decompressed{}; // input buffer (view)
+  png::u8buffer m_compressed{}; // output buffer
 
-  z_stream m_buf_stream = csc::init_z_stream();
+  z_stream m_buf_stream = png::init_z_stream();
   int32_t m_state = Z_OK;
-  csc::e_compression_level m_compr_level = e_compression_level::default_;
-  csc::e_compression_strategy m_strategy = e_compression_strategy::default_;
+  png::e_compression_level m_compr_level = e_compression_level::default_;
+  png::e_compression_strategy m_strategy = e_compression_strategy::default_;
   int32_t m_mem_level = 8, m_win_bits = 15;
 
   [[no_unique_address]] Alloc m_allocator{}; // аллокатор и хранимые размеры выделенных им блоков памяти
 
   using u32_alloc = typename std::allocator_traits<Alloc>::template rebind_alloc<uint32_t>;
-  csc::stack_alias<uint32_t, u32_alloc> m_allocated_sizes{}; // изменяется только при zalloc и zfree
+  png::stack_alias<uint32_t, u32_alloc> m_allocated_sizes{}; // изменяется только при zalloc и zfree
 
-  csc::allocator_stack_package<Alloc, u32_alloc> m_to_pvoid_package{&m_allocator, &m_allocated_sizes}; // зависим от них
+  png::allocator_stack_package<Alloc, u32_alloc> m_to_pvoid_package{&m_allocator, &m_allocated_sizes}; // зависим от них
 
   bool m_is_init = false;
 
  public:
   deflater_impl() = default;
   deflater_impl(const Alloc& alctr);
-  deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w);
+  deflater_impl(png::e_compression_level c, png::e_compression_strategy s, int32_t m, int32_t w);
 
   ~deflater_impl() noexcept; // implemented
-  deflater_impl(const csc::deflater_impl<Alloc>& copy) = delete;
-  auto& operator=(const csc::deflater_impl<Alloc>& copy) = delete;
-  deflater_impl(csc::deflater_impl<Alloc>&& move) noexcept; // implemented
-  deflater_impl& operator=(csc::deflater_impl<Alloc>&& move) noexcept; // implemented
+  deflater_impl(const png::deflater_impl<Alloc>& copy) = delete;
+  auto& operator=(const png::deflater_impl<Alloc>& copy) = delete;
+  deflater_impl(png::deflater_impl<Alloc>&& move) noexcept; // implemented
+  deflater_impl& operator=(png::deflater_impl<Alloc>&& move) noexcept; // implemented
 
-  void do_flush(const csc::u8buffer_view c);
+  void do_flush(const png::u8buffer_view c);
   auto do_value() const;
   void do_deflate(uint32_t stride_read);
   bool do_done() const;
 };
 
 template <typename Alloc>
-deflater_impl<Alloc>::deflater_impl(csc::e_compression_level c, csc::e_compression_strategy s, int32_t m, int32_t w)
+deflater_impl<Alloc>::deflater_impl(png::e_compression_level c, png::e_compression_strategy s, int32_t m, int32_t w)
     : m_compr_level(c), m_strategy(s), m_mem_level(m), m_win_bits(w) {
   m_buf_stream.opaque = reinterpret_cast<void*>(&m_to_pvoid_package);
-  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc, u32_alloc>;
-  m_buf_stream.zfree = csc::custom_z_free<Alloc, u32_alloc>;
+  m_buf_stream.zalloc = png::custom_z_alloc<Alloc, u32_alloc>;
+  m_buf_stream.zfree = png::custom_z_free<Alloc, u32_alloc>;
 }
 
 template <typename Alloc>
 deflater_impl<Alloc>::deflater_impl(const Alloc& alctr) : m_allocator(alctr) {
   m_buf_stream.opaque = reinterpret_cast<void*>(&m_to_pvoid_package);
-  m_buf_stream.zalloc = csc::custom_z_alloc<Alloc, u32_alloc>;
-  m_buf_stream.zfree = csc::custom_z_free<Alloc, u32_alloc>;
+  m_buf_stream.zalloc = png::custom_z_alloc<Alloc, u32_alloc>;
+  m_buf_stream.zfree = png::custom_z_free<Alloc, u32_alloc>;
 }
 
 template <typename Alloc>
-deflater_impl<Alloc>::deflater_impl(csc::deflater_impl<Alloc>&& move) noexcept
+deflater_impl<Alloc>::deflater_impl(png::deflater_impl<Alloc>&& move) noexcept
     : m_decompressed(move.m_decompressed),
       m_compressed(std::move(move.m_compressed)),
       m_buf_stream(move.m_buf_stream),
@@ -93,7 +94,7 @@ deflater_impl<Alloc>::~deflater_impl() noexcept {
   }
 }
 template <typename Alloc>
-deflater_impl<Alloc>& deflater_impl<Alloc>::operator=(csc::deflater_impl<Alloc>&& move) noexcept {
+deflater_impl<Alloc>& deflater_impl<Alloc>::operator=(png::deflater_impl<Alloc>&& move) noexcept {
   if (this == &move)
     return *this;
   if (m_is_init) {
@@ -115,28 +116,28 @@ deflater_impl<Alloc>& deflater_impl<Alloc>::operator=(csc::deflater_impl<Alloc>&
 
 template <typename Alloc>
 void deflater_impl<Alloc>::do_deflate(uint32_t stride_read) {
-  using namespace csc::memory_literals;
+  using namespace png::memory_literals;
   m_buf_stream.avail_out = 16_kB;
   m_buf_stream.next_out = m_compressed.data();
 
   m_state = deflate(&m_buf_stream, (m_decompressed.size() == stride_read) ? Z_SYNC_FLUSH : Z_FINISH);
   if (m_state < 0)
-    throw std::runtime_error(csc::generate_error_message(m_state));
+    throw std::runtime_error(png::generate_error_message(m_state));
 }
 template <typename Alloc>
 bool deflater_impl<Alloc>::do_done() const {
-  using namespace csc::memory_literals;
+  using namespace png::memory_literals;
   return m_state == Z_STREAM_END || m_buf_stream.avail_out != 0_B;
 }
 template <typename Alloc>
 auto deflater_impl<Alloc>::do_value() const {
-  using namespace csc::memory_literals;
-  return csc::const_u8buffer_range(m_compressed.begin(), m_compressed.begin() + 16_kB - m_buf_stream.avail_out);
+  using namespace png::memory_literals;
+  return png::const_u8buffer_range(m_compressed.begin(), m_compressed.begin() + 16_kB - m_buf_stream.avail_out);
 }
 
 template <typename Alloc>
-void deflater_impl<Alloc>::do_flush(csc::u8buffer_view new_input) {
-  using namespace csc::memory_literals;
+void deflater_impl<Alloc>::do_flush(png::u8buffer_view new_input) {
+  using namespace png::memory_literals;
   if (!m_is_init) {
     m_state = deflateInit2(
         &m_buf_stream,
@@ -147,7 +148,7 @@ void deflater_impl<Alloc>::do_flush(csc::u8buffer_view new_input) {
         static_cast<int32_t>(m_strategy));
     if (m_state != Z_OK)
       throw std::runtime_error("Не удалось инициализировать deflater!");
-    m_compressed = csc::make_buffer<uint8_t>(16_kB);
+    m_compressed = png::make_buffer<uint8_t>(16_kB);
     m_is_init = true;
   }
   m_decompressed = new_input;
@@ -155,4 +156,5 @@ void deflater_impl<Alloc>::do_flush(csc::u8buffer_view new_input) {
   m_buf_stream.next_in = const_cast<uint8_t*>(m_decompressed.data());
 }
 
+} // namespace png
 } // namespace csc

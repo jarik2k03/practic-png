@@ -5,10 +5,12 @@ export module csc.png.picture.sections.bKGD;
 export import :attributes;
 
 export namespace csc {
+namespace png {
 
 struct bKGD {
-  csc::v_pixel_view color;
-  csc::e_pixel_view_id color_type;
+  png::v_pixel_view color;
+  png::e_pixel_view_id color_type;
 };
 
+} // namespace png
 } // namespace csc

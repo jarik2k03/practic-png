@@ -5,10 +5,12 @@ export module csc.png.picture.sections.tRNS;
 export import :attributes;
 
 export namespace csc {
+namespace png {
 
 struct tRNS {
-  csc::v_pixel_view_trns color;
-  csc::e_pixel_view_trns_id color_type;
+  png::v_pixel_view_trns color;
+  png::e_pixel_view_trns_id color_type;
 };
 
+} // namespace png
 } // namespace csc

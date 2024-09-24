@@ -16,29 +16,29 @@ import stl.string;
 import stl.iostream;
 import stl.stdexcept;
 
-csc::e_compression_level bring_compression_level(const char* arg) {
+csc::png::e_compression_level bring_compression_level(const char* arg) {
   const std::string compr_level_str(arg);
   if (compr_level_str == "speed")
-    return csc::e_compression_level::weakest;
+    return csc::png::e_compression_level::weakest;
   if (compr_level_str == "best")
-    return csc::e_compression_level::strongest;
+    return csc::png::e_compression_level::strongest;
   if (compr_level_str.size() > 1)
-    return csc::e_compression_level::default_;
+    return csc::png::e_compression_level::default_;
   const char level = compr_level_str[0ul];
   if (level < '0' || level > '9')
-    return csc::e_compression_level::default_;
-  return static_cast<csc::e_compression_level>(level - '0');
+    return csc::png::e_compression_level::default_;
+  return static_cast<csc::png::e_compression_level>(level - '0');
 }
 
-csc::e_compression_strategy bring_strategy(const char* arg) {
+csc::png::e_compression_strategy bring_strategy(const char* arg) {
   const std::string strategy_str(arg);
   if (strategy_str == "huffman")
-    return csc::e_compression_strategy::huffman_only;
+    return csc::png::e_compression_strategy::huffman_only;
   if (strategy_str == "filter")
-    return csc::e_compression_strategy::filtered;
+    return csc::png::e_compression_strategy::filtered;
   if (strategy_str == "default")
-    return csc::e_compression_strategy::default_;
-  return csc::e_compression_strategy::default_;
+    return csc::png::e_compression_strategy::default_;
+  return csc::png::e_compression_strategy::default_;
 }
 
 int32_t bring_memory_usage(const char* arg) {
@@ -100,8 +100,8 @@ int main(int argc, char** argv) {
 
     const auto i_pos = args.find("-i"), o_pos = args.find("-o");
 
-    csc::picture png;
-    csc::deserializer png_executor;
+    csc::png::picture png;
+    csc::png::deserializer png_executor;
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
@@ -126,9 +126,9 @@ int main(int argc, char** argv) {
       const auto compress_pos = args.find("-compress"), memory_usage_pos = args.find("-memory_usage");
       const auto window_bits_pos = args.find("-window_bits"), strategy_pos = args.find("-strategy");
 
-      auto compress = csc::e_compression_level::default_;
+      auto compress = csc::png::e_compression_level::default_;
       auto memory_usage = 8, window_bits = 15;
-      auto strategy = csc::e_compression_strategy::default_;
+      auto strategy = csc::png::e_compression_strategy::default_;
 
       if (compress_pos != args.cend())
         compress = bring_compression_level(compress_pos->second.c_str());
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
       if (strategy_pos != args.cend())
         strategy = bring_strategy(strategy_pos->second.c_str());
 
-      csc::serializer png_writer;
+      csc::png::serializer png_writer;
       png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
       std::cout << "Изображение успешно сохранено: " << o_pos->second
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';

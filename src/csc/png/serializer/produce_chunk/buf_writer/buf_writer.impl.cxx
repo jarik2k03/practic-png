@@ -7,6 +7,7 @@ export import :attributes;
 import csc.png.commons.utility.endian;
 
 namespace csc {
+namespace png {
 
 class buf_writer_impl {
  private:
@@ -17,21 +18,21 @@ class buf_writer_impl {
   buf_writer_impl() = delete;
   buf_writer_impl(uint8_t* const s) : m_start(s) {
     static_assert(
-        csc::is_valid_endian(),
+        png::is_valid_endian(),
         "This program doesn't support this endian! Your endian is "
         "probably the PDP");
   }
-  template <csc::number Val>
+  template <png::number Val>
   void do_write(Val num);
 };
 
-template <csc::number Val>
+template <png::number Val>
 void buf_writer_impl::do_write(Val num) {
   if constexpr (sizeof(num) > 1ul) {
     if constexpr (std::endian::native == std::endian::big) {
       // если у нас BE - записываем в пнг-чанк без конвертаций
     } else if constexpr (std::endian::native == std::endian::little) {
-      num = csc::swap_endian(num); // from LE to BE
+      num = png::swap_endian(num); // from LE to BE
     }
   } // используем возможное конвертирование только для 2 и более байтовых чисел
 
@@ -39,4 +40,5 @@ void buf_writer_impl::do_write(Val num) {
   m_pos += sizeof(num);
 }
 
+} // namespace png
 } // namespace csc

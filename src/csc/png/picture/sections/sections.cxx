@@ -17,18 +17,20 @@ export import csc.png.picture.sections.hIST;
 export import csc.png.picture.sections.pHYs;
 export import csc.png.picture.sections.tRNS;
 export namespace csc {
+namespace png {
 
 using v_section = std::variant<
-    csc::IHDR,
-    csc::PLTE,
-    csc::IEND,
-    csc::bKGD,
-    csc::tIME,
-    csc::cHRM,
-    csc::gAMA,
-    csc::hIST,
-    csc::pHYs,
-    csc::tRNS>;
+    png::IHDR,
+    png::PLTE,
+    png::IEND,
+    png::bKGD,
+    png::tIME,
+    png::cHRM,
+    png::gAMA,
+    png::hIST,
+    png::pHYs,
+    png::tRNS>;
 using v_sections = std::vector<v_section>;
 
+} // namespace png
 } // namespace csc

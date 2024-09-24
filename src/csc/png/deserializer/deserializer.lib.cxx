@@ -7,6 +7,7 @@ export import csc.png.picture;
 import stl.string_view;
 
 export namespace csc {
+namespace png {
 
 class deserializer : private deserializer_impl {
  public:
@@ -14,9 +15,10 @@ class deserializer : private deserializer_impl {
   }
   ~deserializer() = default;
 
-  csc::picture deserialize(std::string_view filepath, bool ignore_checksum) {
+  png::picture deserialize(std::string_view filepath, bool ignore_checksum) {
     return do_deserialize(filepath, ignore_checksum);
   }
 };
 
+} // namespace png
 } // namespace csc
