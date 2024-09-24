@@ -27,5 +27,3 @@ class surfaceKHR : private surfaceKHR_impl {
 
 } // namespace pngine
 } // namespace csc
-
-

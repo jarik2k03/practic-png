@@ -27,4 +27,3 @@ class queues : private queues_impl {
 
 } // namespace pngine
 } // namespace csc
-

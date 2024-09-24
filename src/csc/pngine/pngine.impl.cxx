@@ -9,6 +9,7 @@ export import stl.string_view;
 import stl.iostream;
 #endif
 import csc.pngine.instance;
+import csc.pngine.window_handler;
 import vulkan_hpp;
 
 namespace csc {
@@ -20,8 +21,8 @@ class pngine_impl {
   pngine::version m_app_version = pngine::bring_version(1u, 0u, 0u);
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
+  pngine::ov_window_handler m_window_handler = std::nullopt;
   pngine::instance m_instance;
-  vk::ApplicationInfo m_app_info;
 
  public:
   pngine_impl() = delete;
@@ -36,10 +37,11 @@ class pngine_impl {
 
 pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
     : m_app_name(std::move(nm)), m_app_version(ver), m_gpu_name(std::move(g_nm)) {
-  m_app_info = vk::ApplicationInfo(
+  vk::ApplicationInfo app_info(
       m_app_name.c_str(), m_app_version, pngine::bring_engine_name(), pngine::bring_engine_version(), m_vk_api_version);
   // высокоуровневый алгоритм...
-  m_instance = pngine::instance(m_app_info);
+  m_window_handler = pngine::init_window_handler(640u, 480u);
+  m_instance = pngine::instance(app_info);
 #ifndef NDEBUG
   m_instance.create_debug_reportEXT();
 #endif

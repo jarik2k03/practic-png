@@ -127,7 +127,7 @@ void instance_impl::do_create_debug_reportEXT() {
 }
 
 void instance_impl::do_create_surfaceKHR() {
-    m_surface = pngine::surfaceKHR(m_instance);
+  m_surface = pngine::surfaceKHR(m_instance);
 }
 
 void instance_impl::do_create_device(std::string_view gpu_name) {
