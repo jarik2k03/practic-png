@@ -1,4 +1,5 @@
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_xcb.h>
 int main() {
 
   vk::DebugReportCallbackEXT report;

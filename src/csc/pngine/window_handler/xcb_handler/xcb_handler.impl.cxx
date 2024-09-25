@@ -2,8 +2,11 @@ module;
 #include <cstdint>
 #include <utility>
 #include <xcb/xcb.h>
+#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_xcb.h>
 module csc.pngine.window_handler.xcb_handler:impl;
 
+import vulkan_hpp;
 import stl.stdexcept;
 
 import :utility;
@@ -25,6 +28,7 @@ class xcb_handler_impl {
   ~xcb_handler_impl() noexcept;
 
   void do_clear() noexcept;
+  vk::SurfaceKHR do_create_surface(const vk::Instance& instance) const;
 };
 xcb_handler_impl::xcb_handler_impl(uint16_t window_width, uint16_t window_height) {
   mp_xcb_connect = ::xcb_connect(nullptr, nullptr);
@@ -80,6 +84,22 @@ xcb_handler_impl::xcb_handler_impl(xcb_handler_impl&& move) noexcept
       m_xcb_window(std::exchange(move.m_xcb_window, 0)) {
 }
 
+vk::SurfaceKHR xcb_handler_impl::do_create_surface(const vk::Instance& instance) const {
+  VkXcbSurfaceCreateInfoKHR xcb_surface_desc;
+  xcb_surface_desc.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+  xcb_surface_desc.pNext = nullptr;
+  xcb_surface_desc.connection = mp_xcb_connect;
+  xcb_surface_desc.window = m_xcb_window;
+  xcb_surface_desc.flags = 0;
+
+  VkSurfaceKHR vksurface;
+  static_assert(std::is_pointer_v<VkInstance>);
+  VkResult vr =
+      ::vkCreateXcbSurfaceKHR(static_cast<const VkInstance>(instance), &xcb_surface_desc, nullptr, &vksurface);
+  if (vr != VK_SUCCESS)
+    throw std::runtime_error("Failed to create window!");
+  return vk::SurfaceKHR(vksurface);
+}
 // auto xcb_handler_impl::
 
 } // namespace pngine

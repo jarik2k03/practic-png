@@ -23,6 +23,9 @@ class instance : private instance_impl {
   void create_debug_reportEXT() {
     return this->do_create_debug_reportEXT();
   }
+  void create_surfaceKHR(const pngine::v_window_handler& handler) {
+    return this->do_create_surfaceKHR(handler);
+  }
   void create_device(std::string_view gpu_name) {
     return this->do_create_device(gpu_name);
   }

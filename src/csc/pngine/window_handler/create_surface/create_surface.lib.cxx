@@ -11,15 +11,19 @@ export namespace csc {
 namespace pngine {
 
 class f_create_surface {
+ private:
+  const vk::Instance& m_instance;
+
  public:
-  constexpr f_create_surface() = default;
+  f_create_surface(const vk::Instance& instance) : m_instance(instance) {
+  }
 #ifdef _WIN32
   vk::SurfaceKHR operator()(const pngine::win32_handler& win32) const {
-    return {};
+    return win32.create_surface(m_instance);
   }
 #elif __linux
   vk::SurfaceKHR operator()(const pngine::xcb_handler& xcb) const {
-    return {};
+    return xcb.create_surface(m_instance);
   }
 #endif
 };

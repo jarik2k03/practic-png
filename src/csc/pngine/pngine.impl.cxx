@@ -21,8 +21,8 @@ class pngine_impl {
   pngine::version m_app_version = pngine::bring_version(1u, 0u, 0u);
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
-  pngine::ov_window_handler m_window_handler = std::nullopt;
   pngine::instance m_instance;
+  pngine::v_window_handler m_window_handler;
 
  public:
   pngine_impl() = delete;
@@ -45,6 +45,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
 #ifndef NDEBUG
   m_instance.create_debug_reportEXT();
 #endif
+  m_instance.create_surfaceKHR(m_window_handler);
   m_instance.bring_physical_devices();
   m_instance.create_device(m_gpu_name);
 }

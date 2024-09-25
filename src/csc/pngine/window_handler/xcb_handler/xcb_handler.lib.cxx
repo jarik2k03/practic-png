@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 export module csc.pngine.window_handler.xcb_handler;
-
+import vulkan_hpp;
 import :impl;
 export namespace csc {
 namespace pngine {
@@ -11,6 +11,9 @@ class xcb_handler : private xcb_handler_impl {
   }
   void clear() noexcept {
     this->do_clear();
+  }
+  vk::SurfaceKHR create_surface(const vk::Instance& instance) const {
+    return this->do_create_surface(instance);
   }
   xcb_handler() = default;
   xcb_handler(xcb_handler&& move) noexcept = default;
