@@ -7,7 +7,7 @@ export namespace csc {
 namespace pngine {
 class win32_handler : private win32_handler_impl {
  public:
-  explicit win32_handler(uint32_t width, uint32_t height) : win32_handler_impl(width, height) {
+  explicit win32_handler(uint16_t width, uint16_t height) : win32_handler_impl(width, height) {
   }
   win32_handler(win32_handler&& move) noexcept = delete;
   win32_handler(const win32_handler& copy) = delete;

@@ -1,6 +1,5 @@
-#include <cstdlib>
+#include <unistd.h>
 #include <cstdint>
-#include <stdio.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <bits/stl_algo.h>
@@ -116,7 +115,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
-
+      ::sleep(2);
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }

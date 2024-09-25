@@ -15,9 +15,11 @@ class f_create_surface {
   constexpr f_create_surface() = default;
 #ifdef _WIN32
   vk::SurfaceKHR operator()(const pngine::win32_handler& win32) const {
+    return {};
   }
 #elif __linux
   vk::SurfaceKHR operator()(const pngine::xcb_handler& xcb) const {
+    return {};
   }
 #endif
 };

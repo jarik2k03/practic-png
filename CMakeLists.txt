@@ -15,6 +15,12 @@ find_package(ZLIB REQUIRED)
 find_package(Vulkan REQUIRED)
 include(create_vk_module) # vulkan поддерживает c++ modules с v.1.3.256
 
+if(LINUX)
+  find_package(X11 REQUIRED) # пока что неопционально
+elseif(WIN32)
+  find_package(WINAPI) # скорее всего не работает!!!!!!!!!!!!!!!!!!!!!!!!!
+endif()
+
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS ON)
 endif()
