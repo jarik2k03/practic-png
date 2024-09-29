@@ -61,8 +61,8 @@ device_impl::device_impl(const vk::PhysicalDevice& dev, const std::optional<vk::
   std::vector<vk::DeviceQueueCreateInfo> q_descriptions;
   pngine::queues graphics_queues(m_indices.graphics.value(), {1.0});
   q_descriptions.emplace_back(graphics_queues.bring_info());
-  if (surface.has_value()) {
-    pngine::queues present_queues(m_indices.present.value(), {1.0});
+  if (surface.has_value() && m_indices.graphics.value() != m_indices.present.value()) {
+    pngine::queues present_queues(m_indices.present.value(), {1.0}); // если индексы разные - то и очереди тоже
     q_descriptions.emplace_back(present_queues.bring_info());
   }
 
