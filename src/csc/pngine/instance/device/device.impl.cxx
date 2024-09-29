@@ -57,6 +57,7 @@ device_impl::device_impl(const vk::PhysicalDevice& dev) {
   // очередь пока только одна (зафиксировано)
   vk::DeviceCreateInfo description{};
   description.sType = vk::StructureType::eDeviceCreateInfo;
+  description.pNext = nullptr;
   description.ppEnabledExtensionNames = m_enabled_extensions.data();
   description.enabledExtensionCount = m_enabled_extensions.size();
   description.pQueueCreateInfos = &q_description;

@@ -9,9 +9,11 @@ module csc.pngine.instance:impl;
 import stl.vector;
 import stl.string;
 import stl.set;
+import stl.variant;
 import stl.stdexcept;
 import stl.string_view;
 
+import csc.pngine.commons.utility.debug_reportEXT;
 import csc.pngine.instance.debug_reportEXT;
 import csc.pngine.instance.device;
 import csc.pngine.instance.surfaceKHR;
@@ -85,13 +87,11 @@ instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
     m_enabled_extensions.emplace_back("VK_EXT_debug_report");
   }
   vk::InstanceCreateInfo description{};
-  if constexpr (pngine::is_debug_build()) {
-    using enum vk::DebugReportFlagBitsEXT;
-    const auto config = pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug | ePerformanceWarning});
-    description.setPNext(&config); // в debug - config
-  } else {
-    description.setPNext(nullptr); // в release - nullptr
-  }
+  using enum vk::DebugReportFlagBitsEXT;
+  constexpr const auto config =
+      pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug | ePerformanceWarning});
+
+  description.pNext = (config.has_value()) ? (&*config) : nullptr; // в release - nullopt
   description.sType = vk::StructureType::eInstanceCreateInfo;
   description.pApplicationInfo = &app_info;
   description.enabledLayerCount = m_enabled_layers.size();
@@ -115,7 +115,8 @@ void instance_impl::do_clear() noexcept {
     if constexpr (pngine::is_debug_build()) {
       m_debug_report.clear();
     }
-    m_device.clear();
+    m_device.clear(); // удаление логического устройства
+    m_surface.clear(); // удаление поверхности окна
     m_instance.destroy(); // прежде чем очищать устройство, надо очистить его вложенности
     m_is_created = false;
   }
@@ -127,8 +128,8 @@ void instance_impl::do_create_debug_reportEXT() {
   }
 }
 void instance_impl::do_create_surfaceKHR(const pngine::v_window_handler& handler) {
-  auto instance_prod = std::visit(pngine::f_create_surface(m_instance), handler);
-  m_surface = pngine::surfaceKHR(instance_prod);
+  auto prod_surface = std::visit(pngine::f_create_surface(m_instance), handler);
+  m_surface = pngine::surfaceKHR(m_instance, prod_surface);
 }
 
 void instance_impl::do_create_device(std::string_view gpu_name) {

@@ -4,6 +4,8 @@ export module csc.pngine.instance;
 
 import stl.string_view;
 
+import csc.pngine.window_handler;
+
 import vulkan_hpp;
 import :impl;
 export namespace csc {

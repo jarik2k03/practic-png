@@ -12,7 +12,8 @@ class surfaceKHR : private surfaceKHR_impl {
  public:
   explicit surfaceKHR() : surfaceKHR_impl() {
   }
-  explicit surfaceKHR(const vk::Instance& instance) : surfaceKHR_impl(instance) {
+  explicit surfaceKHR(const vk::Instance& instance, const vk::SurfaceKHR& surface)
+      : surfaceKHR_impl(instance, surface) {
   }
   surfaceKHR(surfaceKHR&& move) noexcept : surfaceKHR_impl(std::move(move)) {
   }

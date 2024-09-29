@@ -2,6 +2,7 @@ module;
 #include <utility>
 module csc.pngine.instance.debug_reportEXT:impl;
 
+import csc.pngine.commons.utility.debug_reportEXT;
 import stl.iostream;
 export import vulkan_hpp;
 
@@ -71,16 +72,6 @@ debug_reportEXT_impl::debug_reportEXT_impl([[maybe_unused]] const vk::Instance& 
   m_instance = &instance;
   m_is_created = true;
 #endif
-}
-
-vk::DebugReportCallbackCreateInfoEXT pnext_debug_messenger_configuration_impl(vk::DebugReportFlagsEXT flags) noexcept {
-  vk::DebugReportCallbackCreateInfoEXT description{};
-  description.sType = vk::StructureType::eDebugReportCreateInfoEXT;
-  description.pNext = nullptr;
-  description.flags = flags;
-  description.pfnCallback = &pngine::custom_debug_report_callback;
-  description.pUserData = nullptr;
-  return description;
 }
 
 } // namespace pngine
