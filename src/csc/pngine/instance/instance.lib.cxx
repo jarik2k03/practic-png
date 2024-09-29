@@ -37,10 +37,7 @@ class instance : private instance_impl {
   void clear() noexcept {
     return this->do_clear();
   }
-  vk::Instance& get() {
-    return this->do_get();
-  }
-  const vk::Instance& get() const {
+  vk::Instance get() const noexcept {
     return this->do_get();
   }
   ~instance() noexcept = default;

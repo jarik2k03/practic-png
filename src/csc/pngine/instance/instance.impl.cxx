@@ -11,6 +11,7 @@ import stl.string;
 import stl.set;
 import stl.variant;
 import stl.stdexcept;
+import stl.optional;
 import stl.string_view;
 
 import csc.pngine.commons.utility.debug_reportEXT;
@@ -35,7 +36,7 @@ class instance_impl {
   // внутренние компоненты
   pngine::debug_reportEXT m_debug_report{};
   pngine::device m_device{};
-  pngine::surfaceKHR m_surface{};
+  std::optional<pngine::surfaceKHR> m_surface{};
 
  public:
   explicit instance_impl() = default;
@@ -48,8 +49,7 @@ class instance_impl {
   void do_create_device(std::string_view dev_name);
   void do_create_surfaceKHR(const pngine::v_window_handler& handler);
   void do_bring_physical_devices();
-  vk::Instance& do_get();
-  const vk::Instance& do_get() const;
+  vk::Instance do_get() const noexcept;
   void do_clear() noexcept;
 };
 
@@ -91,7 +91,7 @@ instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
   constexpr const auto config =
       pngine::pnext_debug_messenger_configuration({eError | eWarning | eDebug | ePerformanceWarning});
 
-  description.pNext = (config.has_value()) ? (&*config) : nullptr; // в release - nullopt
+  description.pNext = (config.has_value()) ? (&config.value()) : nullptr; // в release - nullopt
   description.sType = vk::StructureType::eInstanceCreateInfo;
   description.pApplicationInfo = &app_info;
   description.enabledLayerCount = m_enabled_layers.size();
@@ -103,10 +103,7 @@ instance_impl::instance_impl(const vk::ApplicationInfo& app_info) {
   m_is_created = true;
 }
 
-vk::Instance& instance_impl::do_get() {
-  return m_instance;
-}
-const vk::Instance& instance_impl::do_get() const {
+vk::Instance instance_impl::do_get() const noexcept {
   return m_instance;
 }
 
@@ -116,7 +113,8 @@ void instance_impl::do_clear() noexcept {
       m_debug_report.clear();
     }
     m_device.clear(); // удаление логического устройства
-    m_surface.clear(); // удаление поверхности окна
+    if (m_surface.has_value())
+      m_surface->clear(); // удаление поверхности окна
     m_instance.destroy(); // прежде чем очищать устройство, надо очистить его вложенности
     m_is_created = false;
   }
@@ -129,7 +127,7 @@ void instance_impl::do_create_debug_reportEXT() {
 }
 void instance_impl::do_create_surfaceKHR(const pngine::v_window_handler& handler) {
   auto prod_surface = std::visit(pngine::f_create_surface(m_instance), handler);
-  m_surface = pngine::surfaceKHR(m_instance, prod_surface);
+  m_surface = std::make_optional(pngine::surfaceKHR(m_instance, prod_surface));
 }
 
 void instance_impl::do_create_device(std::string_view gpu_name) {
@@ -140,8 +138,13 @@ void instance_impl::do_create_device(std::string_view gpu_name) {
     return std::strcmp(gpu.getProperties().deviceName, gpu_name.data()) == 0ul;
   };
   const auto gpu_pos = std::ranges::find_if(m_phys_devices, is_selected_gpu);
-  [[likely]] if (gpu_pos != m_phys_devices.cend()) { m_device = pngine::device(*gpu_pos); }
-  m_device = pngine::device(m_phys_devices.front());
+  std::optional<vk::SurfaceKHR> opt_surface = std::nullopt;
+  if (m_surface.has_value()) {
+    opt_surface = m_surface->get();
+  }
+
+  [[likely]] if (gpu_pos != m_phys_devices.cend()) { m_device = pngine::device(*gpu_pos, opt_surface); }
+  m_device = pngine::device(m_phys_devices.front(), opt_surface);
   // если не нашли желанную видеокарту -> используем первую попавшуюся
 }
 

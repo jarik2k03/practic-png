@@ -17,15 +17,23 @@ class surfaceKHR_impl {
  public:
   explicit surfaceKHR_impl() = default;
   ~surfaceKHR_impl() noexcept;
-  surfaceKHR_impl(surfaceKHR_impl&& move) noexcept = default;
+  surfaceKHR_impl(surfaceKHR_impl&& move) noexcept;
   surfaceKHR_impl& operator=(surfaceKHR_impl&& move) noexcept;
   explicit surfaceKHR_impl(const vk::Instance& instance, const vk::SurfaceKHR& surface);
+  vk::SurfaceKHR do_get() const noexcept;
   void do_clear() noexcept;
 };
 
 surfaceKHR_impl::~surfaceKHR_impl() noexcept {
   do_clear();
 }
+
+surfaceKHR_impl::surfaceKHR_impl(surfaceKHR_impl&& move) noexcept
+    : m_surfaceKHR(move.m_surfaceKHR),
+      m_instance(move.m_instance),
+      m_is_created(std::exchange(move.m_is_created, false)) {
+}
+
 surfaceKHR_impl& surfaceKHR_impl::operator=(surfaceKHR_impl&& move) noexcept {
   if (this == &move)
     return *this;
@@ -39,6 +47,10 @@ surfaceKHR_impl::surfaceKHR_impl(const vk::Instance& instance, const vk::Surface
   m_surfaceKHR = surface;
   m_instance = &instance;
   m_is_created = true;
+}
+
+vk::SurfaceKHR surfaceKHR_impl::do_get() const noexcept {
+  return m_surfaceKHR;
 }
 
 void surfaceKHR_impl::do_clear() noexcept {
