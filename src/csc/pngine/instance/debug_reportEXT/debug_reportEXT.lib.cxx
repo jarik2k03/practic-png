@@ -24,9 +24,5 @@ class debug_reportEXT : private debug_reportEXT_impl {
   }
 };
 
-vk::DebugReportCallbackCreateInfoEXT pnext_debug_messenger_configuration(vk::DebugReportFlagsEXT flags) noexcept {
-  return pngine::pnext_debug_messenger_configuration_impl(flags);
-}
-
 } // namespace pngine
 } // namespace csc

@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include <unistd.h>
 #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
-
+      ::sleep(2);
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }
@@ -144,7 +144,6 @@ int main(int argc, char** argv) {
       std::cout << "Изображение успешно сохранено: " << o_pos->second
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
-
   } catch (const std::runtime_error& e) {
     std::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
     std::exit(1);

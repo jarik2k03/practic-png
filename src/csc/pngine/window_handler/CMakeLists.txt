@@ -1,0 +1,11 @@
+if(WIN32)
+add_subdirectory(win32_handler)
+elseif(LINUX)
+add_subdirectory(xcb_handler)
+endif()
+add_subdirectory(create_surface)
+
+include(pngine_short_paths)
+add_library(${WINDOW_HANDLER} STATIC window_handler.lib.cxx)
+target_sources(${WINDOW_HANDLER} PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES window_handler.lib.cxx )
+target_link_libraries(${WINDOW_HANDLER} PRIVATE ${CREATE_SURFACE} stl_variant)

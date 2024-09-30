@@ -4,6 +4,8 @@ export module csc.pngine.instance;
 
 import stl.string_view;
 
+import csc.pngine.window_handler;
+
 import vulkan_hpp;
 import :impl;
 export namespace csc {
@@ -23,6 +25,9 @@ class instance : private instance_impl {
   void create_debug_reportEXT() {
     return this->do_create_debug_reportEXT();
   }
+  void create_surfaceKHR(const pngine::v_window_handler& handler) {
+    return this->do_create_surfaceKHR(handler);
+  }
   void create_device(std::string_view gpu_name) {
     return this->do_create_device(gpu_name);
   }
@@ -32,10 +37,7 @@ class instance : private instance_impl {
   void clear() noexcept {
     return this->do_clear();
   }
-  vk::Instance& get() {
-    return this->do_get();
-  }
-  const vk::Instance& get() const {
+  vk::Instance get() const noexcept {
     return this->do_get();
   }
   ~instance() noexcept = default;

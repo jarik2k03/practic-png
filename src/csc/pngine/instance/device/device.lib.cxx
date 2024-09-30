@@ -3,6 +3,8 @@ module;
 #include <cstdint>
 export module csc.pngine.instance.device;
 
+import stl.optional;
+
 import vulkan_hpp;
 import :impl;
 export namespace csc {
@@ -12,7 +14,8 @@ class device : private device_impl {
  public:
   explicit device() : device_impl() {
   }
-  explicit device(const vk::PhysicalDevice& device) : device_impl(device) {
+  explicit device(const vk::PhysicalDevice& device, const std::optional<vk::SurfaceKHR>& surface)
+      : device_impl(device, surface) {
   }
   device(device&& move) noexcept : device_impl(std::move(move)) {
   }
