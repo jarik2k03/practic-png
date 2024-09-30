@@ -5,6 +5,7 @@ export module csc.pngine.instance;
 import stl.string_view;
 
 import csc.pngine.window_handler;
+import csc.pngine.instance.device;
 
 import vulkan_hpp;
 import :impl;
@@ -28,7 +29,7 @@ class instance : private instance_impl {
   void create_surfaceKHR(const pngine::v_window_handler& handler) {
     return this->do_create_surfaceKHR(handler);
   }
-  void create_device(std::string_view gpu_name) {
+  pngine::device& create_device(std::string_view gpu_name) {
     return this->do_create_device(gpu_name);
   }
   void bring_physical_devices() {

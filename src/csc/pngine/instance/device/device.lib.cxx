@@ -14,8 +14,7 @@ class device : private device_impl {
  public:
   explicit device() : device_impl() {
   }
-  explicit device(const vk::PhysicalDevice& device, const std::optional<vk::SurfaceKHR>& surface)
-      : device_impl(device, surface) {
+  explicit device(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) : device_impl(device, surface) {
   }
   device(device&& move) noexcept : device_impl(std::move(move)) {
   }
@@ -23,6 +22,9 @@ class device : private device_impl {
     return static_cast<device&>(device_impl::operator=(std::move(move)));
   }
   ~device() noexcept = default;
+  void create_swapchainKHR() {
+    this->do_create_swapchainKHR();
+  }
   void clear() noexcept {
     this->do_clear();
   }

@@ -11,7 +11,7 @@ namespace pngine {
 class surfaceKHR_impl {
  private:
   vk::SurfaceKHR m_surfaceKHR{};
-  const vk::Instance* m_instance = nullptr;
+  const vk::Instance* m_keep_instance = nullptr;
   vk::Bool32 m_is_created = false;
 
  public:
@@ -20,7 +20,7 @@ class surfaceKHR_impl {
   surfaceKHR_impl(surfaceKHR_impl&& move) noexcept;
   surfaceKHR_impl& operator=(surfaceKHR_impl&& move) noexcept;
   explicit surfaceKHR_impl(const vk::Instance& instance, const vk::SurfaceKHR& surface);
-  vk::SurfaceKHR do_get() const noexcept;
+  const vk::SurfaceKHR& do_get() const noexcept;
   void do_clear() noexcept;
 };
 
@@ -30,7 +30,7 @@ surfaceKHR_impl::~surfaceKHR_impl() noexcept {
 
 surfaceKHR_impl::surfaceKHR_impl(surfaceKHR_impl&& move) noexcept
     : m_surfaceKHR(move.m_surfaceKHR),
-      m_instance(move.m_instance),
+      m_keep_instance(move.m_keep_instance),
       m_is_created(std::exchange(move.m_is_created, false)) {
 }
 
@@ -39,23 +39,23 @@ surfaceKHR_impl& surfaceKHR_impl::operator=(surfaceKHR_impl&& move) noexcept {
     return *this;
   do_clear();
   m_surfaceKHR = move.m_surfaceKHR;
-  m_instance = move.m_instance;
+  m_keep_instance = move.m_keep_instance;
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
 }
 surfaceKHR_impl::surfaceKHR_impl(const vk::Instance& instance, const vk::SurfaceKHR& surface) {
   m_surfaceKHR = surface;
-  m_instance = &instance;
+  m_keep_instance = &instance;
   m_is_created = true;
 }
 
-vk::SurfaceKHR surfaceKHR_impl::do_get() const noexcept {
+const vk::SurfaceKHR& surfaceKHR_impl::do_get() const noexcept {
   return m_surfaceKHR;
 }
 
 void surfaceKHR_impl::do_clear() noexcept {
   if (m_is_created != false) {
-    m_instance->destroySurfaceKHR(m_surfaceKHR, {}, {});
+    m_keep_instance->destroySurfaceKHR(m_surfaceKHR, {}, {});
     m_is_created = false;
   }
 }
