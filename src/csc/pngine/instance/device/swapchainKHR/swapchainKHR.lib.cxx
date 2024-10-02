@@ -3,6 +3,7 @@ module;
 #include <cstdint>
 export module csc.pngine.instance.device.swapchainKHR;
 
+import csc.pngine.commons.utility.swapchain_details;
 import vulkan_hpp;
 import :impl;
 export namespace csc {
@@ -12,7 +13,7 @@ class swapchainKHR : private swapchainKHR_impl {
  public:
   explicit swapchainKHR() : swapchainKHR_impl() {
   }
-  explicit swapchainKHR(const vk::Device& device, const vk::SurfaceKHR& surface) : swapchainKHR_impl(device, surface) {
+  explicit swapchainKHR(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details) : swapchainKHR_impl(device, surface, details) {
   }
   void clear() noexcept {
     this->do_clear();

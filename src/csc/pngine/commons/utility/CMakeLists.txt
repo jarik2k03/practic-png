@@ -1,5 +1,6 @@
 add_subdirectory(version)
 add_subdirectory(debug_reportEXT)
+add_subdirectory(swapchain_details)
 
 include(pngine_short_paths)
 add_library(${UTILITY} STATIC utility.lib.cxx)

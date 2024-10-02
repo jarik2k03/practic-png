@@ -10,6 +10,7 @@ import stl.optional;
 
 import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
+import csc.pngine.commons.utility.swapchain_details;
 
 import :utility;
 namespace csc {
@@ -90,7 +91,7 @@ void device_impl::do_create_swapchainKHR() {
   if (details.formats.empty() || details.present_modes.empty())
     throw std::runtime_error(
         "Device: невозможно создать swapchainKHR, при отсутствии SurfaceFormats или PresentModes!");
-  m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface);
+  m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details);
 }
 
 void device_impl::do_clear() noexcept {
