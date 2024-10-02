@@ -38,6 +38,10 @@ vk::Extent2D choose_extent(const vk::SurfaceCapabilitiesKHR& capabilities) {
  }
 }
 
+constexpr uint32_t choose_image_count(const vk::SurfaceCapabilitiesKHR& caps, uint32_t count) noexcept {
+
+  return (caps.maxImageCount > 0) ? std::clamp(count, caps.minImageCount, caps.maxImageCount) : count;
+}
 
 } // namespace pngine
 

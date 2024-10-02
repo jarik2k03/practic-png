@@ -1,4 +1,5 @@
 set(UTILITY pngine_commons_utility)
+set(FORWARD pngine_commons_forward)
 set(COMMONS pngine_commons)
 set(INSTANCE pngine_instance)
 set(DEBUG_REPORTEXT pngine_instance_debug_reportEXT)

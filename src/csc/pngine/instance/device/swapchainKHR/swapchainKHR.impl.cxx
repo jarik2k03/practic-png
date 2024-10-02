@@ -5,7 +5,11 @@ module;
 module csc.pngine.instance.device.swapchainKHR:impl;
 
 import csc.pngine.commons.utility.swapchain_details;
+import csc.pngine.commons.forward.device;
+
 export import vulkan_hpp;
+
+import stl.stdexcept;
 
 import :utility;
 namespace csc {
@@ -40,10 +44,24 @@ swapchainKHR_impl& swapchainKHR_impl::operator=(swapchainKHR_impl&& move) noexce
 
 swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details)
     : m_keep_device(&device), m_keep_surface(&surface) {
+  [[unlikely]] if (details.formats.empty() || details.present_modes.empty())
+    throw std::runtime_error(
+        "Device:SwapchainKHR: невозможно создать swapchainKHR, отсутствует SurfaceFormats или PresentModes!");
+  const auto image_count = pngine::choose_image_count(details.capabilities, details.capabilities.minImageCount);
 
   vk::SwapchainCreateInfoKHR description{};
   description.sType = vk::StructureType::eSwapchainCreateInfoKHR;
   description.pNext = nullptr;
+  description.imageExtent = pngine::choose_extent(details.capabilities);
+  const auto surf_format = pngine::choose_surface_format(details.formats);
+  description.imageFormat = surf_format.format;
+  description.imageColorSpace = surf_format.colorSpace;
+  description.presentMode = pngine::choose_present_mode(details.present_modes);
+  description.surface = surface;
+  description.minImageCount = image_count;
+  description.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+  description.imageArrayLayers = 1;
+
 
   m_swapchainKHR = m_keep_device->createSwapchainKHR(description, nullptr);
   m_is_created = true;

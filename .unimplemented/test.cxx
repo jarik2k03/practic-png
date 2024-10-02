@@ -20,4 +20,8 @@ int main() {
   vk::SwapchainCreateInfoKHR swapchaininfo;
   vk::StructureType::eSwapchainCreateInfoKHR;
   vk::SurfaceCapabilitiesKHR caps;
+  swapchaininfo.imageExtent;
+  swapchaininfo.imageFormat;
+  swapchaininfo.surface;
+  swapchaininfo.presentMode;
 }

@@ -88,14 +88,12 @@ void device_impl::do_create_swapchainKHR() {
   [[unlikely]] if (m_is_created == false)
     throw std::runtime_error("Device: невозможно создать swapchainKHR, пока не создан device!");
   const auto details = pngine::bring_swapchain_details_from_phys_device(*m_keep_phdevice, *m_keep_surface);
-  if (details.formats.empty() || details.present_modes.empty())
-    throw std::runtime_error(
-        "Device: невозможно создать swapchainKHR, при отсутствии SurfaceFormats или PresentModes!");
   m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details);
 }
 
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
+    m_swapchain.clear();
     m_device.destroy();
     m_is_created = false;
   }

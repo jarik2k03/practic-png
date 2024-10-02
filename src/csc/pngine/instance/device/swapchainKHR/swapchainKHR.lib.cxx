@@ -4,6 +4,8 @@ module;
 export module csc.pngine.instance.device.swapchainKHR;
 
 import csc.pngine.commons.utility.swapchain_details;
+import csc.pngine.commons.forward.device;
+
 import vulkan_hpp;
 import :impl;
 export namespace csc {
