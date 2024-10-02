@@ -36,7 +36,7 @@ class instance_impl {
   // внутренние компоненты
   pngine::debug_reportEXT m_debug_report{};
   pngine::device m_device{};
-  std::optional<pngine::surfaceKHR> m_surface{};
+  pngine::surfaceKHR m_surface{};
 
  public:
   explicit instance_impl() = default;
@@ -46,7 +46,7 @@ class instance_impl {
   explicit instance_impl(const vk::ApplicationInfo& app_info);
 
   void do_create_debug_reportEXT();
-  void do_create_device(std::string_view dev_name);
+  pngine::device& do_create_device(std::string_view dev_name);
   void do_create_surfaceKHR(const pngine::v_window_handler& handler);
   void do_bring_physical_devices();
   vk::Instance do_get() const noexcept;
@@ -113,8 +113,7 @@ void instance_impl::do_clear() noexcept {
       m_debug_report.clear();
     }
     m_device.clear(); // удаление логического устройства
-    if (m_surface.has_value())
-      m_surface->clear(); // удаление поверхности окна
+    m_surface.clear(); // удаление поверхности окна
     m_instance.destroy(); // прежде чем очищать устройство, надо очистить его вложенности
     m_is_created = false;
   }
@@ -127,10 +126,10 @@ void instance_impl::do_create_debug_reportEXT() {
 }
 void instance_impl::do_create_surfaceKHR(const pngine::v_window_handler& handler) {
   auto prod_surface = std::visit(pngine::f_create_surface(m_instance), handler);
-  m_surface = std::make_optional(pngine::surfaceKHR(m_instance, prod_surface));
+  m_surface = pngine::surfaceKHR(m_instance, prod_surface);
 }
 
-void instance_impl::do_create_device(std::string_view gpu_name) {
+pngine::device& instance_impl::do_create_device(std::string_view gpu_name) {
   [[unlikely]] if (m_phys_devices.size() == 0ul) {
     throw std::runtime_error("Не найдены видеовычислители на текущем компьютере!");
   }
@@ -138,14 +137,11 @@ void instance_impl::do_create_device(std::string_view gpu_name) {
     return std::strcmp(gpu.getProperties().deviceName, gpu_name.data()) == 0ul;
   };
   const auto gpu_pos = std::ranges::find_if(m_phys_devices, is_selected_gpu);
-  std::optional<vk::SurfaceKHR> opt_surface = std::nullopt;
-  if (m_surface.has_value()) {
-    opt_surface = m_surface->get();
-  }
 
-  [[likely]] if (gpu_pos != m_phys_devices.cend()) { m_device = pngine::device(*gpu_pos, opt_surface); }
-  m_device = pngine::device(m_phys_devices.front(), opt_surface);
+  [[likely]] if (gpu_pos != m_phys_devices.cend()) { m_device = pngine::device(*gpu_pos, m_surface.get()); }
+  m_device = pngine::device(m_phys_devices.front(), m_surface.get());
   // если не нашли желанную видеокарту -> используем первую попавшуюся
+  return m_device;
 }
 
 void instance_impl::do_bring_physical_devices() {

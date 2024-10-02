@@ -9,6 +9,7 @@ export import stl.string_view;
 import stl.iostream;
 #endif
 import csc.pngine.instance;
+import csc.pngine.instance.device;
 import csc.pngine.window_handler;
 import vulkan_hpp;
 
@@ -47,7 +48,8 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
 #endif
   m_instance.create_surfaceKHR(m_window_handler);
   m_instance.bring_physical_devices();
-  m_instance.create_device(m_gpu_name);
+  auto& device = m_instance.create_device(m_gpu_name);
+  device.create_swapchainKHR();
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {

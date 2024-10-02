@@ -62,7 +62,7 @@ xcb_handler_impl::~xcb_handler_impl() noexcept {
   do_clear();
 }
 void xcb_handler_impl::do_clear() noexcept {
-  if (mp_xcb_connect != nullptr && m_xcb_window != 0u)
+  if (mp_xcb_connect != nullptr)
     ::xcb_destroy_window(mp_xcb_connect, m_xcb_window);
   if (mp_xcb_connect != nullptr)
     ::xcb_disconnect(mp_xcb_connect), mp_xcb_connect = nullptr;
