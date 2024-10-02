@@ -5,8 +5,7 @@ module;
 module csc.pngine.instance.device.swapchainKHR:impl;
 
 import csc.pngine.commons.utility.swapchain_details;
-import csc.pngine.commons.forward.device;
-
+import csc.pngine.commons.utility.queue_family_indices;
 export import vulkan_hpp;
 
 import stl.stdexcept;
@@ -24,7 +23,7 @@ class swapchainKHR_impl {
 
  public:
   explicit swapchainKHR_impl() = default;
-  explicit swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details);
+  explicit swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details, const pngine::queue_family_indices& indices);
   ~swapchainKHR_impl() noexcept = default;
   swapchainKHR_impl(swapchainKHR_impl&& move) noexcept = default;
   swapchainKHR_impl& operator=(swapchainKHR_impl&& move) noexcept;
@@ -42,7 +41,7 @@ swapchainKHR_impl& swapchainKHR_impl::operator=(swapchainKHR_impl&& move) noexce
   return *this;
 }
 
-swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details)
+swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details, const pngine::queue_family_indices& indices)
     : m_keep_device(&device), m_keep_surface(&surface) {
   [[unlikely]] if (details.formats.empty() || details.present_modes.empty())
     throw std::runtime_error(
@@ -60,8 +59,22 @@ swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::Surface
   description.surface = surface;
   description.minImageCount = image_count;
   description.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-  description.imageArrayLayers = 1;
+  description.imageArrayLayers = 1u;
 
+  const uint32_t queue_family_indices[] = { indices.graphics.value(), indices.present.value() };
+  if (indices.graphics.value() != indices.present.value()) {
+    description.imageSharingMode = vk::SharingMode::eConcurrent;
+    description.queueFamilyIndexCount = 2u;
+    description.pQueueFamilyIndices = queue_family_indices; 
+  } else {
+    description.imageSharingMode = vk::SharingMode::eExclusive;
+    description.queueFamilyIndexCount = 0u;
+    description.pQueueFamilyIndices = nullptr; 
+  }
+  description.preTransform = details.capabilities.currentTransform;
+  description.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+  description.clipped = vk::True;
+  description.oldSwapchain = vk::SwapchainKHR{};
 
   m_swapchainKHR = m_keep_device->createSwapchainKHR(description, nullptr);
   m_is_created = true;

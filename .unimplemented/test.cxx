@@ -19,9 +19,4 @@ int main() {
   const auto modes = dev[0].getSurfacePresentModesKHR(surface, dispatch);
   vk::SwapchainCreateInfoKHR swapchaininfo;
   vk::StructureType::eSwapchainCreateInfoKHR;
-  vk::SurfaceCapabilitiesKHR caps;
-  swapchaininfo.imageExtent;
-  swapchaininfo.imageFormat;
-  swapchaininfo.surface;
-  swapchaininfo.presentMode;
 }

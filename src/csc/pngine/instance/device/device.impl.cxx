@@ -10,7 +10,9 @@ import stl.optional;
 
 import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
+
 import csc.pngine.commons.utility.swapchain_details;
+import csc.pngine.commons.utility.queue_family_indices;
 
 import :utility;
 namespace csc {
@@ -88,7 +90,7 @@ void device_impl::do_create_swapchainKHR() {
   [[unlikely]] if (m_is_created == false)
     throw std::runtime_error("Device: невозможно создать swapchainKHR, пока не создан device!");
   const auto details = pngine::bring_swapchain_details_from_phys_device(*m_keep_phdevice, *m_keep_surface);
-  m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details);
+  m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details, m_indices);
 }
 
 void device_impl::do_clear() noexcept {
