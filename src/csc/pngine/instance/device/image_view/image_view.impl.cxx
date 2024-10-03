@@ -39,7 +39,7 @@ image_view_impl& image_view_impl::operator=(image_view_impl&& move) noexcept {
 
 image_view_impl::image_view_impl(const vk::Device& device, const vk::Image& image, const vk::Format& img_format)
     : m_keep_device(&device) {
-  vk::ImageViewCreateInfo description;
+  vk::ImageViewCreateInfo description{};
   description.sType = vk::StructureType::eImageViewCreateInfo;
   description.image = image;
   description.viewType = vk::ImageViewType::e2D;

@@ -2,6 +2,7 @@ module;
 #include <utility>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
+#include <map>
 module csc.pngine.instance.device:impl;
 
 export import vulkan_hpp;
@@ -9,10 +10,13 @@ export import vulkan_hpp;
 import stl.stdexcept;
 import stl.vector;
 import stl.optional;
+import stl.string;
+import stl.string_view;
 
 import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
 import csc.pngine.instance.device.image_view;
+import csc.pngine.instance.device.shader_module;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
@@ -29,9 +33,9 @@ class device_impl {
 
   pngine::swapchainKHR m_swapchain{};
   std::vector<pngine::image_view> m_image_views{};
-
+  std::map<std::string, pngine::shader_module> m_shader_modules{};
   std::vector<const char*> m_enabled_extensions{};
-  vk::Bool32 m_is_created = false;
+  vk::Bool32 m_is_created = false;  
 
  public:
   explicit device_impl() = default;
@@ -42,6 +46,7 @@ class device_impl {
   void do_clear() noexcept;
   void do_create_swapchainKHR();
   void do_create_image_views();
+  void do_create_shader_module(std::string_view name, std::string_view compiled_filepath);
 };
 
 device_impl::~device_impl() noexcept {
@@ -55,6 +60,10 @@ device_impl& device_impl::operator=(device_impl&& move) noexcept {
   m_indices = move.m_indices;
   m_keep_surface = move.m_keep_surface;
   m_keep_phdevice = move.m_keep_phdevice;
+
+  m_swapchain = std::move(move.m_swapchain);
+  m_image_views = std::move(move.m_image_views);
+  m_shader_modules = std::move(move.m_shader_modules);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
@@ -68,9 +77,8 @@ device_impl::device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& su
 
   if (!m_indices.graphics.has_value())
     throw std::runtime_error("Device: Не найдено graphics-семейство очередей для устройства!");
-  if (!m_indices.present.has_value()) {
+  if (!m_indices.present.has_value())
     throw std::runtime_error("Device: Не найдено present-семейство очередей для поверхности окна!");
-  }
 
   std::vector<vk::DeviceQueueCreateInfo> q_descriptions;
   pngine::queues graphics_queues(m_indices.graphics.value(), {1.0});
@@ -107,10 +115,16 @@ void device_impl::do_create_image_views() {
     m_image_views.emplace_back(pngine::image_view(m_device, img, m_swapchain.get_image_format()));
   });
 }
+void device_impl::do_create_shader_module(std::string_view name, std::string_view compiled_filepath) {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно создать shader_module, пока не создан device!");
+  m_shader_modules.insert(std::make_pair(name.data(), pngine::shader_module(m_device, compiled_filepath)));
+}
 
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
-    std::ranges::for_each(m_image_views, [](auto& img_view) { img_view.clear(); });
+    m_shader_modules.clear();
+    m_image_views.clear();
     m_swapchain.clear();
     m_device.destroy();
     m_is_created = false;
