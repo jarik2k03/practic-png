@@ -16,5 +16,4 @@ add_library(pngine STATIC pngine.lib.cxx)
 target_sources(pngine PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES pngine.lib.cxx )
 target_link_libraries(pngine PRIVATE pngine_impl)
 
-
-
+target_link_libraries(pngine INTERFACE shaders_triangle) # чтобы компилировал шейдеры при подключении pngine

@@ -14,10 +14,15 @@ find_package(ZLIB REQUIRED)
 # vulkan для рендеринга на видеокарте
 find_package(Vulkan)
 if (NOT VULKAN_FOUND)
-  message("Vulkan fetching content") 
+  message("Vulkan fetching content")
   FetchContent_Declare(Vulkan URL https://github.com/KhronosGroup/Vulkan-Hpp/archive/refs/tags/v1.3.295.zip)
   FetchContent_MakeAvailable(Vulkan)
 endif()
+
+# glsl-компилятор, который транслирует исходный код шейдеров в spir-v
+find_program(glslc_exe NAMES glslc HINTS Vulkan::glslc)
+
+add_subdirectory(shaders)
 
 
 include(create_vk_module) # vulkan поддерживает c++ modules с v.1.3.256
@@ -41,7 +46,7 @@ endif()
 add_compile_options(-Wall -Wextra -pedantic)
 
 
-message(STATUS "Build type:" ${CMAKE_BUILD_TYPE})
+message(STATUS "Build type -- " ${CMAKE_BUILD_TYPE})
 
 add_subdirectory(src)
 add_subdirectory(external)
