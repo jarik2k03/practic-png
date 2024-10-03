@@ -9,6 +9,7 @@ import csc.pngine.commons.utility.queue_family_indices;
 export import vulkan_hpp;
 
 import stl.stdexcept;
+import stl.vector;
 
 import :utility;
 namespace csc {
@@ -18,7 +19,10 @@ class swapchainKHR_impl {
   const vk::Device* m_keep_device = nullptr;
   const vk::SurfaceKHR* m_keep_surface = nullptr;
 
+  std::vector<vk::Image> m_images{}; 
   vk::SwapchainKHR m_swapchainKHR{};
+  vk::Format m_image_format{};
+  vk::Extent2D m_extent{};
   vk::Bool32 m_is_created = false;
 
  public:
@@ -37,6 +41,9 @@ swapchainKHR_impl& swapchainKHR_impl::operator=(swapchainKHR_impl&& move) noexce
   m_swapchainKHR = move.m_swapchainKHR;
   m_keep_device = move.m_keep_device;
   m_keep_surface = move.m_keep_surface;
+  m_extent = move.m_extent;
+  m_image_format = move.m_image_format;
+  m_images = std::move(move.m_images);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
 }
@@ -51,7 +58,9 @@ swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::Surface
   vk::SwapchainCreateInfoKHR description{};
   description.sType = vk::StructureType::eSwapchainCreateInfoKHR;
   description.pNext = nullptr;
-  description.imageExtent = pngine::choose_extent(details.capabilities);
+  m_extent = pngine::choose_extent(details.capabilities);
+
+  description.imageExtent = m_extent;
   const auto surf_format = pngine::choose_surface_format(details.formats);
   description.imageFormat = surf_format.format;
   description.imageColorSpace = surf_format.colorSpace;
@@ -65,11 +74,11 @@ swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::Surface
   if (indices.graphics.value() != indices.present.value()) {
     description.imageSharingMode = vk::SharingMode::eConcurrent;
     description.queueFamilyIndexCount = 2u;
-    description.pQueueFamilyIndices = queue_family_indices; 
+    description.pQueueFamilyIndices = queue_family_indices;
   } else {
     description.imageSharingMode = vk::SharingMode::eExclusive;
     description.queueFamilyIndexCount = 0u;
-    description.pQueueFamilyIndices = nullptr; 
+    description.pQueueFamilyIndices = nullptr;
   }
   description.preTransform = details.capabilities.currentTransform;
   description.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
@@ -77,6 +86,9 @@ swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::Surface
   description.oldSwapchain = vk::SwapchainKHR{};
 
   m_swapchainKHR = m_keep_device->createSwapchainKHR(description, nullptr);
+  m_images = m_keep_device->getSwapchainImagesKHR(m_swapchainKHR);
+  m_image_format = surf_format.format;
+  
   m_is_created = true;
 }
 
