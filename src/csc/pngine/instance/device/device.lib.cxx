@@ -25,6 +25,9 @@ class device : private device_impl {
   void create_swapchainKHR() {
     this->do_create_swapchainKHR();
   }
+  void create_image_views() {
+    this->do_create_image_views();
+  }
   void clear() noexcept {
     this->do_clear();
   }

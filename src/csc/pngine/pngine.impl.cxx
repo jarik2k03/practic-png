@@ -50,6 +50,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   m_instance.bring_physical_devices();
   auto& device = m_instance.create_device(m_gpu_name);
   device.create_swapchainKHR();
+  device.create_image_views();
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {

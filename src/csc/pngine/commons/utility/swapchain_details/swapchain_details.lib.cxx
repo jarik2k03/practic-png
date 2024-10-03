@@ -27,4 +27,3 @@ pngine::swapchain_details bring_swapchain_details_from_phys_device(
 
 } // namespace pngine
 } // namespace csc
-
