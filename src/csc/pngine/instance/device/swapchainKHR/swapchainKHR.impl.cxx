@@ -19,7 +19,7 @@ class swapchainKHR_impl {
   const vk::Device* m_keep_device = nullptr;
   const vk::SurfaceKHR* m_keep_surface = nullptr;
 
-  std::vector<vk::Image> m_images{}; 
+  std::vector<vk::Image> m_images{};
   vk::SwapchainKHR m_swapchainKHR{};
   vk::Format m_image_format{};
   vk::Extent2D m_extent{};
@@ -27,10 +27,16 @@ class swapchainKHR_impl {
 
  public:
   explicit swapchainKHR_impl() = default;
-  explicit swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details, const pngine::queue_family_indices& indices);
+  explicit swapchainKHR_impl(
+      const vk::Device& device,
+      const vk::SurfaceKHR& surface,
+      const pngine::swapchain_details& details,
+      const pngine::queue_family_indices& indices);
   ~swapchainKHR_impl() noexcept = default;
   swapchainKHR_impl(swapchainKHR_impl&& move) noexcept = default;
   swapchainKHR_impl& operator=(swapchainKHR_impl&& move) noexcept;
+  const vk::Format& do_get_image_format() const;
+  const std::vector<vk::Image>& do_get_images() const;
   void do_clear() noexcept;
 };
 
@@ -48,7 +54,11 @@ swapchainKHR_impl& swapchainKHR_impl::operator=(swapchainKHR_impl&& move) noexce
   return *this;
 }
 
-swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::SurfaceKHR& surface, const pngine::swapchain_details& details, const pngine::queue_family_indices& indices)
+swapchainKHR_impl::swapchainKHR_impl(
+    const vk::Device& device,
+    const vk::SurfaceKHR& surface,
+    const pngine::swapchain_details& details,
+    const pngine::queue_family_indices& indices)
     : m_keep_device(&device), m_keep_surface(&surface) {
   [[unlikely]] if (details.formats.empty() || details.present_modes.empty())
     throw std::runtime_error(
@@ -70,7 +80,7 @@ swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::Surface
   description.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
   description.imageArrayLayers = 1u;
 
-  const uint32_t queue_family_indices[] = { indices.graphics.value(), indices.present.value() };
+  const uint32_t queue_family_indices[] = {indices.graphics.value(), indices.present.value()};
   if (indices.graphics.value() != indices.present.value()) {
     description.imageSharingMode = vk::SharingMode::eConcurrent;
     description.queueFamilyIndexCount = 2u;
@@ -88,7 +98,7 @@ swapchainKHR_impl::swapchainKHR_impl(const vk::Device& device, const vk::Surface
   m_swapchainKHR = m_keep_device->createSwapchainKHR(description, nullptr);
   m_images = m_keep_device->getSwapchainImagesKHR(m_swapchainKHR);
   m_image_format = surf_format.format;
-  
+
   m_is_created = true;
 }
 
@@ -97,6 +107,14 @@ void swapchainKHR_impl::do_clear() noexcept {
     m_keep_device->destroySwapchainKHR(m_swapchainKHR, nullptr);
     m_is_created = false;
   }
+}
+
+auto swapchainKHR_impl::do_get_images() const -> const decltype(m_images)& {
+  return m_images;
+}
+
+auto swapchainKHR_impl::do_get_image_format() const -> const decltype(m_image_format)& {
+  return m_image_format;
 }
 
 } // namespace pngine

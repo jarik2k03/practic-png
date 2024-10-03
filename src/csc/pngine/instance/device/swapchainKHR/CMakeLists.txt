@@ -1,6 +1,6 @@
 include(pngine_short_paths)
 
-add_library(${SWAPCHAINKHR}_utility STATIC swapchainKHR.utility.cxx)
+add_library(${SWAPCHAINKHR}_utility OBJECT swapchainKHR.utility.cxx)
 target_sources(${SWAPCHAINKHR}_utility PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES swapchainKHR.utility.cxx )
 target_link_libraries(${SWAPCHAINKHR}_utility PRIVATE vk_vulkan stl_vector)
 

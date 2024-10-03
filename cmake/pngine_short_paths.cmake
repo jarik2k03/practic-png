@@ -7,6 +7,7 @@ set(SURFACEKHR pngine_instance_surfaceKHR)
 
 set(DEVICE pngine_instance_device)
 set(QUEUES pngine_instance_device_queues)
+set(IMAGE_VIEW pngine_instance_device_image_view)
 set(SWAPCHAINKHR pngine_instance_device_swapchainKHR)
 
 set(WINDOW_HANDLER pngine_window_handler)

@@ -21,4 +21,6 @@ int main() {
   vk::StructureType::eSwapchainCreateInfoKHR;
   vk::SwapchainKHR swapchain;
   const auto images = device.getSwapchainImagesKHR(swapchain);
+  vk::ImageView img_view;
+  device.destroyImageView(img_view, nullptr);
 }

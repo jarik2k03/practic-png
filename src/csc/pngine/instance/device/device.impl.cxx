@@ -1,5 +1,7 @@
 module;
 #include <utility>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 module csc.pngine.instance.device:impl;
 
 export import vulkan_hpp;
@@ -10,6 +12,7 @@ import stl.optional;
 
 import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
+import csc.pngine.instance.device.image_view;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
@@ -25,6 +28,8 @@ class device_impl {
   const vk::SurfaceKHR* m_keep_surface{};
 
   pngine::swapchainKHR m_swapchain{};
+  std::vector<pngine::image_view> m_image_views{};
+
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
 
@@ -36,6 +41,7 @@ class device_impl {
   explicit device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface);
   void do_clear() noexcept;
   void do_create_swapchainKHR();
+  void do_create_image_views();
 };
 
 device_impl::~device_impl() noexcept {
@@ -93,8 +99,18 @@ void device_impl::do_create_swapchainKHR() {
   m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details, m_indices);
 }
 
+void device_impl::do_create_image_views() {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно создать image_view, пока не создан device!");
+  m_image_views.reserve(m_swapchain.get_images().size());
+  std::ranges::for_each(m_swapchain.get_images(), [&](const auto& img) {
+    m_image_views.emplace_back(pngine::image_view(m_device, img, m_swapchain.get_image_format()));
+  });
+}
+
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
+    std::ranges::for_each(m_image_views, [](auto& img_view) { img_view.clear(); });
     m_swapchain.clear();
     m_device.destroy();
     m_is_created = false;
