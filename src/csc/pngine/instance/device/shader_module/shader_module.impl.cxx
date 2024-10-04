@@ -25,7 +25,7 @@ class shader_module_impl {
  public:
   explicit shader_module_impl() = default;
   explicit shader_module_impl(const vk::Device& device, std::string_view compiled_filename);
-  ~shader_module_impl() noexcept = default;
+  ~shader_module_impl() noexcept;
   shader_module_impl(shader_module_impl&& move) noexcept;
   shader_module_impl& operator=(shader_module_impl&& move) noexcept;
   void do_clear() noexcept;
@@ -42,11 +42,12 @@ shader_module_impl& shader_module_impl::operator=(shader_module_impl&& move) noe
   return *this;
 }
 
-shader_module_impl::shader_module_impl(shader_module_impl&& move) noexcept : 
-  m_keep_device(move.m_keep_device),
-  m_byte_code_spv(std::move(move.m_byte_code_spv)),
-  m_shader_module(move.m_shader_module),
-  m_is_created(std::exchange(move.m_is_created, false)) {}
+shader_module_impl::shader_module_impl(shader_module_impl&& move) noexcept
+    : m_keep_device(move.m_keep_device),
+      m_byte_code_spv(std::move(move.m_byte_code_spv)),
+      m_shader_module(move.m_shader_module),
+      m_is_created(std::exchange(move.m_is_created, false)) {
+}
 
 shader_module_impl::shader_module_impl(const vk::Device& device, std::string_view compiled_filename)
     : m_keep_device(&device) {
@@ -66,6 +67,10 @@ void shader_module_impl::do_clear() noexcept {
     m_keep_device->destroyShaderModule(m_shader_module, nullptr);
     m_is_created = false;
   }
+}
+
+shader_module_impl::~shader_module_impl() noexcept {
+  do_clear();
 }
 
 } // namespace pngine

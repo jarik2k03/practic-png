@@ -35,7 +35,7 @@ class device_impl {
   std::vector<pngine::image_view> m_image_views{};
   std::map<std::string, pngine::shader_module> m_shader_modules{};
   std::vector<const char*> m_enabled_extensions{};
-  vk::Bool32 m_is_created = false;  
+  vk::Bool32 m_is_created = false;
 
  public:
   explicit device_impl() = default;

@@ -1,6 +1,6 @@
 module;
 #include <bits/move.h>
-// #include <shader_triangle_paths.h>
+#include <shaders_triangle.h>
 module csc.pngine:impl;
 
 export import :attributes;
@@ -53,8 +53,9 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   auto& device = m_instance.create_device(m_gpu_name);
   device.create_swapchainKHR();
   device.create_image_views();
-  //throw std::runtime_error(CSC_PNGINE_SHADER_PATH_TRIANGLE_VERT);
-  //device.create_shader_module();
+  // throw std::runtime_error(CSC_PNGINE_SHADER_PATH_TRIANGLE_VERT);
+  device.create_shader_module("vertex", pngine::shaders::shaders_triangle::vert_path);
+  device.create_shader_module("fragment", pngine::shaders::shaders_triangle::frag_path);
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {
