@@ -46,6 +46,7 @@ image_view_impl::image_view_impl(const vk::Device& device, const vk::Image& imag
     : m_keep_device(&device) {
   vk::ImageViewCreateInfo description{};
   description.sType = vk::StructureType::eImageViewCreateInfo;
+  description.pNext = nullptr;
   description.image = image;
   description.viewType = vk::ImageViewType::e2D;
   description.format = img_format;

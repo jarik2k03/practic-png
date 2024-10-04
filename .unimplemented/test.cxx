@@ -23,4 +23,6 @@ int main() {
   const auto images = device.getSwapchainImagesKHR(swapchain);
   vk::ImageView img_view;
   device.destroyImageView(img_view, nullptr);
+  vk::PipelineShaderStageCreateInfo shader_stage_info;
+  shader_stage_info.
 }

@@ -34,6 +34,8 @@ class device_impl {
   pngine::swapchainKHR m_swapchain{};
   std::vector<pngine::image_view> m_image_views{};
   std::map<std::string, pngine::shader_module> m_shader_modules{};
+  vk::PipelineShaderStageCreateInfo m_vertex_shader{};
+  vk::PipelineShaderStageCreateInfo m_fragment_shader{};
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
 
@@ -64,6 +66,8 @@ device_impl& device_impl::operator=(device_impl&& move) noexcept {
   m_swapchain = std::move(move.m_swapchain);
   m_image_views = std::move(move.m_image_views);
   m_shader_modules = std::move(move.m_shader_modules);
+  m_vertex_shader = move.m_vertex_shader;
+  m_fragment_shader = move.m_fragment_shader;
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;

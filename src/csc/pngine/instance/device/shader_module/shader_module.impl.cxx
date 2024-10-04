@@ -10,6 +10,7 @@ import csc.pngine.commons.utility.shader_module;
 
 import stl.vector;
 import stl.string_view;
+import stl.stdexcept;
 
 import :utility;
 namespace csc {
@@ -29,6 +30,9 @@ class shader_module_impl {
   shader_module_impl(shader_module_impl&& move) noexcept;
   shader_module_impl& operator=(shader_module_impl&& move) noexcept;
   void do_clear() noexcept;
+  vk::PipelineShaderStageCreateInfo do_create_shader_stage(
+      std::string_view entry_point,
+      vk::ShaderStageFlagBits selected_stage) const;
 };
 
 shader_module_impl& shader_module_impl::operator=(shader_module_impl&& move) noexcept {
@@ -67,6 +71,20 @@ void shader_module_impl::do_clear() noexcept {
     m_keep_device->destroyShaderModule(m_shader_module, nullptr);
     m_is_created = false;
   }
+}
+
+vk::PipelineShaderStageCreateInfo shader_module_impl::do_create_shader_stage(
+    std::string_view entry_point,
+    vk::ShaderStageFlagBits selected_stage) const {
+  if (m_is_created == false)
+    throw std::runtime_error("ShaderModule: невозможно создать PipelineShaderStageInfo, пока не создан ShaderModule");
+  vk::PipelineShaderStageCreateInfo description{};
+  description.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+  description.pNext = nullptr;
+  description.stage = selected_stage;
+  description.module = m_shader_module;
+  description.pName = entry_point.data();
+  return description;
 }
 
 shader_module_impl::~shader_module_impl() noexcept {
