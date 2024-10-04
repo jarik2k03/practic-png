@@ -18,4 +18,5 @@ using std::ofstream;
 using std::wofstream;
 
 using std::char_traits;
+using std::operator|;
 } // namespace std

@@ -4,6 +4,7 @@ module;
 export module csc.pngine.instance.device;
 
 import stl.optional;
+import stl.string_view;
 
 import vulkan_hpp;
 import :impl;
@@ -27,6 +28,9 @@ class device : private device_impl {
   }
   void create_image_views() {
     this->do_create_image_views();
+  }
+  void create_shader_module(std::string_view name, std::string_view compiled_filepath) {
+    this->do_create_shader_module(name, compiled_filepath);
   }
   void clear() noexcept {
     this->do_clear();

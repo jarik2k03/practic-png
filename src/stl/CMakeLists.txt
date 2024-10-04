@@ -22,6 +22,9 @@ target_sources(stl_stack PUBLIC FILE_SET stl TYPE CXX_MODULES FILES stack.cxx)
 add_library(stl_set STATIC set.cxx)
 target_sources(stl_set PUBLIC FILE_SET stl TYPE CXX_MODULES FILES set.cxx) 
 
+add_library(stl_map STATIC map.cxx)
+target_sources(stl_map PUBLIC FILE_SET stl TYPE CXX_MODULES FILES map.cxx) 
+
 add_library(stl_ios STATIC ios.cxx)
 target_sources(stl_ios PUBLIC FILE_SET stl TYPE CXX_MODULES FILES ios.cxx) 
 
