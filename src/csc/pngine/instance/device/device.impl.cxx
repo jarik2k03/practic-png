@@ -17,6 +17,7 @@ import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
 import csc.pngine.instance.device.image_view;
 import csc.pngine.instance.device.shader_module;
+import csc.pngine.instance.device.graphics_pipeline;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
@@ -36,6 +37,7 @@ class device_impl {
   std::map<std::string, pngine::shader_module> m_shader_modules{};
   vk::PipelineShaderStageCreateInfo m_vertex_shader{};
   vk::PipelineShaderStageCreateInfo m_fragment_shader{};
+  std::vector<pngine::graphics_pipeline> m_pipelines{};
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
 
@@ -127,6 +129,7 @@ void device_impl::do_create_shader_module(std::string_view name, std::string_vie
 
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
+    m_pipelines.clear();
     m_shader_modules.clear();
     m_image_views.clear();
     m_swapchain.clear();

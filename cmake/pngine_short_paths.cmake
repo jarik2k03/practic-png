@@ -10,6 +10,7 @@ set(QUEUES pngine_instance_device_queues)
 set(IMAGE_VIEW pngine_instance_device_image_view)
 set(SWAPCHAINKHR pngine_instance_device_swapchainKHR)
 set(SHADER_MODULE pngine_instance_device_shader_module)
+set(GRAPHICS_PIPELINE pngine_instance_device_graphics_pipeline)
 
 set(WINDOW_HANDLER pngine_window_handler)
 set(XCB_HANDLER pngine_window_handler_xcb_handler)
