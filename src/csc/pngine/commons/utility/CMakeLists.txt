@@ -3,6 +3,7 @@ add_subdirectory(shader_module)
 add_subdirectory(debug_reportEXT)
 add_subdirectory(swapchain_details)
 add_subdirectory(queue_family_indices)
+add_subdirectory(graphics_pipeline)
 
 include(pngine_short_paths)
 add_library(${UTILITY} STATIC utility.lib.cxx)

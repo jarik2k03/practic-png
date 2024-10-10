@@ -3,6 +3,7 @@ module;
 #include <cstdint>
 export module csc.pngine.instance.device.graphics_pipeline;
 
+import csc.pngine.commons.utility.graphics_pipeline;
 import vulkan_hpp;
 import :impl;
 export namespace csc {
@@ -12,13 +13,12 @@ class graphics_pipeline : private graphics_pipeline_impl {
  public:
   explicit graphics_pipeline() = delete;
 
-  explicit graphics_pipeline(const vk::Device& device) : graphics_pipeline_impl(device) {
+  template <pngine::c_graphics_pipeline_config Config>
+  explicit graphics_pipeline(const vk::Device& device, const vk::PipelineLayout& layout, Config&& config)
+      : graphics_pipeline_impl(device, layout, std::forward<Config>(config)) {
   }
   void clear() noexcept {
     this->do_clear();
-  }
-  void create() {
-    this->do_create();
   }
   graphics_pipeline(graphics_pipeline&& move) noexcept : graphics_pipeline_impl(std::move(move)) {
   }

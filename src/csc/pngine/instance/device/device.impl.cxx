@@ -3,7 +3,7 @@ module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 #include <map>
-module csc.pngine.instance.device:impl;
+export module csc.pngine.instance.device:impl;
 
 export import vulkan_hpp;
 
@@ -21,6 +21,7 @@ import csc.pngine.instance.device.graphics_pipeline;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
+import csc.pngine.commons.utility.graphics_pipeline;
 
 import :utility;
 namespace csc {
@@ -48,9 +49,13 @@ class device_impl {
   device_impl& operator=(device_impl&& move) noexcept;
   explicit device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface);
   void do_clear() noexcept;
+  const pngine::shader_module& do_get_shader_module(std::string_view name) const;
+
   void do_create_swapchainKHR();
   void do_create_image_views();
   void do_create_shader_module(std::string_view name, std::string_view compiled_filepath);
+  template <pngine::c_graphics_pipeline_config Config>
+  pngine::graphics_pipeline& do_create_pipeline(Config&& config);
 };
 
 device_impl::~device_impl() noexcept {
@@ -125,6 +130,24 @@ void device_impl::do_create_shader_module(std::string_view name, std::string_vie
   [[unlikely]] if (m_is_created == false)
     throw std::runtime_error("Device: невозможно создать shader_module, пока не создан device!");
   m_shader_modules.insert(std::make_pair(name.data(), pngine::shader_module(m_device, compiled_filepath)));
+}
+
+template <pngine::c_graphics_pipeline_config Config>
+pngine::graphics_pipeline& device_impl::do_create_pipeline(Config&& config) {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно создать graphics_pipeline, пока не создан device!");
+  vk::PipelineLayout empty;
+  m_pipelines.emplace_back(pngine::graphics_pipeline(m_device, empty, std::forward<Config>(config)));
+  return m_pipelines.back();
+}
+
+const pngine::shader_module& device_impl::do_get_shader_module(std::string_view name) const {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно вызвать get_shader_module, пока не создан device!");
+  const auto shader_module_pos = m_shader_modules.find(name.data());
+  [[unlikely]] if (shader_module_pos == m_shader_modules.cend())
+    throw std::runtime_error("Device: не удалось найти указанный шейдер-модуль!");
+  return shader_module_pos->second;
 }
 
 void device_impl::do_clear() noexcept {
