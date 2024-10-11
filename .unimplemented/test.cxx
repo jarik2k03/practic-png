@@ -24,5 +24,12 @@ int main() {
   vk::ImageView img_view;
   device.destroyImageView(img_view, nullptr);
   vk::PipelineShaderStageCreateInfo shader_stage_info;
-  shader_stage_info.
+  auto pipeline_r = device.createGraphicsPipeline(vk::PipelineCache(), {}, nullptr);
+  vk::Pipeline pipeline = pipeline_r.value;
+  vk::PipelineColorBlendAttachmentState state;
+  state.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+  state.destColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+
+  state.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+  state.destAlphaBlendFactor = vk::BlendFactor::eZero;
 }

@@ -13,6 +13,8 @@ import stl.iostream;
 import csc.pngine.instance;
 import csc.pngine.instance.device;
 import csc.pngine.window_handler;
+
+import csc.pngine.commons.utility.graphics_pipeline;
 import vulkan_hpp;
 
 namespace csc {
@@ -53,9 +55,21 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   auto& device = m_instance.create_device(m_gpu_name);
   device.create_swapchainKHR();
   device.create_image_views();
-  // throw std::runtime_error(CSC_PNGINE_SHADER_PATH_TRIANGLE_VERT);
-  device.create_shader_module("vertex", pngine::shaders::shaders_triangle::vert_path);
-  device.create_shader_module("fragment", pngine::shaders::shaders_triangle::frag_path);
+  device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
+  device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
+  device.create_pipeline_layout("basic_layout");
+  pngine::graphics_pipeline_config triangle_cfg;
+  const auto shader_stages = {
+      pngine::shader_stage{"main", device.get_shader_module("vs_triangle").get(), vk::ShaderStageFlagBits::eVertex},
+      pngine::shader_stage{"main", device.get_shader_module("fs_triangle").get(), vk::ShaderStageFlagBits::eFragment}};
+
+  triangle_cfg.selected_stages = shader_stages;
+  triangle_cfg.input_assembler_topology = vk::PrimitiveTopology::eTriangleList;
+  //   triangle_cfg.viewport_area = device.get_swapchainKHR().get_extent2D();
+  //   triangle_cfg.scissors_area = device.get_swapchainKHR().get_extent2D();
+  triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
+  triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+  auto& triangle_pipeline = device.create_pipeline("basic_layout", triangle_cfg);
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {

@@ -3,7 +3,7 @@ module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 #include <map>
-module csc.pngine.instance.device:impl;
+export module csc.pngine.instance.device:impl;
 
 export import vulkan_hpp;
 
@@ -17,9 +17,12 @@ import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
 import csc.pngine.instance.device.image_view;
 import csc.pngine.instance.device.shader_module;
+import csc.pngine.instance.device.graphics_pipeline;
+import csc.pngine.instance.device.pipeline_layout;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
+import csc.pngine.commons.utility.graphics_pipeline;
 
 import :utility;
 namespace csc {
@@ -34,8 +37,8 @@ class device_impl {
   pngine::swapchainKHR m_swapchain{};
   std::vector<pngine::image_view> m_image_views{};
   std::map<std::string, pngine::shader_module> m_shader_modules{};
-  vk::PipelineShaderStageCreateInfo m_vertex_shader{};
-  vk::PipelineShaderStageCreateInfo m_fragment_shader{};
+  std::vector<pngine::graphics_pipeline> m_pipelines{};
+  std::map<std::string, pngine::pipeline_layout> m_pipeline_layouts{};
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
 
@@ -46,9 +49,14 @@ class device_impl {
   device_impl& operator=(device_impl&& move) noexcept;
   explicit device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface);
   void do_clear() noexcept;
+  const pngine::shader_module& do_get_shader_module(std::string_view name) const;
+
   void do_create_swapchainKHR();
   void do_create_image_views();
   void do_create_shader_module(std::string_view name, std::string_view compiled_filepath);
+  template <pngine::c_graphics_pipeline_config Config>
+  pngine::graphics_pipeline& do_create_pipeline(std::string_view layout_name, Config&& config);
+  void do_create_pipeline_layout(std::string_view layout_name);
 };
 
 device_impl::~device_impl() noexcept {
@@ -66,8 +74,8 @@ device_impl& device_impl::operator=(device_impl&& move) noexcept {
   m_swapchain = std::move(move.m_swapchain);
   m_image_views = std::move(move.m_image_views);
   m_shader_modules = std::move(move.m_shader_modules);
-  m_vertex_shader = move.m_vertex_shader;
-  m_fragment_shader = move.m_fragment_shader;
+  m_pipelines = std::move(move.m_pipelines);
+  m_pipeline_layouts = std::move(move.m_pipeline_layouts);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
@@ -125,8 +133,37 @@ void device_impl::do_create_shader_module(std::string_view name, std::string_vie
   m_shader_modules.insert(std::make_pair(name.data(), pngine::shader_module(m_device, compiled_filepath)));
 }
 
+template <pngine::c_graphics_pipeline_config Config>
+pngine::graphics_pipeline& device_impl::do_create_pipeline(std::string_view layout_name, Config&& config) {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно создать graphics_pipeline, пока не создан device!");
+  const auto pipeline_layout_pos = m_pipeline_layouts.find(layout_name.data());
+  [[unlikely]] if (pipeline_layout_pos == m_pipeline_layouts.cend())
+    throw std::runtime_error("Device: не удалось найти указанный макет конвейера!");
+  m_pipelines.emplace_back(
+      pngine::graphics_pipeline(m_device, pipeline_layout_pos->second.get(), std::forward<Config>(config)));
+  return m_pipelines.back();
+}
+
+void device_impl::do_create_pipeline_layout(std::string_view name) {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно создать pipeline_layout, пока не создан device!");
+  m_pipeline_layouts.insert(std::make_pair(name.data(), pngine::pipeline_layout(m_device)));
+}
+
+const pngine::shader_module& device_impl::do_get_shader_module(std::string_view name) const {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно вызвать get_shader_module, пока не создан device!");
+  const auto shader_module_pos = m_shader_modules.find(name.data());
+  [[unlikely]] if (shader_module_pos == m_shader_modules.cend())
+    throw std::runtime_error("Device: не удалось найти указанный шейдер-модуль!");
+  return shader_module_pos->second;
+}
+
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
+    m_pipelines.clear();
+    m_pipeline_layouts.clear();
     m_shader_modules.clear();
     m_image_views.clear();
     m_swapchain.clear();

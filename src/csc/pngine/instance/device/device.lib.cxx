@@ -6,6 +6,9 @@ export module csc.pngine.instance.device;
 import stl.optional;
 import stl.string_view;
 
+import csc.pngine.commons.utility.graphics_pipeline;
+import csc.pngine.instance.device.shader_module;
+
 import vulkan_hpp;
 import :impl;
 export namespace csc {
@@ -31,6 +34,16 @@ class device : private device_impl {
   }
   void create_shader_module(std::string_view name, std::string_view compiled_filepath) {
     this->do_create_shader_module(name, compiled_filepath);
+  }
+  const pngine::shader_module& get_shader_module(std::string_view name) const {
+    return this->do_get_shader_module(name);
+  }
+  template <pngine::c_graphics_pipeline_config Config>
+  auto& create_pipeline(std::string_view search_layout_name, Config&& config) {
+    return this->do_create_pipeline(search_layout_name, std::forward<Config>(config));
+  }
+  void create_pipeline_layout(std::string_view layout_name) {
+    this->do_create_pipeline_layout(layout_name);
   }
   void clear() noexcept {
     this->do_clear();

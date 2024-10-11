@@ -20,6 +20,9 @@ class shader_module : private shader_module_impl {
   void clear() noexcept {
     this->do_clear();
   }
+  vk::ShaderModule get() const {
+    return this->do_get();
+  }
   vk::PipelineShaderStageCreateInfo create_shader_stage(
       std::string_view entry_point,
       vk::ShaderStageFlagBits selected_stage) const {

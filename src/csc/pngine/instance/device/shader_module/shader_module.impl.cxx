@@ -30,6 +30,7 @@ class shader_module_impl {
   shader_module_impl(shader_module_impl&& move) noexcept;
   shader_module_impl& operator=(shader_module_impl&& move) noexcept;
   void do_clear() noexcept;
+  vk::ShaderModule do_get() const;
   vk::PipelineShaderStageCreateInfo do_create_shader_stage(
       std::string_view entry_point,
       vk::ShaderStageFlagBits selected_stage) const;
@@ -73,6 +74,9 @@ void shader_module_impl::do_clear() noexcept {
   }
 }
 
+vk::ShaderModule shader_module_impl::do_get() const {
+  return m_shader_module;
+}
 vk::PipelineShaderStageCreateInfo shader_module_impl::do_create_shader_stage(
     std::string_view entry_point,
     vk::ShaderStageFlagBits selected_stage) const {
