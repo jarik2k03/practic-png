@@ -57,6 +57,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   device.create_image_views();
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
+  device.create_pipeline_layout("basic_layout");
   pngine::graphics_pipeline_config triangle_cfg;
   const auto shader_stages = {
       pngine::shader_stage{"main", device.get_shader_module("vs_triangle").get(), vk::ShaderStageFlagBits::eVertex},
@@ -68,8 +69,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   //   triangle_cfg.scissors_area = device.get_swapchainKHR().get_extent2D();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-
-  auto& triangle_pipeline = device.create_pipeline(triangle_cfg);
+  auto& triangle_pipeline = device.create_pipeline("basic_layout", triangle_cfg);
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {

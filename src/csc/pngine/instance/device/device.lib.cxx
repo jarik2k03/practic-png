@@ -39,8 +39,11 @@ class device : private device_impl {
     return this->do_get_shader_module(name);
   }
   template <pngine::c_graphics_pipeline_config Config>
-  auto& create_pipeline(Config&& config) {
-    return this->do_create_pipeline(std::forward<Config>(config));
+  auto& create_pipeline(std::string_view search_layout_name, Config&& config) {
+    return this->do_create_pipeline(search_layout_name, std::forward<Config>(config));
+  }
+  void create_pipeline_layout(std::string_view layout_name) {
+    this->do_create_pipeline_layout(layout_name);
   }
   void clear() noexcept {
     this->do_clear();
