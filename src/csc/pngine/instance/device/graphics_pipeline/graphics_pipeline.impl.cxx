@@ -26,7 +26,11 @@ class graphics_pipeline_impl {
 
  public:
   template <pngine::c_graphics_pipeline_config Config>
-  explicit graphics_pipeline_impl(const vk::Device& device, const vk::PipelineLayout& layout, Config&& config);
+  explicit graphics_pipeline_impl(
+      const vk::Device& device,
+      const vk::RenderPass& pass,
+      const vk::PipelineLayout& layout,
+      Config&& config);
   ~graphics_pipeline_impl() noexcept;
   graphics_pipeline_impl(graphics_pipeline_impl&& move) noexcept;
   graphics_pipeline_impl& operator=(graphics_pipeline_impl&& move) noexcept;
@@ -59,6 +63,7 @@ graphics_pipeline_impl& graphics_pipeline_impl::operator=(graphics_pipeline_impl
 template <pngine::c_graphics_pipeline_config Config>
 graphics_pipeline_impl::graphics_pipeline_impl(
     const vk::Device& device,
+    const vk::RenderPass& pass,
     const vk::PipelineLayout& layout,
     Config&& config)
     : m_keep_device(&device), m_config(std::forward<Config>(config)), m_is_created(false) {
@@ -153,11 +158,12 @@ graphics_pipeline_impl::graphics_pipeline_impl(
   description.pMultisampleState = &msaa_state_desc;
   description.pColorBlendState = &color_blend_desc;
   description.pDynamicState = &dynamic_state_desc;
-  description.layout = layout;
-  description.renderPass = vk::RenderPass{};
+  description.layout = layout; // выбранный макет
+  description.renderPass = pass; // выбранный проход
   description.subpass = 0u;
   description.basePipelineHandle = vk::Pipeline{};
   m_graphics_pipeline = m_keep_device->createGraphicsPipeline(vk::PipelineCache(), description, nullptr).value;
+  m_is_created = true;
 }
 
 void graphics_pipeline_impl::do_clear() noexcept {

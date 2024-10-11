@@ -14,8 +14,12 @@ class graphics_pipeline : private graphics_pipeline_impl {
   explicit graphics_pipeline() = delete;
 
   template <pngine::c_graphics_pipeline_config Config>
-  explicit graphics_pipeline(const vk::Device& device, const vk::PipelineLayout& layout, Config&& config)
-      : graphics_pipeline_impl(device, layout, std::forward<Config>(config)) {
+  explicit graphics_pipeline(
+      const vk::Device& device,
+      const vk::RenderPass& pass,
+      const vk::PipelineLayout& layout,
+      Config&& config)
+      : graphics_pipeline_impl(device, pass, layout, std::forward<Config>(config)) {
   }
   void clear() noexcept {
     this->do_clear();
