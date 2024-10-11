@@ -33,6 +33,9 @@ class swapchainKHR : private swapchainKHR_impl {
   const vk::Format& get_image_format() const {
     return this->do_get_image_format();
   }
+  vk::Extent2D get_extent() const {
+    return this->do_get_extent();
+  }
   swapchainKHR(swapchainKHR&& move) noexcept : swapchainKHR_impl(std::move(move)) {
   }
   swapchainKHR& operator=(swapchainKHR&& move) noexcept {

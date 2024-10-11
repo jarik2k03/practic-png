@@ -65,8 +65,8 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
 
   triangle_cfg.selected_stages = shader_stages;
   triangle_cfg.input_assembler_topology = vk::PrimitiveTopology::eTriangleList;
-  //   triangle_cfg.viewport_area = device.get_swapchainKHR().get_extent2D();
-  //   triangle_cfg.scissors_area = device.get_swapchainKHR().get_extent2D();
+  triangle_cfg.viewport_area = device.get_swapchain().get_extent();
+  triangle_cfg.scissors_area = device.get_swapchain().get_extent();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
   auto& triangle_pipeline = device.create_pipeline("basic_layout", triangle_cfg);

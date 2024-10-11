@@ -35,8 +35,11 @@ class device : private device_impl {
   void create_shader_module(std::string_view name, std::string_view compiled_filepath) {
     this->do_create_shader_module(name, compiled_filepath);
   }
-  const pngine::shader_module& get_shader_module(std::string_view name) const {
+  const auto& get_shader_module(std::string_view name) const {
     return this->do_get_shader_module(name);
+  }
+  const auto& get_swapchain() const {
+    return this->do_get_swapchain();
   }
   template <pngine::c_graphics_pipeline_config Config>
   auto& create_pipeline(std::string_view search_layout_name, Config&& config) {

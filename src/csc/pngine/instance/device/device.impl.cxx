@@ -50,6 +50,8 @@ class device_impl {
   explicit device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface);
   void do_clear() noexcept;
   const pngine::shader_module& do_get_shader_module(std::string_view name) const;
+  const pngine::swapchainKHR& do_get_swapchain() const;
+
 
   void do_create_swapchainKHR();
   void do_create_image_views();
@@ -158,6 +160,12 @@ const pngine::shader_module& device_impl::do_get_shader_module(std::string_view 
   [[unlikely]] if (shader_module_pos == m_shader_modules.cend())
     throw std::runtime_error("Device: не удалось найти указанный шейдер-модуль!");
   return shader_module_pos->second;
+}
+
+const pngine::swapchainKHR& device_impl::do_get_swapchain() const {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно вызвать get_swapchain, пока не создан device!");
+  return m_swapchain;
 }
 
 void device_impl::do_clear() noexcept {
