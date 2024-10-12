@@ -13,6 +13,7 @@ set(SHADER_MODULE pngine_instance_device_shader_module)
 set(GRAPHICS_PIPELINE pngine_instance_device_graphics_pipeline)
 set(PIPELINE_LAYOUT pngine_instance_device_pipeline_layout)
 set(RENDER_PASS pngine_instance_device_render_pass)
+set(FRAMEBUFFER pngine_instance_device_framebuffer)
 
 set(WINDOW_HANDLER pngine_window_handler)
 set(XCB_HANDLER pngine_window_handler_xcb_handler)

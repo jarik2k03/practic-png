@@ -20,6 +20,7 @@ import csc.pngine.instance.device.shader_module;
 import csc.pngine.instance.device.graphics_pipeline;
 import csc.pngine.instance.device.pipeline_layout;
 import csc.pngine.instance.device.render_pass;
+import csc.pngine.instance.device.framebuffer;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
@@ -41,6 +42,8 @@ class device_impl {
   std::vector<pngine::graphics_pipeline> m_pipelines{};
   std::map<std::string, pngine::pipeline_layout> m_pipeline_layouts{};
   std::map<std::string, pngine::render_pass> m_render_passes{};
+  std::vector<pngine::framebuffer> m_framebuffers{};
+
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
 
@@ -63,6 +66,7 @@ class device_impl {
   do_create_pipeline(std::string_view layout_name, std::string_view pass_name, Config&& config);
   void do_create_pipeline_layout(std::string_view layout_name);
   void do_create_render_pass(std::string_view pass_name);
+  void do_create_framebuffers(std::string_view pass_name);
 };
 
 device_impl::~device_impl() noexcept {
@@ -83,6 +87,7 @@ device_impl& device_impl::operator=(device_impl&& move) noexcept {
   m_pipelines = std::move(move.m_pipelines);
   m_pipeline_layouts = std::move(move.m_pipeline_layouts);
   m_render_passes = std::move(move.m_render_passes);
+  m_framebuffers = std::move(move.m_framebuffers);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
@@ -170,6 +175,20 @@ void device_impl::do_create_render_pass(std::string_view name) {
   m_render_passes.insert(std::make_pair(name.data(), pngine::render_pass(m_device, m_swapchain.get_image_format())));
 }
 
+void device_impl::do_create_framebuffers(std::string_view pass_name) {
+  [[unlikely]] if (m_is_created == false)
+    throw std::runtime_error("Device: невозможно создать framebuffers, пока не создан device!");
+  const auto render_pass_pos = m_render_passes.find(pass_name.data());
+  [[unlikely]] if (render_pass_pos == m_render_passes.cend())
+    throw std::runtime_error("Device: не удалось найти указанный проход рендера!");
+
+  m_framebuffers.reserve(m_image_views.size());
+  std::ranges::for_each(m_image_views, [&](const auto& img) {
+    m_framebuffers.emplace_back(
+        pngine::framebuffer(m_device, img.get(), render_pass_pos->second.get(), m_swapchain.get_extent()));
+  });
+}
+
 const pngine::shader_module& device_impl::do_get_shader_module(std::string_view name) const {
   [[unlikely]] if (m_is_created == false)
     throw std::runtime_error("Device: невозможно вызвать get_shader_module, пока не создан device!");
@@ -197,6 +216,7 @@ void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
     m_pipelines.clear();
     m_pipeline_layouts.clear();
+    m_framebuffers.clear();
     m_render_passes.clear();
     m_shader_modules.clear();
     m_image_views.clear();

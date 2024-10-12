@@ -56,6 +56,9 @@ class device : private device_impl {
   void create_pipeline_layout(std::string_view layout_name) {
     this->do_create_pipeline_layout(layout_name);
   }
+  void create_framebuffers(std::string_view pass_name) {
+    this->do_create_framebuffers(pass_name);
+  }
   void clear() noexcept {
     this->do_clear();
   }

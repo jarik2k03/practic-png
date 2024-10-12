@@ -72,6 +72,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
   auto& triangle_pipeline = device.create_pipeline("basic_layout", "basic_pass", triangle_cfg);
+  device.create_framebuffers("basic_pass");
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {
