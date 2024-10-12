@@ -17,7 +17,6 @@ namespace pngine {
 class swapchainKHR_impl {
  private:
   const vk::Device* m_keep_device = nullptr;
-  const vk::SurfaceKHR* m_keep_surface = nullptr;
 
   std::vector<vk::Image> m_images{};
   vk::SwapchainKHR m_swapchainKHR{};
@@ -33,7 +32,7 @@ class swapchainKHR_impl {
       const pngine::swapchain_details& details,
       const pngine::queue_family_indices& indices);
   ~swapchainKHR_impl() noexcept = default;
-  swapchainKHR_impl(swapchainKHR_impl&& move) noexcept = default;
+  swapchainKHR_impl(swapchainKHR_impl&& move) noexcept;
   swapchainKHR_impl& operator=(swapchainKHR_impl&& move) noexcept;
   const vk::Format& do_get_image_format() const;
   const std::vector<vk::Image>& do_get_images() const;
@@ -41,13 +40,21 @@ class swapchainKHR_impl {
   void do_clear() noexcept;
 };
 
+swapchainKHR_impl::swapchainKHR_impl(swapchainKHR_impl&& move) noexcept
+    : m_keep_device(move.m_keep_device),
+      m_images(move.m_images),
+      m_swapchainKHR(move.m_swapchainKHR),
+      m_image_format(move.m_image_format),
+      m_extent(move.m_extent),
+      m_is_created(std::exchange(move.m_is_created, false)) {
+}
+
 swapchainKHR_impl& swapchainKHR_impl::operator=(swapchainKHR_impl&& move) noexcept {
   if (&move == this)
     return *this;
   do_clear();
   m_swapchainKHR = move.m_swapchainKHR;
   m_keep_device = move.m_keep_device;
-  m_keep_surface = move.m_keep_surface;
   m_extent = move.m_extent;
   m_image_format = move.m_image_format;
   m_images = std::move(move.m_images);
@@ -60,7 +67,7 @@ swapchainKHR_impl::swapchainKHR_impl(
     const vk::SurfaceKHR& surface,
     const pngine::swapchain_details& details,
     const pngine::queue_family_indices& indices)
-    : m_keep_device(&device), m_keep_surface(&surface) {
+    : m_keep_device(&device) {
   [[unlikely]] if (details.formats.empty() || details.present_modes.empty())
     throw std::runtime_error(
         "Device:SwapchainKHR: невозможно создать swapchainKHR, отсутствует SurfaceFormats или PresentModes!");

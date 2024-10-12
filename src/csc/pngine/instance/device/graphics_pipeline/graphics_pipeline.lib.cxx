@@ -21,6 +21,9 @@ class graphics_pipeline : private graphics_pipeline_impl {
       Config&& config)
       : graphics_pipeline_impl(device, pass, layout, std::forward<Config>(config)) {
   }
+  auto get() const {
+    return this->do_get();
+  }
   void clear() noexcept {
     this->do_clear();
   }
