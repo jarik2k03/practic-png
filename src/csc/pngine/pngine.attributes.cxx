@@ -6,7 +6,6 @@ export module csc.pngine:attributes;
 export import csc.pngine.commons.utility.version;
 export import csc.pngine.window_handler;
 export import stl.optional;
-
 export namespace csc {
 namespace pngine {
 

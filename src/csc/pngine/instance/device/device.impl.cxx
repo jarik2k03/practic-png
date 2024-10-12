@@ -21,6 +21,7 @@ import csc.pngine.instance.device.graphics_pipeline;
 import csc.pngine.instance.device.pipeline_layout;
 import csc.pngine.instance.device.render_pass;
 import csc.pngine.instance.device.framebuffer;
+import csc.pngine.instance.device.command_pool;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
@@ -43,6 +44,7 @@ class device_impl {
   std::map<std::string, pngine::pipeline_layout> m_pipeline_layouts{};
   std::map<std::string, pngine::render_pass> m_render_passes{};
   std::vector<pngine::framebuffer> m_framebuffers{};
+  pngine::command_pool m_com_pool{};
 
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
@@ -57,6 +59,7 @@ class device_impl {
   const pngine::shader_module& do_get_shader_module(std::string_view name) const;
   const pngine::swapchainKHR& do_get_swapchain() const;
   const pngine::render_pass& do_get_render_pass(std::string_view name) const;
+  const std::vector<pngine::framebuffer>& do_get_framebuffers() const;
 
   void do_create_swapchainKHR();
   void do_create_image_views();
@@ -67,6 +70,7 @@ class device_impl {
   void do_create_pipeline_layout(std::string_view layout_name);
   void do_create_render_pass(std::string_view pass_name);
   void do_create_framebuffers(std::string_view pass_name);
+  pngine::command_pool& do_create_command_pool();
 };
 
 device_impl::~device_impl() noexcept {
@@ -88,6 +92,7 @@ device_impl& device_impl::operator=(device_impl&& move) noexcept {
   m_pipeline_layouts = std::move(move.m_pipeline_layouts);
   m_render_passes = std::move(move.m_render_passes);
   m_framebuffers = std::move(move.m_framebuffers);
+  m_com_pool = std::move(move.m_com_pool);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
@@ -125,32 +130,23 @@ device_impl::device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& su
 }
 
 void device_impl::do_create_swapchainKHR() {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать swapchainKHR, пока не создан device!");
   const auto details = pngine::bring_swapchain_details_from_phys_device(*m_keep_phdevice, *m_keep_surface);
   m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details, m_indices);
 }
 
 void device_impl::do_create_image_views() {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать image_view, пока не создан device!");
   m_image_views.reserve(m_swapchain.get_images().size());
   std::ranges::for_each(m_swapchain.get_images(), [&](const auto& img) {
     m_image_views.emplace_back(pngine::image_view(m_device, img, m_swapchain.get_image_format()));
   });
 }
 void device_impl::do_create_shader_module(std::string_view name, std::string_view compiled_filepath) {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать shader_module, пока не создан device!");
   m_shader_modules.insert(std::make_pair(name.data(), pngine::shader_module(m_device, compiled_filepath)));
 }
 
 template <pngine::c_graphics_pipeline_config Config>
 pngine::graphics_pipeline&
 device_impl::do_create_pipeline(std::string_view layout_name, std::string_view pass_name, Config&& config) {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать graphics_pipeline, пока не создан device!");
-
   const auto render_pass_pos = m_render_passes.find(pass_name.data());
   [[unlikely]] if (render_pass_pos == m_render_passes.cend())
     throw std::runtime_error("Device: не удалось найти указанный проход конвейера!");
@@ -165,19 +161,13 @@ device_impl::do_create_pipeline(std::string_view layout_name, std::string_view p
 }
 
 void device_impl::do_create_pipeline_layout(std::string_view name) {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать pipeline_layout, пока не создан device!");
   m_pipeline_layouts.insert(std::make_pair(name.data(), pngine::pipeline_layout(m_device)));
 }
 void device_impl::do_create_render_pass(std::string_view name) {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать render_pass, пока не создан device!");
   m_render_passes.insert(std::make_pair(name.data(), pngine::render_pass(m_device, m_swapchain.get_image_format())));
 }
 
 void device_impl::do_create_framebuffers(std::string_view pass_name) {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно создать framebuffers, пока не создан device!");
   const auto render_pass_pos = m_render_passes.find(pass_name.data());
   [[unlikely]] if (render_pass_pos == m_render_passes.cend())
     throw std::runtime_error("Device: не удалось найти указанный проход рендера!");
@@ -189,9 +179,12 @@ void device_impl::do_create_framebuffers(std::string_view pass_name) {
   });
 }
 
+pngine::command_pool& device_impl::do_create_command_pool() {
+  m_com_pool = pngine::command_pool(m_device, m_indices.graphics.value());
+  return m_com_pool;
+}
+
 const pngine::shader_module& device_impl::do_get_shader_module(std::string_view name) const {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно вызвать get_shader_module, пока не создан device!");
   const auto shader_module_pos = m_shader_modules.find(name.data());
   [[unlikely]] if (shader_module_pos == m_shader_modules.cend())
     throw std::runtime_error("Device: не удалось найти указанный шейдер-модуль!");
@@ -199,21 +192,22 @@ const pngine::shader_module& device_impl::do_get_shader_module(std::string_view 
 }
 
 const pngine::swapchainKHR& device_impl::do_get_swapchain() const {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно вызвать get_swapchain, пока не создан device!");
   return m_swapchain;
 }
 const pngine::render_pass& device_impl::do_get_render_pass(std::string_view name) const {
-  [[unlikely]] if (m_is_created == false)
-    throw std::runtime_error("Device: невозможно вызвать get_render_pass, пока не создан device!");
   const auto render_pass_pos = m_render_passes.find(name.data());
   [[unlikely]] if (render_pass_pos == m_render_passes.cend())
     throw std::runtime_error("Device: не удалось найти указанный проход рендера!");
   return render_pass_pos->second;
 }
 
+const std::vector<pngine::framebuffer>& device_impl::do_get_framebuffers() const {
+  return m_framebuffers;
+}
+
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
+    m_com_pool.clear();
     m_pipelines.clear();
     m_pipeline_layouts.clear();
     m_framebuffers.clear();

@@ -32,4 +32,6 @@ int main() {
 
   state.srcAlphaBlendFactor = vk::BlendFactor::eOne;
   state.destAlphaBlendFactor = vk::BlendFactor::eZero;
+  vk::CommandBuffer combuffer;
+  combuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, 
 }

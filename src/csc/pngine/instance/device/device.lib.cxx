@@ -36,6 +36,9 @@ class device : private device_impl {
   const auto& get_render_pass(std::string_view name) const {
     return this->do_get_render_pass(name);
   }
+  const auto& get_framebuffers() const {
+    return this->do_get_framebuffers();
+  }
   // сеттеры-креаторы
   void create_swapchainKHR() {
     this->do_create_swapchainKHR();
@@ -58,6 +61,9 @@ class device : private device_impl {
   }
   void create_framebuffers(std::string_view pass_name) {
     this->do_create_framebuffers(pass_name);
+  }
+  auto& create_command_pool() {
+    return this->do_create_command_pool();
   }
   void clear() noexcept {
     this->do_clear();

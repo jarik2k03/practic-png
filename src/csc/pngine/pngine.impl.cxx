@@ -1,4 +1,5 @@
 module;
+#include <cstdint>
 #include <bits/move.h>
 #include <shaders_triangle.h>
 module csc.pngine:impl;
@@ -70,9 +71,33 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.viewport_area = device.get_swapchain().get_extent();
   triangle_cfg.scissors_area = device.get_swapchain().get_extent();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
-  triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+  // triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
   auto& triangle_pipeline = device.create_pipeline("basic_layout", "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
+  auto& command_pool = device.create_command_pool();
+  const uint32_t framebuffers_count = device.get_framebuffers().size();
+  const auto combuffers = command_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, framebuffers_count);
+  // используем проход рендера
+  vk::RenderPassBeginInfo render_pass_config{};
+  render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
+  render_pass_config.renderPass = device.get_render_pass("basic_pass").get();
+  render_pass_config.framebuffer = device.get_framebuffers().at(0).get();
+  render_pass_config.renderArea.setOffset({0, 0});
+  render_pass_config.renderArea.extent = device.get_swapchain().get_extent();
+
+  vk::ClearValue clear_color = vk::ClearColorValue{70.f / 256, 70.f / 256, 70.f / 256, 168.f / 256};
+  render_pass_config.pClearValues = &clear_color;
+  render_pass_config.clearValueCount = 1u;
+
+  vk::CommandBufferBeginInfo begin_desc{};
+  begin_desc.sType = vk::StructureType::eCommandBufferBeginInfo;
+  combuffers.at(0).begin(begin_desc);
+  combuffers.at(0).beginRenderPass(render_pass_config, vk::SubpassContents::eInline);
+  combuffers.at(0).bindPipeline(vk::PipelineBindPoint::eGraphics, triangle_pipeline.get());
+  constexpr const uint32_t triangle_vertices = 3u, inst_count = 1u, first_vert = 0u, first_inst = 0u;
+  combuffers.at(0).draw(triangle_vertices, inst_count, first_vert, first_inst);
+  combuffers.at(0).endRenderPass();
+  combuffers.at(0).end();
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {
