@@ -18,6 +18,9 @@ class image_view : private image_view_impl {
   void clear() noexcept {
     this->do_clear();
   }
+  auto get() const {
+    return this->do_get();
+  }
   image_view(image_view&& move) noexcept : image_view_impl(std::move(move)) {
   }
   image_view& operator=(image_view&& move) noexcept {

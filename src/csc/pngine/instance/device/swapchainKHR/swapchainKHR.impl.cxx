@@ -37,6 +37,7 @@ class swapchainKHR_impl {
   swapchainKHR_impl& operator=(swapchainKHR_impl&& move) noexcept;
   const vk::Format& do_get_image_format() const;
   const std::vector<vk::Image>& do_get_images() const;
+  vk::Extent2D do_get_extent() const;
   void do_clear() noexcept;
 };
 
@@ -107,6 +108,9 @@ void swapchainKHR_impl::do_clear() noexcept {
     m_keep_device->destroySwapchainKHR(m_swapchainKHR, nullptr);
     m_is_created = false;
   }
+}
+auto swapchainKHR_impl::do_get_extent() const -> decltype(m_extent) {
+  return m_extent;
 }
 
 auto swapchainKHR_impl::do_get_images() const -> const decltype(m_images)& {

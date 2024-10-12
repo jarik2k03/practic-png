@@ -17,7 +17,7 @@ class pipeline_layout : private pipeline_layout_impl {
   void clear() noexcept {
     this->do_clear();
   }
-  vk::PipelineLayout get() const {
+  auto get() const {
     return this->do_get();
   }
   pipeline_layout(pipeline_layout&& move) noexcept : pipeline_layout_impl(std::move(move)) {

@@ -25,6 +25,7 @@ class image_view_impl {
   image_view_impl(image_view_impl&& move) noexcept;
   image_view_impl& operator=(image_view_impl&& move) noexcept;
   void do_clear() noexcept;
+  vk::ImageView do_get() const;
 };
 
 image_view_impl::image_view_impl(image_view_impl&& move) noexcept
@@ -69,6 +70,10 @@ void image_view_impl::do_clear() noexcept {
     m_keep_device->destroyImageView(m_image_view, nullptr);
     m_is_created = false;
   }
+}
+
+vk::ImageView image_view_impl::do_get() const {
+  return m_image_view;
 }
 
 image_view_impl::~image_view_impl() noexcept {

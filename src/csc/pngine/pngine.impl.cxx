@@ -45,7 +45,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   vk::ApplicationInfo app_info(
       m_app_name.c_str(), m_app_version, pngine::bring_engine_name(), pngine::bring_engine_version(), m_vk_api_version);
   // высокоуровневый алгоритм...
-  m_window_handler = pngine::init_window_handler(640u, 480u);
+  m_window_handler = pngine::init_window_handler(1050u, 450u);
   m_instance = pngine::instance(app_info);
 #ifndef NDEBUG
   m_instance.create_debug_reportEXT();
@@ -58,6 +58,8 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
   device.create_pipeline_layout("basic_layout");
+  device.create_render_pass("basic_pass");
+
   pngine::graphics_pipeline_config triangle_cfg;
   const auto shader_stages = {
       pngine::shader_stage{"main", device.get_shader_module("vs_triangle").get(), vk::ShaderStageFlagBits::eVertex},
@@ -65,11 +67,12 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
 
   triangle_cfg.selected_stages = shader_stages;
   triangle_cfg.input_assembler_topology = vk::PrimitiveTopology::eTriangleList;
-  //   triangle_cfg.viewport_area = device.get_swapchainKHR().get_extent2D();
-  //   triangle_cfg.scissors_area = device.get_swapchainKHR().get_extent2D();
+  triangle_cfg.viewport_area = device.get_swapchain().get_extent();
+  triangle_cfg.scissors_area = device.get_swapchain().get_extent();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  auto& triangle_pipeline = device.create_pipeline("basic_layout", triangle_cfg);
+  auto& triangle_pipeline = device.create_pipeline("basic_layout", "basic_pass", triangle_cfg);
+  device.create_framebuffers("basic_pass");
 }
 
 const char* pngine_impl::do_get_engine_name() const noexcept {
