@@ -29,7 +29,7 @@ int main() {
   vk::PipelineColorBlendAttachmentState state;
   state.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
   state.destColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
-
   state.srcAlphaBlendFactor = vk::BlendFactor::eOne;
   state.destAlphaBlendFactor = vk::BlendFactor::eZero;
+  device.acquireNextImageKHR(swapchain, std::numeric_limits<uint64_t>::max(), m_image_available_s);
 }

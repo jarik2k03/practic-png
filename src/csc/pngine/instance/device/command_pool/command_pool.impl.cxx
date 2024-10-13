@@ -47,7 +47,7 @@ command_pool_impl::command_pool_impl(const vk::Device& device, uint32_t family_i
   vk::CommandPoolCreateInfo description{};
   description.sType = vk::StructureType::eCommandPoolCreateInfo;
   description.queueFamilyIndex = family_index;
-  description.flags = {};
+  description.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
   m_command_pool = m_keep_device->createCommandPool(description, nullptr);
   m_is_created = true;
 }

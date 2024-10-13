@@ -20,6 +20,9 @@ class device : private device_impl {
   }
   explicit device(const vk::PhysicalDevice& device, const vk::SurfaceKHR& surface) : device_impl(device, surface) {
   }
+  auto get() const {
+    return this->do_get();
+  }
   device(device&& move) noexcept : device_impl(std::move(move)) {
   }
   device& operator=(device&& move) noexcept {
@@ -27,6 +30,12 @@ class device : private device_impl {
   }
   ~device() noexcept = default;
   // геттеры
+  auto get_graphics_queue() const {
+    return do_get_graphics_queue();
+  }
+  auto get_present_queue() const {
+    return do_get_present_queue();
+  }
   const auto& get_shader_module(std::string_view name) const {
     return this->do_get_shader_module(name);
   }
@@ -35,6 +44,9 @@ class device : private device_impl {
   }
   const auto& get_render_pass(std::string_view name) const {
     return this->do_get_render_pass(name);
+  }
+  const auto& get_graphics_pipeline(std::string_view name) const {
+    return this->do_get_graphics_pipeline(name);
   }
   const auto& get_framebuffers() const {
     return this->do_get_framebuffers();
@@ -53,8 +65,13 @@ class device : private device_impl {
     this->do_create_render_pass(pass_name);
   }
   template <pngine::c_graphics_pipeline_config Config>
-  auto& create_pipeline(std::string_view search_layout_name, std::string_view search_pass_name, Config&& config) {
-    return this->do_create_pipeline(search_layout_name, search_pass_name, std::forward<Config>(config));
+  auto& create_pipeline(
+      std::string_view name_to_pipeline,
+      std::string_view search_layout_name,
+      std::string_view search_pass_name,
+      Config&& config) {
+    return this->do_create_pipeline(
+        name_to_pipeline, search_layout_name, search_pass_name, std::forward<Config>(config));
   }
   void create_pipeline_layout(std::string_view layout_name) {
     this->do_create_pipeline_layout(layout_name);

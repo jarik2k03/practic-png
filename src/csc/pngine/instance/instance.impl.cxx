@@ -49,6 +49,7 @@ class instance_impl {
   pngine::device& do_create_device(std::string_view dev_name);
   void do_create_surfaceKHR(const pngine::v_window_handler& handler);
   void do_bring_physical_devices();
+  pngine::device& do_get_device();
   vk::Instance do_get() const noexcept;
   void do_clear() noexcept;
 };
@@ -107,6 +108,9 @@ vk::Instance instance_impl::do_get() const noexcept {
   return m_instance;
 }
 
+pngine::device& instance_impl::do_get_device() {
+  return m_device;
+}
 void instance_impl::do_clear() noexcept {
   if (m_is_created) {
     if constexpr (pngine::is_debug_build()) {

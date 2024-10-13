@@ -3,6 +3,7 @@ module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 #include <map>
+#include <cstdint>
 export module csc.pngine.instance.device:impl;
 
 export import vulkan_hpp;
@@ -42,13 +43,11 @@ class device_impl {
   pngine::swapchainKHR m_swapchain{};
   std::vector<pngine::image_view> m_image_views{};
   std::map<std::string, pngine::shader_module> m_shader_modules{};
-  std::vector<pngine::graphics_pipeline> m_pipelines{};
+  std::map<std::string, pngine::graphics_pipeline> m_pipelines{};
   std::map<std::string, pngine::pipeline_layout> m_pipeline_layouts{};
   std::map<std::string, pngine::render_pass> m_render_passes{};
   std::vector<pngine::framebuffer> m_framebuffers{};
   pngine::command_pool m_com_pool{};
-  std::map<std::string, std::vector<pngine::fence>> m_fences{};
-  std::map<std::string, std::vector<pngine::semaphore>> m_semaphores{};
 
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
@@ -60,17 +59,24 @@ class device_impl {
   device_impl& operator=(device_impl&& move) noexcept;
   explicit device_impl(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface);
   void do_clear() noexcept;
+  vk::Device do_get() const;
+  vk::Queue do_get_present_queue() const;
+  vk::Queue do_get_graphics_queue() const;
   const pngine::shader_module& do_get_shader_module(std::string_view name) const;
   const pngine::swapchainKHR& do_get_swapchain() const;
   const pngine::render_pass& do_get_render_pass(std::string_view name) const;
   const std::vector<pngine::framebuffer>& do_get_framebuffers() const;
+  const pngine::graphics_pipeline& do_get_graphics_pipeline(std::string_view name) const;
 
   void do_create_swapchainKHR();
   void do_create_image_views();
   void do_create_shader_module(std::string_view name, std::string_view compiled_filepath);
   template <pngine::c_graphics_pipeline_config Config>
-  pngine::graphics_pipeline&
-  do_create_pipeline(std::string_view layout_name, std::string_view pass_name, Config&& config);
+  pngine::graphics_pipeline& do_create_pipeline(
+      std::string_view pipeline_name,
+      std::string_view layout_name,
+      std::string_view pass_name,
+      Config&& config);
   void do_create_pipeline_layout(std::string_view layout_name);
   void do_create_render_pass(std::string_view pass_name);
   void do_create_framebuffers(std::string_view pass_name);
@@ -149,8 +155,11 @@ void device_impl::do_create_shader_module(std::string_view name, std::string_vie
 }
 
 template <pngine::c_graphics_pipeline_config Config>
-pngine::graphics_pipeline&
-device_impl::do_create_pipeline(std::string_view layout_name, std::string_view pass_name, Config&& config) {
+pngine::graphics_pipeline& device_impl::do_create_pipeline(
+    std::string_view named_pipeline,
+    std::string_view layout_name,
+    std::string_view pass_name,
+    Config&& config) {
   const auto render_pass_pos = m_render_passes.find(pass_name.data());
   [[unlikely]] if (render_pass_pos == m_render_passes.cend())
     throw std::runtime_error("Device: не удалось найти указанный проход конвейера!");
@@ -159,9 +168,14 @@ device_impl::do_create_pipeline(std::string_view layout_name, std::string_view p
   [[unlikely]] if (pipeline_layout_pos == m_pipeline_layouts.cend())
     throw std::runtime_error("Device: не удалось найти указанный макет конвейера!");
 
-  m_pipelines.emplace_back(pngine::graphics_pipeline(
-      m_device, render_pass_pos->second.get(), pipeline_layout_pos->second.get(), std::forward<Config>(config)));
-  return m_pipelines.back();
+  const auto [pipeline_pos, is_success] = m_pipelines.insert(std::make_pair(
+      named_pipeline.data(),
+      pngine::graphics_pipeline(
+          m_device, render_pass_pos->second.get(), pipeline_layout_pos->second.get(), std::forward<Config>(config))));
+
+  [[unlikely]] if (!is_success)
+    throw std::runtime_error("Device: не удалось добавить конвейер в реестр!");
+  return pipeline_pos->second;
 }
 
 void device_impl::do_create_pipeline_layout(std::string_view name) {
@@ -205,14 +219,30 @@ const pngine::render_pass& device_impl::do_get_render_pass(std::string_view name
   return render_pass_pos->second;
 }
 
+const pngine::graphics_pipeline& device_impl::do_get_graphics_pipeline(std::string_view name) const {
+  const auto pipeline_pos = m_pipelines.find(name.data());
+  [[unlikely]] if (pipeline_pos == m_pipelines.cend())
+    throw std::runtime_error("Device: не удалось найти указанный графический конвейер!");
+  return pipeline_pos->second;
+}
+
 const std::vector<pngine::framebuffer>& device_impl::do_get_framebuffers() const {
   return m_framebuffers;
 }
 
+vk::Device device_impl::do_get() const {
+  return m_device;
+}
+
+vk::Queue device_impl::do_get_graphics_queue() const {
+  return m_device.getQueue(m_indices.graphics.value(), 0);
+}
+
+vk::Queue device_impl::do_get_present_queue() const {
+  return m_device.getQueue(m_indices.present.value(), 0);
+}
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
-    m_fences.clear();
-    m_semaphores.clear();
     m_com_pool.clear();
     m_pipelines.clear();
     m_pipeline_layouts.clear();
