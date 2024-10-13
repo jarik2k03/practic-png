@@ -7,7 +7,6 @@ export import vulkan_hpp;
 
 import stl.vector;
 
-import :utility;
 namespace csc {
 namespace pngine {
 class queues_impl {

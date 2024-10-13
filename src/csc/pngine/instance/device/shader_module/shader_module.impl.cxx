@@ -12,7 +12,6 @@ import stl.vector;
 import stl.string_view;
 import stl.stdexcept;
 
-import :utility;
 namespace csc {
 namespace pngine {
 class shader_module_impl {

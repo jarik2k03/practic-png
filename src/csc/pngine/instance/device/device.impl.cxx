@@ -22,6 +22,8 @@ import csc.pngine.instance.device.pipeline_layout;
 import csc.pngine.instance.device.render_pass;
 import csc.pngine.instance.device.framebuffer;
 import csc.pngine.instance.device.command_pool;
+import csc.pngine.instance.device.fence;
+import csc.pngine.instance.device.semaphore;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;
@@ -45,6 +47,8 @@ class device_impl {
   std::map<std::string, pngine::render_pass> m_render_passes{};
   std::vector<pngine::framebuffer> m_framebuffers{};
   pngine::command_pool m_com_pool{};
+  std::map<std::string, std::vector<pngine::fence>> m_fences{};
+  std::map<std::string, std::vector<pngine::semaphore>> m_semaphores{};
 
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
@@ -207,6 +211,8 @@ const std::vector<pngine::framebuffer>& device_impl::do_get_framebuffers() const
 
 void device_impl::do_clear() noexcept {
   if (m_is_created != false) {
+    m_fences.clear();
+    m_semaphores.clear();
     m_com_pool.clear();
     m_pipelines.clear();
     m_pipeline_layouts.clear();

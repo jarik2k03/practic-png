@@ -9,14 +9,16 @@ add_subdirectory(pipeline_layout)
 add_subdirectory(render_pass)
 add_subdirectory(framebuffer)
 add_subdirectory(command_pool)
+add_subdirectory(fence)
+add_subdirectory(semaphore)
 
 add_library(${DEVICE}_utility OBJECT device.utility.cxx)
 target_sources(${DEVICE}_utility PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES device.utility.cxx)
-target_link_libraries(${DEVICE}_utility PRIVATE vk_vulkan )
+# target_link_libraries(${DEVICE}_utility PRIVATE vk_vulkan )
 
 add_library(${DEVICE}_impl OBJECT device.impl.cxx)
 target_sources(${DEVICE}_impl PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES device.impl.cxx )
-target_link_libraries(${DEVICE}_impl PRIVATE ${DEVICE}_utility stl_stdexcept stl_map ${QUEUES} ${IMAGE_VIEW} ${SWAPCHAINKHR} ${SHADER_MODULE} ${GRAPHICS_PIPELINE} ${PIPELINE_LAYOUT} ${RENDER_PASS} ${FRAMEBUFFER} ${COMMAND_POOL} ${UTILITY}_swapchain_details)
+target_link_libraries(${DEVICE}_impl PRIVATE ${DEVICE}_utility stl_stdexcept stl_map ${QUEUES} ${IMAGE_VIEW} ${SWAPCHAINKHR} ${SHADER_MODULE} ${GRAPHICS_PIPELINE} ${PIPELINE_LAYOUT} ${RENDER_PASS} ${FRAMEBUFFER} ${COMMAND_POOL} ${FENCE} ${SEMAPHORE} ${UTILITY}_swapchain_details)
 
 add_library(${DEVICE} STATIC device.lib.cxx)
 target_sources(${DEVICE} PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES device.lib.cxx )

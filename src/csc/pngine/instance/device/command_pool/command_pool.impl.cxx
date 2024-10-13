@@ -8,7 +8,6 @@ export import vulkan_hpp;
 
 import stl.vector;
 
-import :utility;
 namespace csc {
 namespace pngine {
 class command_pool_impl {

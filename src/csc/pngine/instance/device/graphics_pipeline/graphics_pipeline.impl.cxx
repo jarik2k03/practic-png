@@ -11,7 +11,6 @@ import csc.pngine.commons.utility.graphics_pipeline;
 import stl.vector;
 import stl.array;
 
-import :utility;
 namespace csc {
 namespace pngine {
 class graphics_pipeline_impl {

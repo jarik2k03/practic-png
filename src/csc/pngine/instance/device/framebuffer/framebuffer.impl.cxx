@@ -6,9 +6,6 @@ module csc.pngine.instance.device.framebuffer:impl;
 
 export import vulkan_hpp;
 
-import stl.vector;
-
-import :utility;
 namespace csc {
 namespace pngine {
 class framebuffer_impl {
