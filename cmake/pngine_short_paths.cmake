@@ -15,6 +15,8 @@ set(PIPELINE_LAYOUT pngine_instance_device_pipeline_layout)
 set(RENDER_PASS pngine_instance_device_render_pass)
 set(FRAMEBUFFER pngine_instance_device_framebuffer)
 set(COMMAND_POOL pngine_instance_device_command_pool)
+set(FENCE pngine_instance_device_fence)
+set(SEMAPHORE pngine_instance_device_semaphore)
 
 set(WINDOW_HANDLER pngine_window_handler)
 set(XCB_HANDLER pngine_window_handler_xcb_handler)

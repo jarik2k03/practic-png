@@ -24,6 +24,9 @@ class swapchainKHR : private swapchainKHR_impl {
       const pngine::queue_family_indices& indices)
       : swapchainKHR_impl(device, surface, details, indices) {
   }
+  auto get() const noexcept {
+    return this->do_get();
+  }
   void clear() noexcept {
     this->do_clear();
   }

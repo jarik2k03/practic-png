@@ -1,10 +1,13 @@
 module;
 #include <cstdint>
 #include <bits/move.h>
+#include <limits>
 #include <shaders_triangle.h>
 module csc.pngine:impl;
 
 export import :attributes;
+import stl.vector;
+import stl.array;
 import stl.string;
 export import stl.string_view;
 import stl.stdexcept;
@@ -28,12 +31,21 @@ class pngine_impl {
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
   pngine::instance m_instance;
+  uint32_t m_current_frame = 0u;
+  static constexpr uint32_t m_flight_count = 2u;
+
+  std::array<vk::Semaphore, m_flight_count> m_image_available_s;
+  std::array<vk::Semaphore, m_flight_count> m_render_finished_s;
+  std::array<vk::Fence, m_flight_count> m_in_flight_f;
+
   pngine::v_window_handler m_window_handler;
+  std::vector<vk::CommandBuffer> m_command_buffers;
 
  public:
   pngine_impl() = delete;
   pngine_impl(std::string app_name, pngine::version app_version, std::string gpu_name);
-  ~pngine_impl() noexcept = default;
+  void do_run();
+  ~pngine_impl() noexcept;
 
   const char* do_get_engine_name() const noexcept;
   pngine::human_version do_get_engine_version() const noexcept;
@@ -72,34 +84,113 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.scissors_area = device.get_swapchain().get_extent();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
   // triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  auto& triangle_pipeline = device.create_pipeline("basic_layout", "basic_pass", triangle_cfg);
+  device.create_pipeline("basic_pipeline", "basic_layout", "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
   auto& command_pool = device.create_command_pool();
-  const uint32_t framebuffers_count = device.get_framebuffers().size();
-  const auto combuffers = command_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, framebuffers_count);
-  // используем проход рендера
-  vk::RenderPassBeginInfo render_pass_config{};
-  render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
-  render_pass_config.renderPass = device.get_render_pass("basic_pass").get();
-  render_pass_config.framebuffer = device.get_framebuffers().at(0).get();
-  render_pass_config.renderArea.setOffset({0, 0});
-  render_pass_config.renderArea.extent = device.get_swapchain().get_extent();
+  m_command_buffers = command_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
 
-  vk::ClearValue clear_color = vk::ClearColorValue{70.f / 256, 70.f / 256, 70.f / 256, 168.f / 256};
-  render_pass_config.pClearValues = &clear_color;
-  render_pass_config.clearValueCount = 1u;
+  vk::SemaphoreCreateInfo semaphore_info{};
+  semaphore_info.sType = vk::StructureType::eSemaphoreCreateInfo;
 
-  vk::CommandBufferBeginInfo begin_desc{};
-  begin_desc.sType = vk::StructureType::eCommandBufferBeginInfo;
-  combuffers.at(0).begin(begin_desc);
-  combuffers.at(0).beginRenderPass(render_pass_config, vk::SubpassContents::eInline);
-  combuffers.at(0).bindPipeline(vk::PipelineBindPoint::eGraphics, triangle_pipeline.get());
-  constexpr const uint32_t triangle_vertices = 3u, inst_count = 1u, first_vert = 0u, first_inst = 0u;
-  combuffers.at(0).draw(triangle_vertices, inst_count, first_vert, first_inst);
-  combuffers.at(0).endRenderPass();
-  combuffers.at(0).end();
+  vk::FenceCreateInfo fence_info{};
+  fence_info.sType = vk::StructureType::eFenceCreateInfo;
+  fence_info.flags = vk::FenceCreateFlagBits::eSignaled;
+
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    m_render_finished_s[i] = device.get().createSemaphore(semaphore_info);
+    m_image_available_s[i] = device.get().createSemaphore(semaphore_info);
+    m_in_flight_f[i] = device.get().createFence(fence_info);
+  }
 }
 
+pngine_impl::~pngine_impl() noexcept {
+  auto& device = m_instance.get_device();
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    device.get().destroySemaphore(m_render_finished_s[i]);
+    device.get().destroySemaphore(m_image_available_s[i]);
+    device.get().destroyFence(m_in_flight_f[i]);
+  }
+}
+void pngine_impl::do_run() {
+  auto& dev = m_instance.get_device();
+  while (true) {
+    const auto& in_flight_f = m_in_flight_f[m_current_frame];
+    const auto& image_available_s = m_image_available_s[m_current_frame];
+    const auto& render_finished_s = m_render_finished_s[m_current_frame];
+    const auto& cur_command_buffer = m_command_buffers[m_current_frame];
+    constexpr const auto without_delays = std::numeric_limits<uint64_t>::max();
+
+    vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
+    if (r != vk::Result::eSuccess)
+      throw std::runtime_error("Pngine: не получилось синхронизировать устройство при помощи барьера!");
+    r = dev.get().resetFences(1u, &in_flight_f);
+    if (r != vk::Result::eSuccess)
+      throw std::runtime_error("Pngine: не удалось сбросить барьер!");
+    const auto& swapchain = dev.get_swapchain();
+    const uint32_t current_image =
+        dev.get().acquireNextImageKHR(swapchain.get(), without_delays, image_available_s).value;
+
+    vk::RenderPassBeginInfo render_pass_config{};
+    render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
+    render_pass_config.renderPass = dev.get_render_pass("basic_pass").get();
+    render_pass_config.framebuffer = dev.get_framebuffers()[current_image].get();
+    render_pass_config.renderArea.setOffset({0, 0});
+    render_pass_config.renderArea.extent = dev.get_swapchain().get_extent();
+
+    vk::ClearValue clear_color = vk::ClearColorValue{70.f / 256, 70.f / 256, 70.f / 256, 168.f / 256};
+    render_pass_config.pClearValues = &clear_color;
+    render_pass_config.clearValueCount = 1u;
+
+    vk::CommandBufferBeginInfo begin_desc{};
+    begin_desc.sType = vk::StructureType::eCommandBufferBeginInfo;
+    cur_command_buffer.reset();
+    cur_command_buffer.begin(begin_desc);
+    cur_command_buffer.beginRenderPass(render_pass_config, vk::SubpassContents::eInline);
+    cur_command_buffer.bindPipeline(
+        vk::PipelineBindPoint::eGraphics, dev.get_graphics_pipeline("basic_pipeline").get());
+    constexpr const uint32_t triangle_vertices = 3u, inst_count = 1u, first_vert = 0u, first_inst = 0u;
+    cur_command_buffer.draw(triangle_vertices, inst_count, first_vert, first_inst);
+    cur_command_buffer.endRenderPass();
+    cur_command_buffer.end();
+
+    vk::SubmitInfo submit_info{};
+    submit_info.sType = vk::StructureType::eSubmitInfo;
+
+    vk::PipelineStageFlags wait_masks[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+    submit_info.pWaitSemaphores = &image_available_s;
+    submit_info.waitSemaphoreCount = 1u;
+    submit_info.pWaitDstStageMask = wait_masks;
+
+    submit_info.pSignalSemaphores = &render_finished_s;
+    submit_info.signalSemaphoreCount = 1u;
+
+    submit_info.pCommandBuffers = &cur_command_buffer;
+    submit_info.commandBufferCount = 1u;
+
+    r = dev.get_graphics_queue().submit(1u, &submit_info, in_flight_f);
+    if (r != vk::Result::eSuccess)
+      throw std::runtime_error("Pngine: не удалось записать данные в графическую очередь!");
+
+    vk::PresentInfoKHR present_info{};
+    present_info.sType = vk::StructureType::ePresentInfoKHR;
+
+    present_info.pWaitSemaphores = &render_finished_s;
+    present_info.waitSemaphoreCount = 1u;
+
+    vk::SwapchainKHR swapchain_ref = swapchain.get();
+    present_info.pSwapchains = &swapchain_ref;
+    present_info.swapchainCount = 1u;
+
+    present_info.pImageIndices = &current_image;
+
+    r = dev.get_present_queue().presentKHR(present_info);
+    if (r != vk::Result::eSuccess)
+      throw std::runtime_error("Pngine: не удалось записать данные в графическую очередь!");
+
+    m_current_frame = (m_current_frame + 1) % m_flight_count;
+  }
+  dev.get().waitIdle();
+}
 const char* pngine_impl::do_get_engine_name() const noexcept {
   return pngine::bring_engine_name(); // статично, на этапе компиляции
 }

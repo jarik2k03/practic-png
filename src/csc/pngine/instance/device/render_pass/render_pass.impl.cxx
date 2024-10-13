@@ -6,9 +6,6 @@ module csc.pngine.instance.device.render_pass:impl;
 
 export import vulkan_hpp;
 
-import stl.vector;
-
-import :utility;
 namespace csc {
 namespace pngine {
 class render_pass_impl {

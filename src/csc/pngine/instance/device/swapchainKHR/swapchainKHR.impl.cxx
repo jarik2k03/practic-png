@@ -38,6 +38,7 @@ class swapchainKHR_impl {
   const std::vector<vk::Image>& do_get_images() const;
   vk::Extent2D do_get_extent() const;
   void do_clear() noexcept;
+  vk::SwapchainKHR do_get() const noexcept;
 };
 
 swapchainKHR_impl::swapchainKHR_impl(swapchainKHR_impl&& move) noexcept
@@ -108,6 +109,10 @@ swapchainKHR_impl::swapchainKHR_impl(
   m_image_format = surf_format.format;
 
   m_is_created = true;
+}
+
+vk::SwapchainKHR swapchainKHR_impl::do_get() const noexcept {
+  return m_swapchainKHR;
 }
 
 void swapchainKHR_impl::do_clear() noexcept {
