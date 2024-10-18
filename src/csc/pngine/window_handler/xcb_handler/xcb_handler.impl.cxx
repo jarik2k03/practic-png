@@ -1,5 +1,6 @@
 module;
 #include <cstdint>
+#include <cstdlib>
 #include <utility>
 #include <xcb/xcb.h>
 #include <vulkan/vulkan_core.h>
@@ -18,6 +19,7 @@ class xcb_handler_impl {
   xcb_connection_t* mp_xcb_connect = nullptr;
   xcb_screen_t* mp_xcb_selected_screen = nullptr;
   xcb_window_t m_xcb_window = 0;
+  xcb_generic_event_t* mp_cur_event = nullptr;
 
  public:
   xcb_handler_impl(uint16_t width, uint16_t height);
@@ -29,6 +31,7 @@ class xcb_handler_impl {
 
   void do_clear() noexcept;
   vk::SurfaceKHR do_create_surface(const vk::Instance& instance) const;
+  bool do_poll_event();
 };
 xcb_handler_impl::xcb_handler_impl(uint16_t window_width, uint16_t window_height) {
   mp_xcb_connect = ::xcb_connect(nullptr, nullptr);
@@ -41,6 +44,7 @@ xcb_handler_impl::xcb_handler_impl(uint16_t window_width, uint16_t window_height
   xcb_screen_iterator_t screen_pos = ::xcb_setup_roots_iterator(setup);
   mp_xcb_selected_screen = screen_pos.data;
   m_xcb_window = ::xcb_generate_id(mp_xcb_connect);
+  uint32_t required_events[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY };
   ::xcb_create_window(
       mp_xcb_connect,
       XCB_COPY_FROM_PARENT,
@@ -53,8 +57,8 @@ xcb_handler_impl::xcb_handler_impl(uint16_t window_width, uint16_t window_height
       16,
       XCB_WINDOW_CLASS_INPUT_OUTPUT,
       mp_xcb_selected_screen->root_visual,
-      0u,
-      nullptr);
+      XCB_CW_EVENT_MASK,
+      required_events);
   ::xcb_map_window(mp_xcb_connect, m_xcb_window);
   ::xcb_flush(mp_xcb_connect);
 }
@@ -66,6 +70,8 @@ void xcb_handler_impl::do_clear() noexcept {
     ::xcb_destroy_window(mp_xcb_connect, m_xcb_window);
   if (mp_xcb_connect != nullptr)
     ::xcb_disconnect(mp_xcb_connect), mp_xcb_connect = nullptr;
+  if (mp_cur_event != nullptr)
+    ::free(mp_cur_event);
 }
 
 xcb_handler_impl& xcb_handler_impl::operator=(xcb_handler_impl&& move) noexcept {
@@ -75,13 +81,16 @@ xcb_handler_impl& xcb_handler_impl::operator=(xcb_handler_impl&& move) noexcept 
   m_xcb_window = std::exchange(move.m_xcb_window, 0);
   mp_xcb_connect = std::exchange(move.mp_xcb_connect, nullptr);
   mp_xcb_selected_screen = std::exchange(move.mp_xcb_selected_screen, nullptr);
+  mp_cur_event = std::exchange(move.mp_cur_event, nullptr);
   return *this;
 }
 
 xcb_handler_impl::xcb_handler_impl(xcb_handler_impl&& move) noexcept
     : mp_xcb_connect(std::exchange(move.mp_xcb_connect, nullptr)),
       mp_xcb_selected_screen(std::exchange(move.mp_xcb_selected_screen, nullptr)),
-      m_xcb_window(std::exchange(move.m_xcb_window, 0)) {
+      m_xcb_window(std::exchange(move.m_xcb_window, 0)),
+      mp_cur_event(std::exchange(move.mp_cur_event, nullptr))
+{
 }
 
 vk::SurfaceKHR xcb_handler_impl::do_create_surface(const vk::Instance& instance) const {
@@ -100,6 +109,17 @@ vk::SurfaceKHR xcb_handler_impl::do_create_surface(const vk::Instance& instance)
     throw std::runtime_error("Failed to create window!");
   return vk::SurfaceKHR(vksurface);
 }
+
+bool xcb_handler_impl::do_poll_event() {
+  if (mp_xcb_connect == nullptr)
+    return false;
+  if (mp_cur_event != nullptr)
+    ::free(mp_cur_event);
+  mp_cur_event = ::xcb_wait_for_event(mp_xcb_connect);
+  return mp_cur_event != nullptr;
+}
+
+
 // auto xcb_handler_impl::
 
 } // namespace pngine

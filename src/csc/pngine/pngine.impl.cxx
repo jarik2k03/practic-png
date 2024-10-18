@@ -11,6 +11,7 @@ import stl.array;
 import stl.string;
 export import stl.string_view;
 import stl.stdexcept;
+import stl.variant;
 #ifndef NDEBUG
 import stl.iostream;
 #endif
@@ -113,7 +114,7 @@ pngine_impl::~pngine_impl() noexcept {
 }
 void pngine_impl::do_run() {
   auto& dev = m_instance.get_device();
-  while (true) {
+  while (std::visit(pngine::f_poll_event(), m_window_handler)) {
     const auto& in_flight_f = m_in_flight_f[m_current_frame];
     const auto& image_available_s = m_image_available_s[m_current_frame];
     const auto& render_finished_s = m_render_finished_s[m_current_frame];

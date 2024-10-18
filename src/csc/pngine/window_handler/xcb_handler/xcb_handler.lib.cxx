@@ -12,8 +12,11 @@ class xcb_handler : private xcb_handler_impl {
   void clear() noexcept {
     this->do_clear();
   }
-  vk::SurfaceKHR create_surface(const vk::Instance& instance) const {
+  auto create_surface(const vk::Instance& instance) const {
     return this->do_create_surface(instance);
+  }
+  bool poll_event() {
+    return this->do_poll_event();
   }
   xcb_handler() = default;
   xcb_handler(xcb_handler&& move) noexcept = default;

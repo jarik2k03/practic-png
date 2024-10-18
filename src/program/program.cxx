@@ -116,7 +116,6 @@ int main(int argc, char** argv) {
       std::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
       core.run();
-      ::sleep(2);
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }
