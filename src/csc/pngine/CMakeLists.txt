@@ -5,17 +5,11 @@ include(pngine_short_paths)
 
 add_library(pngine_attributes STATIC pngine.attributes.cxx)
 target_sources(pngine_attributes PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES pngine.attributes.cxx)
-target_link_libraries(pngine_attributes PRIVATE ${UTILITY}_version ${WINDOW_HANDLER} stl_optional)
-
-
-add_library(pngine_impl STATIC pngine.impl.cxx)
-target_include_directories(pngine_impl PRIVATE ${CMAKE_BINARY_DIR}/shaders/csc/pngine)
-target_link_libraries(pngine_impl INTERFACE shaders_triangle) # теперь нам доступен сгенерированный заголовок с путями к шейдеру!
-
-target_sources(pngine_impl PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES pngine.impl.cxx )
-target_link_libraries(pngine_impl PRIVATE pngine_attributes ${INSTANCE} stl_string stl_string_view)
+target_link_libraries(pngine_attributes PRIVATE ${UTILITY}_version)
 
 add_library(pngine STATIC pngine.lib.cxx)
 target_sources(pngine PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES pngine.lib.cxx )
-target_link_libraries(pngine PRIVATE pngine_impl)
-
+target_link_libraries(pngine PRIVATE pngine_attributes ${INSTANCE} ${WINDOW_HANDLER})
+# подключаем сгенерированный заголовок
+target_include_directories(pngine PRIVATE ${CMAKE_BINARY_DIR}/shaders/csc/pngine)
+target_link_libraries(pngine INTERFACE shaders_triangle) # теперь нам доступен сгенерированный заголовок с путями к шейдеру!

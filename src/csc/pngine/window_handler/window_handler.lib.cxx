@@ -2,11 +2,9 @@ module;
 
 export module csc.pngine.window_handler;
 
-import stl.variant;
+export import :visitors;
 
-export import csc.pngine.window_handler.create_surface;
-export import csc.pngine.window_handler.poll_event;
-export import csc.pngine.window_handler.size_event;
+import stl.variant;
 
 export namespace csc {
 namespace pngine {

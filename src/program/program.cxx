@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
       const bool ignore_checksum = force_pos != args.end();
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
-      csc::pngine::pngine core(
+      csc::pngine::pngine_core core(
           "PNG-viewer", csc::pngine::bring_version(1u, 0u, 1u), "Intel(R) HD Graphics 2500 (IVB GT1)");
       std::cout << "Движок: " << core.get_engine_name() << '\n';
       const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
