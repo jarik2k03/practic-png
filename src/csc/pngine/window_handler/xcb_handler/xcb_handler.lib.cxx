@@ -18,6 +18,10 @@ class xcb_handler : private xcb_handler_impl {
   bool poll_event() {
     return this->do_poll_event();
   }
+  template <typename Pred>
+  void configure_notify_event(Pred user_code) const {
+    this->do_configure_notify_event(user_code);
+  }
   xcb_handler() = default;
   xcb_handler(xcb_handler&& move) noexcept = default;
   xcb_handler(const xcb_handler& copy) = delete;

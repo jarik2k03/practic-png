@@ -2,10 +2,11 @@ module;
 #include <cstdint>
 #include <cstdlib>
 #include <utility>
+#include <iostream>
 #include <xcb/xcb.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_xcb.h>
-module csc.pngine.window_handler.xcb_handler:impl;
+export module csc.pngine.window_handler.xcb_handler:impl;
 
 import vulkan_hpp;
 import stl.stdexcept;
@@ -31,6 +32,8 @@ class xcb_handler_impl {
 
   void do_clear() noexcept;
   vk::SurfaceKHR do_create_surface(const vk::Instance& instance) const;
+  template <typename Pred>
+  void do_configure_notify_event(Pred user_code) const;
   bool do_poll_event();
 };
 xcb_handler_impl::xcb_handler_impl(uint16_t window_width, uint16_t window_height) {
@@ -44,7 +47,7 @@ xcb_handler_impl::xcb_handler_impl(uint16_t window_width, uint16_t window_height
   xcb_screen_iterator_t screen_pos = ::xcb_setup_roots_iterator(setup);
   mp_xcb_selected_screen = screen_pos.data;
   m_xcb_window = ::xcb_generate_id(mp_xcb_connect);
-  uint32_t required_events[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY };
+  uint32_t required_events[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_EXPOSURE};
   ::xcb_create_window(
       mp_xcb_connect,
       XCB_COPY_FROM_PARENT,
@@ -94,7 +97,9 @@ xcb_handler_impl::xcb_handler_impl(xcb_handler_impl&& move) noexcept
 }
 
 vk::SurfaceKHR xcb_handler_impl::do_create_surface(const vk::Instance& instance) const {
-  VkXcbSurfaceCreateInfoKHR xcb_surface_desc;
+  if (mp_xcb_connect == nullptr)
+    throw std::runtime_error("Window is not created. Surface depends to window.");
+  VkXcbSurfaceCreateInfoKHR xcb_surface_desc{};
   xcb_surface_desc.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
   xcb_surface_desc.pNext = nullptr;
   xcb_surface_desc.connection = mp_xcb_connect;
@@ -119,7 +124,10 @@ bool xcb_handler_impl::do_poll_event() {
   return mp_cur_event != nullptr;
 }
 
-
+template <typename Pred>
+void xcb_handler_impl::do_configure_notify_event(Pred user_code) const {
+     user_code(); // колбэк определяется на этапе компиляции
+}
 // auto xcb_handler_impl::
 
 } // namespace pngine

@@ -84,7 +84,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.viewport_area = device.get_swapchain().get_extent();
   triangle_cfg.scissors_area = device.get_swapchain().get_extent();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
-  // triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+  triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
   device.create_pipeline("basic_pipeline", "basic_layout", "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
   auto& command_pool = device.create_command_pool();
@@ -106,6 +106,7 @@ pngine_impl::pngine_impl(std::string nm, pngine::version ver, std::string g_nm)
 
 pngine_impl::~pngine_impl() noexcept {
   auto& device = m_instance.get_device();
+  device.get().waitIdle();
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     device.get().destroySemaphore(m_render_finished_s[i]);
     device.get().destroySemaphore(m_image_available_s[i]);
@@ -114,12 +115,19 @@ pngine_impl::~pngine_impl() noexcept {
 }
 void pngine_impl::do_run() {
   auto& dev = m_instance.get_device();
+  auto recreate_swapchain = [&] () -> void {
+    dev.create_swapchainKHR(); // operator= очистит старый класс
+    dev.create_image_views(); // operator= очистит старый класс
+    dev.create_framebuffers("basic_pass"); // operator= очистит старый класс
+  };
   while (std::visit(pngine::f_poll_event(), m_window_handler)) {
     const auto& in_flight_f = m_in_flight_f[m_current_frame];
     const auto& image_available_s = m_image_available_s[m_current_frame];
     const auto& render_finished_s = m_render_finished_s[m_current_frame];
     const auto& cur_command_buffer = m_command_buffers[m_current_frame];
     constexpr const auto without_delays = std::numeric_limits<uint64_t>::max();
+
+    std::visit(pngine::f_size_event(recreate_swapchain), m_window_handler); // событие изменения окна
 
     vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
     if (r != vk::Result::eSuccess)
@@ -134,11 +142,11 @@ void pngine_impl::do_run() {
     vk::RenderPassBeginInfo render_pass_config{};
     render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
     render_pass_config.renderPass = dev.get_render_pass("basic_pass").get();
-    render_pass_config.framebuffer = dev.get_framebuffers()[current_image].get();
+    render_pass_config.framebuffer = dev.get_framebuffers().at(current_image).get();
     render_pass_config.renderArea.setOffset({0, 0});
     render_pass_config.renderArea.extent = dev.get_swapchain().get_extent();
 
-    vk::ClearValue clear_color = vk::ClearColorValue{70.f / 256, 70.f / 256, 70.f / 256, 168.f / 256};
+    vk::ClearValue clear_color = vk::ClearColorValue{70.f / 256, 70.f / 256, 70.f / 256, 12.f / 256};
     render_pass_config.pClearValues = &clear_color;
     render_pass_config.clearValueCount = 1u;
 
@@ -149,6 +157,12 @@ void pngine_impl::do_run() {
     cur_command_buffer.beginRenderPass(render_pass_config, vk::SubpassContents::eInline);
     cur_command_buffer.bindPipeline(
         vk::PipelineBindPoint::eGraphics, dev.get_graphics_pipeline("basic_pipeline").get());
+    const auto extent = dev.get_swapchain().get_extent();
+    vk::Viewport dynamic_viewport(0.0f, 0.0f, extent.width, extent.height, 0.0f, 1.0f);
+    vk::Rect2D dynamic_scissor({}, extent);
+
+    cur_command_buffer.setViewport(0u, 1u, &dynamic_viewport);
+    cur_command_buffer.setScissor(0u, 1u, &dynamic_scissor);
     constexpr const uint32_t triangle_vertices = 3u, inst_count = 1u, first_vert = 0u, first_inst = 0u;
     cur_command_buffer.draw(triangle_vertices, inst_count, first_vert, first_inst);
     cur_command_buffer.endRenderPass();
@@ -190,7 +204,6 @@ void pngine_impl::do_run() {
 
     m_current_frame = (m_current_frame + 1) % m_flight_count;
   }
-  dev.get().waitIdle();
 }
 const char* pngine_impl::do_get_engine_name() const noexcept {
   return pngine::bring_engine_name(); // статично, на этапе компиляции

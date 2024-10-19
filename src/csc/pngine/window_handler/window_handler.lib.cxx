@@ -6,6 +6,7 @@ import stl.variant;
 
 export import csc.pngine.window_handler.create_surface;
 export import csc.pngine.window_handler.poll_event;
+export import csc.pngine.window_handler.size_event;
 
 export namespace csc {
 namespace pngine {

@@ -145,6 +145,7 @@ void device_impl::do_create_swapchainKHR() {
 }
 
 void device_impl::do_create_image_views() {
+  m_image_views.clear();
   m_image_views.reserve(m_swapchain.get_images().size());
   std::ranges::for_each(m_swapchain.get_images(), [&](const auto& img) {
     m_image_views.emplace_back(pngine::image_view(m_device, img, m_swapchain.get_image_format()));
@@ -186,6 +187,7 @@ void device_impl::do_create_render_pass(std::string_view name) {
 }
 
 void device_impl::do_create_framebuffers(std::string_view pass_name) {
+  m_framebuffers.clear();
   const auto render_pass_pos = m_render_passes.find(pass_name.data());
   [[unlikely]] if (render_pass_pos == m_render_passes.cend())
     throw std::runtime_error("Device: не удалось найти указанный проход рендера!");
