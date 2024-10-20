@@ -1,5 +1,6 @@
 module;
 #include <utility>
+#include <vulkan/vulkan_core.h>
 export module csc.pngine.instance.surfaceKHR;
 
 import vulkan_hpp;
@@ -53,7 +54,13 @@ const vk::SurfaceKHR& surfaceKHR::get() const noexcept {
 
 void surfaceKHR::clear() noexcept {
   if (m_is_created != false) {
-    m_keep_instance->destroySurfaceKHR(m_surfaceKHR, nullptr);
+    struct surface_dispatch : vk::DispatchLoaderBase {
+      PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
+    };
+    surface_dispatch dispatch{};
+    dispatch.vkDestroySurfaceKHR =
+        reinterpret_cast<PFN_vkDestroySurfaceKHR>(m_keep_instance->getProcAddr("vkDestroySurfaceKHR"));
+    m_keep_instance->destroySurfaceKHR(m_surfaceKHR, nullptr, dispatch);
     m_is_created = false;
   }
 }

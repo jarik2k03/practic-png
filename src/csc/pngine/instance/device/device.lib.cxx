@@ -67,7 +67,7 @@ class device {
   const std::vector<pngine::framebuffer>& get_framebuffers() const;
   const pngine::graphics_pipeline& get_graphics_pipeline(std::string_view name) const;
 
-  void create_swapchainKHR(pngine::swapchain_dispatch dispatch);
+  void create_swapchainKHR(vk::Extent2D window_framebuffer, pngine::swapchain_dispatch dispatch);
   void create_image_views();
   void create_shader_module(std::string_view name, std::string_view compiled_filepath);
   template <pngine::c_graphics_pipeline_config Config>
@@ -138,8 +138,9 @@ device::device(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface)
   m_is_created = true; // если кинет исключение - не будет is created
 }
 
-void device::create_swapchainKHR(pngine::swapchain_dispatch dispatch) {
-  const auto details = pngine::bring_swapchain_details_from_phys_device(*m_keep_phdevice, *m_keep_surface);
+void device::create_swapchainKHR(vk::Extent2D window_framebuffer, pngine::swapchain_dispatch dispatch) {
+  auto details = pngine::bring_swapchain_details_from_phys_device(*m_keep_phdevice, *m_keep_surface);
+  details.window_framebuffer = window_framebuffer;
   m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details, m_indices, dispatch);
 }
 

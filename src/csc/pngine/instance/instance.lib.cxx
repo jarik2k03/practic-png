@@ -9,7 +9,6 @@ export module csc.pngine.instance;
 import stl.vector;
 import stl.string;
 import stl.set;
-import stl.variant;
 import stl.stdexcept;
 import stl.optional;
 import stl.string_view;
@@ -82,7 +81,7 @@ class instance {
 
   void create_debug_reportEXT();
   pngine::device& create_device(std::string_view dev_name);
-  void create_surfaceKHR(const pngine::v_window_handler& handler);
+  void create_surfaceKHR(const pngine::window_handler& handler);
   void bring_physical_devices();
   pngine::device& get_device();
   pngine::swapchain_dispatch get_swapchainKHR_dispatch() const noexcept;
@@ -176,9 +175,8 @@ void instance::create_debug_reportEXT() {
     m_debug_report = pngine::debug_reportEXT(m_instance);
   }
 }
-void instance::create_surfaceKHR(const pngine::v_window_handler& handler) {
-  auto prod_surface = std::visit(pngine::f_create_surface(m_instance), handler);
-  m_surface = pngine::surfaceKHR(m_instance, prod_surface);
+void instance::create_surfaceKHR(const pngine::window_handler& handler) {
+  m_surface = pngine::surfaceKHR(m_instance, handler.create_surface(m_instance));
 }
 
 pngine::device& instance::create_device(std::string_view gpu_name) {

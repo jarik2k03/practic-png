@@ -31,20 +31,20 @@ vk::PresentModeKHR choose_present_mode(const std::vector<vk::PresentModeKHR>& ca
   return (good_candidat_pos != candidates.cend()) ? *good_candidat_pos : vk::PresentModeKHR::eFifo;
 }
 
-vk::Extent2D choose_extent(const vk::SurfaceCapabilitiesKHR& capabilities) {
-  if (capabilities.currentExtent.width == std::numeric_limits<uint32_t>::max()) {
-    vk::Extent2D new_extent{1280u, 720u}; // костыльное говно. Но протаскивать window_handler долго...
-    const auto &min = capabilities.minImageExtent, &max = capabilities.maxImageExtent;
-    new_extent.width = std::clamp(new_extent.width, min.width, max.width);
-    new_extent.height = std::clamp(new_extent.height, min.height, max.height);
-    return new_extent;
+vk::Extent2D choose_extent(const pngine::swapchain_details& det) {
+  [[unlikely]] if (det.capabilities.currentExtent.width == std::numeric_limits<uint32_t>::max()) {
+    const auto &min = det.capabilities.minImageExtent, &max = det.capabilities.maxImageExtent;
+    vk::Extent2D required_extent;
+    required_extent.width = std::clamp(det.window_framebuffer.width, min.width, max.width);
+    required_extent.height = std::clamp(det.window_framebuffer.height, min.height, max.height);
+    return required_extent;
   } else {
-    return capabilities.currentExtent;
+    return det.capabilities.currentExtent;
   }
 }
 
 constexpr uint32_t choose_image_count(const vk::SurfaceCapabilitiesKHR& caps, uint32_t count) noexcept {
-  return (caps.maxImageCount > 0) ? std::clamp(count, caps.minImageCount, caps.maxImageCount) : count;
+  return (caps.maxImageCount > 0u) ? std::clamp(count, caps.minImageCount, caps.maxImageCount) : count;
 }
 
 } // namespace pngine
@@ -124,7 +124,7 @@ swapchainKHR::swapchainKHR(
   vk::SwapchainCreateInfoKHR description{};
   description.sType = vk::StructureType::eSwapchainCreateInfoKHR;
   description.pNext = nullptr;
-  m_extent = pngine::choose_extent(details.capabilities);
+  m_extent = pngine::choose_extent(details);
 
   description.imageExtent = m_extent;
   const auto surf_format = pngine::choose_surface_format(details.formats);

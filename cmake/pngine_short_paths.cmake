@@ -19,5 +19,4 @@ set(FENCE pngine_instance_device_fence)
 set(SEMAPHORE pngine_instance_device_semaphore)
 
 set(WINDOW_HANDLER pngine_window_handler)
-set(XCB_HANDLER pngine_window_handler_xcb_handler)
-set(WIN32_HANDLER pngine_window_handler_win32_handler)
+set(GLFW_HANDLER pngine_glfw_handler)
