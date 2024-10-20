@@ -5,10 +5,11 @@ module;
 #include <bits/allocator.h>
 export module csc.png.commons.buffer;
 
-import cstd.stl_wrap.stdexcept;
+import stl.stdexcept;
 export import :range;
 
 export namespace csc {
+namespace png {
 
 template <typename Val>
 class basic_buffer_view;
@@ -64,7 +65,7 @@ class basic_buffer {
   }
   void resize(uint32_t new_size) {
     if (new_size > m_capacity)
-      throw cstd::out_of_range("Осуществлена попытка увеличить размер буфера (new_size > capacity)");
+      throw std::out_of_range("Осуществлена попытка увеличить размер буфера (new_size > capacity)");
     m_size = new_size; // задаём новый диапазон считываемых значений в текущем буфере
   }
   uint32_t capacity() const noexcept {
@@ -85,22 +86,23 @@ class basic_buffer {
   const Val* end() const {
     return m_data + m_size; // то же самое
   }
-  constexpr operator csc::basic_buffer_view<Val>() const noexcept {
-    return csc::basic_buffer_view<Val>(data(), size());
+  constexpr operator png::basic_buffer_view<Val>() const noexcept {
+    return png::basic_buffer_view<Val>(data(), size());
   }
 };
-using u8buffer = csc::basic_buffer<uint8_t>;
-using s8buffer = csc::basic_buffer<int8_t>;
-using u16buffer = csc::basic_buffer<uint16_t>;
-using s16buffer = csc::basic_buffer<int16_t>;
-using u32buffer = csc::basic_buffer<uint32_t>;
-using s32buffer = csc::basic_buffer<int32_t>;
-using u64buffer = csc::basic_buffer<uint64_t>;
-using s64buffer = csc::basic_buffer<int64_t>;
+using u8buffer = png::basic_buffer<uint8_t>;
+using s8buffer = png::basic_buffer<int8_t>;
+using u16buffer = png::basic_buffer<uint16_t>;
+using s16buffer = png::basic_buffer<int16_t>;
+using u32buffer = png::basic_buffer<uint32_t>;
+using s32buffer = png::basic_buffer<int32_t>;
+using u64buffer = png::basic_buffer<uint64_t>;
+using s64buffer = png::basic_buffer<int64_t>;
 
 template <typename T>
 auto make_buffer(uint32_t size) {
-  return csc::basic_buffer<T>(size);
+  return png::basic_buffer<T>(size);
 }
 
+} // namespace png
 } // namespace csc

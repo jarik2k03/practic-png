@@ -4,6 +4,7 @@ module;
 export module csc.png.commons.buffer_view:range;
 
 export namespace csc {
+namespace png {
 
 template <typename It>
 struct basic_buffer_view_range {
@@ -24,23 +25,24 @@ struct basic_buffer_view_range {
   basic_buffer_view_range(It* b, It* e) : m_beg(b), m_end(e) {
   }
 };
-using u8buffer_view_range = csc::basic_buffer_view_range<uint8_t>;
-using const_u8buffer_view_range = csc::basic_buffer_view_range<const uint8_t>;
-using s8buffer_view_range = csc::basic_buffer_view_range<int8_t>;
-using const_s8buffer_view_range = csc::basic_buffer_view_range<const int8_t>;
+using u8buffer_view_range = png::basic_buffer_view_range<uint8_t>;
+using const_u8buffer_view_range = png::basic_buffer_view_range<const uint8_t>;
+using s8buffer_view_range = png::basic_buffer_view_range<int8_t>;
+using const_s8buffer_view_range = png::basic_buffer_view_range<const int8_t>;
 
-using u16buffer_view_range = csc::basic_buffer_view_range<uint16_t>;
-using const_u16buffer_view_range = csc::basic_buffer_view_range<const uint8_t>;
-using s16buffer_view_range = csc::basic_buffer_view_range<int16_t>;
-using const_s16buffer_view_range = csc::basic_buffer_view_range<const int8_t>;
+using u16buffer_view_range = png::basic_buffer_view_range<uint16_t>;
+using const_u16buffer_view_range = png::basic_buffer_view_range<const uint8_t>;
+using s16buffer_view_range = png::basic_buffer_view_range<int16_t>;
+using const_s16buffer_view_range = png::basic_buffer_view_range<const int8_t>;
 
-using u32buffer_view_range = csc::basic_buffer_view_range<uint32_t>;
-using const_u32buffer_view_range = csc::basic_buffer_view_range<const uint32_t>;
-using s32buffer_view_range = csc::basic_buffer_view_range<int32_t>;
-using const_s32buffer_view_range = csc::basic_buffer_view_range<const int32_t>;
+using u32buffer_view_range = png::basic_buffer_view_range<uint32_t>;
+using const_u32buffer_view_range = png::basic_buffer_view_range<const uint32_t>;
+using s32buffer_view_range = png::basic_buffer_view_range<int32_t>;
+using const_s32buffer_view_range = png::basic_buffer_view_range<const int32_t>;
 
-using u64buffer_view_range = csc::basic_buffer_view_range<uint64_t>;
-using const_u64buffer_view_range = csc::basic_buffer_view_range<const uint64_t>;
-using s64buffer_view_range = csc::basic_buffer_view_range<int64_t>;
-using const_s64buffer_view_range = csc::basic_buffer_view_range<const int64_t>;
+using u64buffer_view_range = png::basic_buffer_view_range<uint64_t>;
+using const_u64buffer_view_range = png::basic_buffer_view_range<const uint64_t>;
+using s64buffer_view_range = png::basic_buffer_view_range<int64_t>;
+using const_s64buffer_view_range = png::basic_buffer_view_range<const int64_t>;
+} // namespace png
 } // namespace csc

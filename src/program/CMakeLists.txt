@@ -10,7 +10,9 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 
-target_link_libraries(program PRIVATE png stl_iostream stl_stdexcept)
+target_link_libraries(program PRIVATE png stl_iostream stl_stdexcept stl_string pngine)
+
+include(png_short_paths)
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  target_link_libraries(program PRIVATE picture_debug)
+  target_link_libraries(program PRIVATE ${PICTURE_DEBUG})
 endif() 

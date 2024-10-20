@@ -3,6 +3,7 @@ module;
 export module csc.png.picture.sections.cHRM;
 
 export namespace csc {
+namespace png {
 
 struct cHRM {
   uint32_t white_x, white_y;
@@ -11,4 +12,5 @@ struct cHRM {
   uint32_t blue_x, blue_y;
 };
 
+} // namespace png
 } // namespace csc

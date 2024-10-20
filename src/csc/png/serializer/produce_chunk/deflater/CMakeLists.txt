@@ -1,14 +1,16 @@
+include(png_short_paths)
+
 add_subdirectory(attributes)
 
-add_library(deflater_utility OBJECT deflater.utility.cxx)
-target_sources(deflater_utility PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES deflater.utility.cxx ) 
-target_link_libraries(deflater_utility PRIVATE ZLIB::ZLIB buffer buffer_view stl_stdexcept)
+add_library(${DEFLATER}_utility OBJECT deflater.utility.cxx)
+target_sources(${DEFLATER}_utility PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES deflater.utility.cxx ) 
+target_link_libraries(${DEFLATER}_utility PRIVATE ZLIB::ZLIB ${BUFFER} ${BUFFER_VIEW} stl_stdexcept)
 
-add_library(deflater_impl STATIC deflater.impl.cxx)
-target_sources(deflater_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES deflater.impl.cxx ) 
-target_link_libraries(deflater_impl PRIVATE deflater_utility attributes memory_literals)
+add_library(${DEFLATER}_impl STATIC deflater.impl.cxx)
+target_sources(${DEFLATER}_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES deflater.impl.cxx ) 
+target_link_libraries(${DEFLATER}_impl PRIVATE ${DEFLATER}_utility ${DEFLATER_ATTRIBUTES} ${MEMORY_LITERALS})
 
-add_library(deflater STATIC deflater.lib.cxx)
-target_sources(deflater PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES deflater.lib.cxx ) 
-target_link_libraries(deflater PRIVATE deflater_impl)
+add_library(${DEFLATER} STATIC deflater.lib.cxx)
+target_sources(${DEFLATER} PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES deflater.lib.cxx ) 
+target_link_libraries(${DEFLATER} PRIVATE ${DEFLATER}_impl)
 

@@ -8,6 +8,7 @@ export module csc.png.deserializer.consume_chunk.inflater;
 import :impl;
 
 export namespace csc {
+namespace png {
 
 template <typename Alloc>
 class inflater : private inflater_impl<Alloc> {
@@ -17,13 +18,13 @@ class inflater : private inflater_impl<Alloc> {
 
   ~inflater() noexcept = default;
 
-  inflater(const csc::inflater<Alloc>& copy) = delete;
-  auto& operator=(const csc::inflater<Alloc>& copy) = delete;
+  inflater(const png::inflater<Alloc>& copy) = delete;
+  auto& operator=(const png::inflater<Alloc>& copy) = delete;
 
-  inflater(csc::inflater<Alloc>&& move) noexcept = default; // использует ctor от impl
-  csc::inflater<Alloc>& operator=(csc::inflater<Alloc>&& move) noexcept = default; // исп. присваивание от impl
+  inflater(png::inflater<Alloc>&& move) noexcept = default; // использует ctor от impl
+  png::inflater<Alloc>& operator=(png::inflater<Alloc>&& move) noexcept = default; // исп. присваивание от impl
 
-  void flush(csc::u8buffer_view new_input) {
+  void flush(png::u8buffer_view new_input) {
     return this->do_flush(new_input);
   }
   void inflate() {
@@ -37,5 +38,6 @@ class inflater : private inflater_impl<Alloc> {
   }
 };
 
-using common_inflater = csc::inflater<std::allocator<uint8_t>>;
+using common_inflater = png::inflater<std::allocator<uint8_t>>;
+} // namespace png
 } // namespace csc

@@ -2,8 +2,8 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections;
 
-import cstd.stl_wrap.vector;
-import cstd.stl_wrap.variant;
+import stl.vector;
+import stl.variant;
 
 export import csc.png.picture.sections.IHDR;
 export import csc.png.picture.sections.PLTE;
@@ -15,20 +15,22 @@ export import csc.png.picture.sections.cHRM;
 export import csc.png.picture.sections.gAMA;
 export import csc.png.picture.sections.hIST;
 export import csc.png.picture.sections.pHYs;
+export import csc.png.picture.sections.tRNS;
 export namespace csc {
+namespace png {
 
-struct dummy {};
-using v_section = cstd::variant<
-    csc::IHDR,
-    csc::PLTE,
-    csc::IEND,
-    csc::bKGD,
-    csc::tIME,
-    csc::cHRM,
-    csc::gAMA,
-    csc::hIST,
-    csc::pHYs,
-    csc::dummy>;
-using v_sections = cstd::vector<v_section>;
+using v_section = std::variant<
+    png::IHDR,
+    png::PLTE,
+    png::IEND,
+    png::bKGD,
+    png::tIME,
+    png::cHRM,
+    png::gAMA,
+    png::hIST,
+    png::pHYs,
+    png::tRNS>;
+using v_sections = std::vector<v_section>;
 
+} // namespace png
 } // namespace csc
