@@ -8,6 +8,7 @@ export import :attributes;
 import csc.png.commons.utility.endian;
 
 namespace csc {
+namespace png {
 
 class buf_reader_impl {
  private:
@@ -18,15 +19,15 @@ class buf_reader_impl {
   buf_reader_impl() = delete;
   buf_reader_impl(const uint8_t* const s) : m_start(s) {
     static_assert(
-        csc::is_valid_endian(),
+        png::is_valid_endian(),
         "This program doesn't support this endian! Your endian is "
         "probably the PDP");
   }
-  template <csc::number Val>
+  template <png::number Val>
   Val do_read();
 };
 
-template <csc::number Val>
+template <png::number Val>
 Val buf_reader_impl::do_read() {
   Val word;
   std::memcpy(&word, m_start + m_pos, sizeof(Val));
@@ -39,9 +40,10 @@ Val buf_reader_impl::do_read() {
     // если на нашем компьютере BE - читаем напрямую (png использует Bittle
     // Endian - как в сетевых протоколах)
   } else if constexpr (std::endian::native == std::endian::little) {
-    word = csc::swap_endian(word); // from BE to LE
+    word = png::swap_endian(word); // from BE to LE
   }
   return word;
 }
 
+} // namespace png
 } // namespace csc

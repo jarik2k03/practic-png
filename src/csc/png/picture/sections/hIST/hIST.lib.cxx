@@ -2,12 +2,14 @@ module;
 #include <cstdint>
 export module csc.png.picture.sections.hIST;
 
-export import cstd.stl_wrap.vector;
+export import stl.vector;
 export import :attributes;
 export namespace csc {
+namespace png {
 
 struct hIST {
-  cstd::vector<csc::color_frequency> histogram;
+  std::vector<png::color_frequency> histogram;
 };
 
+} // namespace png
 } // namespace csc

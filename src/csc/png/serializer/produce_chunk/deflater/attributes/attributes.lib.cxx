@@ -4,6 +4,7 @@ module;
 export module csc.png.serializer.produce_chunk.deflater.attributes;
 
 export namespace csc {
+namespace png {
 
 enum class e_compression_level : int32_t {
   none = Z_NO_COMPRESSION,
@@ -27,4 +28,5 @@ enum class e_compression_strategy : int32_t {
   huffman_only = Z_HUFFMAN_ONLY
 };
 
+} // namespace png
 } // namespace csc

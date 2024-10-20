@@ -7,6 +7,7 @@ export module csc.png.serializer.produce_chunk.deflater:utility;
 // без частичного экспорта шаблон не проинстанцируется, и будет undefined reference
 
 namespace csc {
+namespace png {
 
 constexpr const char* generate_error_message(int32_t status) {
   switch (status) {
@@ -44,7 +45,7 @@ template <typename Val, typename Alloc2>
 using stack_alias = std::stack<Val, std::deque<Val, Alloc2>>;
 
 template <typename Alloc1, typename Alloc2>
-using allocator_stack_package = std::pair<Alloc1*, csc::stack_alias<uint32_t, Alloc2>*>;
+using allocator_stack_package = std::pair<Alloc1*, png::stack_alias<uint32_t, Alloc2>*>;
 
 template <typename Alloc1, typename Alloc2>
 void* custom_z_alloc(void* opq, uint32_t cnt, uint32_t size) noexcept {
@@ -62,4 +63,5 @@ void custom_z_free(void* opq, void* resource) noexcept {
   external_data.first->deallocate(reinterpret_cast<resource_type*>(resource), allocated_size);
 }
 
+} // namespace png
 } // namespace csc

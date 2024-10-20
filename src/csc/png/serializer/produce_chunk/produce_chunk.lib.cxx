@@ -8,45 +8,47 @@ import :overloads;
 export import csc.png.commons.chunk;
 
 export namespace csc {
+namespace png {
 
 class f_produce_chunk {
  private:
-  csc::chunk& m_chunk;
+  png::chunk& m_chunk;
 
  public:
-  constexpr f_produce_chunk(csc::chunk& ch) : m_chunk(ch) {
+  constexpr f_produce_chunk(png::chunk& ch) : m_chunk(ch) {
   }
   // статический полиморфизм
-  auto operator()(const csc::IHDR& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::IHDR& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::PLTE& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::PLTE& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::IEND& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::IEND& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::bKGD& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::bKGD& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::tIME& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::tIME& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::cHRM& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::cHRM& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::gAMA& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::gAMA& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::hIST& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::hIST& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::pHYs& b) {
-    return csc::produce_chunk(b, m_chunk);
+  auto operator()(const png::pHYs& b) {
+    return png::produce_chunk(b, m_chunk);
   }
-  auto operator()(const csc::dummy&) {
-    return csc::e_section_code::success;
+  auto operator()(const png::tRNS& b) {
+    return png::produce_chunk(b, m_chunk);
   }
 };
 
+} // namespace png
 } // namespace csc

@@ -1,13 +1,15 @@
-add_library(buf_reader_attributes STATIC buf_reader.attributes.cxx)
-target_sources(buf_reader_attributes PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_reader.attributes.cxx) 
-target_link_libraries(buf_reader_attributes PRIVATE endian)
+include(png_short_paths)
 
-add_library(buf_reader_impl STATIC buf_reader.impl.cxx)
-target_sources(buf_reader_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_reader.impl.cxx ) 
-target_link_libraries(buf_reader_impl PRIVATE buf_reader_attributes)
+add_library(${BUF_READER}_attributes STATIC buf_reader.attributes.cxx)
+target_sources(${BUF_READER}_attributes PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_reader.attributes.cxx) 
+target_link_libraries(${BUF_READER}_attributes PRIVATE ${ENDIAN})
 
-add_library(buf_reader STATIC buf_reader.lib.cxx)
-target_sources(buf_reader PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_reader.lib.cxx ) 
-target_link_libraries(buf_reader PRIVATE buf_reader_impl)
+add_library(${BUF_READER}_impl STATIC buf_reader.impl.cxx)
+target_sources(${BUF_READER}_impl PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_reader.impl.cxx ) 
+target_link_libraries(${BUF_READER}_impl PRIVATE ${BUF_READER}_attributes)
+
+add_library(${BUF_READER} STATIC buf_reader.lib.cxx)
+target_sources(${BUF_READER} PUBLIC FILE_SET csc_png TYPE CXX_MODULES FILES buf_reader.lib.cxx ) 
+target_link_libraries(${BUF_READER} PRIVATE ${BUF_READER}_impl)
 
 
