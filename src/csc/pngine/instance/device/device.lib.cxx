@@ -66,6 +66,7 @@ class device {
   const pngine::render_pass& get_render_pass(std::string_view name) const;
   const std::vector<pngine::framebuffer>& get_framebuffers() const;
   const pngine::graphics_pipeline& get_graphics_pipeline(std::string_view name) const;
+  vk::PhysicalDevice get_physdev() const;
 
   void create_swapchainKHR(vk::Extent2D window_framebuffer, pngine::swapchain_dispatch dispatch);
   void create_image_views();
@@ -234,6 +235,9 @@ const std::vector<pngine::framebuffer>& device::get_framebuffers() const {
 
 vk::Device device::get() const {
   return m_device;
+}
+vk::PhysicalDevice device::get_physdev() const {
+  return *m_keep_phdevice;
 }
 
 vk::Queue device::get_graphics_queue() const {

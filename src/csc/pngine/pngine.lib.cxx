@@ -3,6 +3,7 @@ module;
 #include <unistd.h>
 #include <bits/move.h>
 #include <limits>
+#include <cstring>
 #include <iostream>
 #include <chrono>
 #include <shaders_triangle.h>
@@ -22,12 +23,32 @@ import csc.pngine.instance;
 import csc.pngine.instance.device;
 import csc.pngine.window_handler;
 import csc.pngine.glfw_handler;
+import csc.pngine.vertex;
 
 import csc.pngine.commons.utility.graphics_pipeline;
 import vulkan_hpp;
 
 namespace csc {
 namespace pngine {
+
+const std::vector<pngine::vertex> triangle = {
+    pngine::vertex{{-0.35f, -0.25f}, {1.f, 1.f, 1.f}},
+    pngine::vertex{{0.35f, -0.25f}, {1.f, 1.f, 1.f}},
+    pngine::vertex{{-0.35f, 0.25f}, {0.f, 0.f, 0.f}},
+
+    pngine::vertex{{-0.35f, 0.5f}, {1.f, 0.f, 0.f}},
+    pngine::vertex{{0.35f, 0.5f}, {0.f, 1.f, 0.f}},
+    pngine::vertex{{0.35f, -0.5f}, {0.f, 0.f, 1.f}}};
+uint32_t choose_memory_type(
+    vk::PhysicalDeviceMemoryProperties supported,
+    vk::MemoryRequirements specified,
+    vk::MemoryPropertyFlags required) {
+  for (uint32_t i = 0u; i < supported.memoryTypeCount; ++i) {
+    if ((specified.memoryTypeBits & (1 << i)) && (supported.memoryTypes[i].propertyFlags & required) == required)
+      return i;
+  }
+  throw std::runtime_error("Pngine: типы памяти не поддерживаются для текущей видеокарты!");
+}
 
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
@@ -54,12 +75,14 @@ export class pngine_core {
   std::array<vk::Semaphore, m_flight_count> m_image_available_s;
   std::array<vk::Semaphore, m_flight_count> m_render_finished_s;
   std::array<vk::Fence, m_flight_count> m_in_flight_f;
-
+  vk::UniqueBuffer m_png_surface_mesh;
+  vk::UniqueDeviceMemory m_png_surface_mesh_memory;
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
   std::vector<vk::CommandBuffer> m_command_buffers;
 
-  void Render_Frame(); // многопоточный метод
+  void Render_Frame();
+
  public:
   pngine_core() = delete;
   pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
@@ -99,15 +122,40 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   const auto shader_stages = {
       pngine::shader_stage{"main", device.get_shader_module("vs_triangle").get(), vk::ShaderStageFlagBits::eVertex},
       pngine::shader_stage{"main", device.get_shader_module("fs_triangle").get(), vk::ShaderStageFlagBits::eFragment}};
-
   triangle_cfg.selected_stages = shader_stages;
   triangle_cfg.input_assembler_topology = vk::PrimitiveTopology::eTriangleList;
   triangle_cfg.viewport_area = device.get_swapchain().get_extent();
   triangle_cfg.scissors_area = device.get_swapchain().get_extent();
   triangle_cfg.rasterizer_poly_mode = vk::PolygonMode::eFill;
+  const auto attr_descs = pngine::vertex::get_attribute_descriptions();
+  const auto bind_descs = pngine::vertex::get_binding_description();
+  triangle_cfg.vtx_bindings = {bind_descs};
+  triangle_cfg.vtx_attributes = std::vector(attr_descs.cbegin(), attr_descs.cend());
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
   device.create_pipeline("basic_pipeline", "basic_layout", "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
+
+  vk::BufferCreateInfo vertex_buffer_desc{};
+  vertex_buffer_desc.sharingMode = vk::SharingMode::eExclusive;
+  vertex_buffer_desc.usage = vk::BufferUsageFlagBits::eVertexBuffer;
+  vertex_buffer_desc.size = triangle.size() * sizeof(pngine::vertex); // для обычного треугольника
+  m_png_surface_mesh = device.get().createBufferUnique(vertex_buffer_desc, nullptr);
+  const auto spec_props = device.get().getBufferMemoryRequirements(m_png_surface_mesh.get());
+  const auto supported_props = device.get_physdev().getMemoryProperties();
+  const auto required_props = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
+
+  vk::MemoryAllocateInfo alloc_info{};
+  alloc_info.sType = vk::StructureType::eMemoryAllocateInfo;
+  alloc_info.allocationSize = spec_props.size;
+  alloc_info.memoryTypeIndex = pngine::choose_memory_type(supported_props, spec_props, required_props);
+  m_png_surface_mesh_memory = device.get().allocateMemoryUnique(alloc_info);
+
+  device.get().bindBufferMemory(m_png_surface_mesh.get(), m_png_surface_mesh_memory.get(), 0u);
+
+  void* data = device.get().mapMemory(m_png_surface_mesh_memory.get(), 0u, triangle.size() * sizeof(pngine::vertex));
+  ::memcpy(data, triangle.data(), triangle.size() * sizeof(pngine::vertex));
+  device.get().unmapMemory(m_png_surface_mesh_memory.get());
+
   auto& command_pool = device.create_command_pool();
   m_command_buffers = command_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
 
@@ -133,6 +181,7 @@ pngine_core::~pngine_core() noexcept {
     device.get().destroySemaphore(m_image_available_s[i]);
     device.get().destroyFence(m_in_flight_f[i]);
   }
+  // m_png_surface_mesh.release();
 }
 void pngine_core::run() {
   while (!m_window_handler.should_close()) {
@@ -197,7 +246,11 @@ void pngine_core::Render_Frame() {
 
   cur_command_buffer.setViewport(0u, 1u, &dynamic_viewport);
   cur_command_buffer.setScissor(0u, 1u, &dynamic_scissor);
-  constexpr const uint32_t triangle_vertices = 3u, inst_count = 1u, first_vert = 0u, first_inst = 0u;
+  constexpr const auto vertex_buffer_count = 1u;
+  const vk::Buffer buffers[1] = {m_png_surface_mesh.get()};
+  const vk::DeviceSize offsets[1] = {0u};
+  cur_command_buffer.bindVertexBuffers(0u, vertex_buffer_count, buffers, offsets);
+  const uint32_t triangle_vertices = triangle.size(), inst_count = 1u, first_vert = 0u, first_inst = 0u;
   cur_command_buffer.draw(triangle_vertices, inst_count, first_vert, first_inst);
   cur_command_buffer.endRenderPass();
   cur_command_buffer.end();

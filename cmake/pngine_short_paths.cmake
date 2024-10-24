@@ -19,4 +19,5 @@ set(FENCE pngine_instance_device_fence)
 set(SEMAPHORE pngine_instance_device_semaphore)
 
 set(WINDOW_HANDLER pngine_window_handler)
+set(VERTEX pngine_vertex)
 set(GLFW_HANDLER pngine_glfw_handler)

@@ -19,8 +19,8 @@ struct shader_stage {
 struct graphics_pipeline_config {
   std::vector<pngine::shader_stage> selected_stages{};
 
-  std::vector<vk::VertexInputBindingDescription> vertex_input_bindings{};
-  std::vector<vk::VertexInputAttributeDescription> vertex_input_attributes{};
+  std::vector<vk::VertexInputBindingDescription> vtx_bindings{};
+  std::vector<vk::VertexInputAttributeDescription> vtx_attributes{};
 
   vk::PrimitiveTopology input_assembler_topology{};
 

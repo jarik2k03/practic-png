@@ -79,11 +79,11 @@ graphics_pipeline::graphics_pipeline(
 
   vk::PipelineVertexInputStateCreateInfo vertex_input_desc{};
   vertex_input_desc.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
-  vertex_input_desc.pVertexBindingDescriptions = m_config.vertex_input_bindings.data();
-  vertex_input_desc.vertexBindingDescriptionCount = m_config.vertex_input_bindings.size();
+  vertex_input_desc.pVertexBindingDescriptions = m_config.vtx_bindings.data();
+  vertex_input_desc.vertexBindingDescriptionCount = m_config.vtx_bindings.size();
 
-  vertex_input_desc.pVertexAttributeDescriptions = m_config.vertex_input_attributes.data();
-  vertex_input_desc.vertexAttributeDescriptionCount = m_config.vertex_input_attributes.size();
+  vertex_input_desc.pVertexAttributeDescriptions = m_config.vtx_attributes.data();
+  vertex_input_desc.vertexAttributeDescriptionCount = m_config.vtx_attributes.size();
 
   vk::PipelineInputAssemblyStateCreateInfo input_assembler_desc{};
   input_assembler_desc.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;
