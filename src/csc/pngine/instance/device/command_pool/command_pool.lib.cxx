@@ -18,7 +18,7 @@ class command_pool {
 
  public:
   explicit command_pool() = default;
-  explicit command_pool(const vk::Device& device, uint32_t queue_family);
+  explicit command_pool(const vk::Device& device, uint32_t queue_family, vk::CommandPoolCreateFlags flags);
   ~command_pool() noexcept;
   command_pool(command_pool&& move) noexcept;
   command_pool& operator=(command_pool&& move) noexcept;
@@ -42,11 +42,12 @@ command_pool& command_pool::operator=(command_pool&& move) noexcept {
   return *this;
 }
 
-command_pool::command_pool(const vk::Device& device, uint32_t family_index) : m_keep_device(&device) {
+command_pool::command_pool(const vk::Device& device, uint32_t family_index, vk::CommandPoolCreateFlags flags)
+    : m_keep_device(&device) {
   vk::CommandPoolCreateInfo description{};
   description.sType = vk::StructureType::eCommandPoolCreateInfo;
   description.queueFamilyIndex = family_index;
-  description.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+  description.flags = flags;
   m_command_pool = m_keep_device->createCommandPool(description, nullptr);
   m_is_created = true;
 }

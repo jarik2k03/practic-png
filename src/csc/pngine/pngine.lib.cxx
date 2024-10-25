@@ -26,29 +26,22 @@ import csc.pngine.glfw_handler;
 import csc.pngine.vertex;
 
 import csc.pngine.commons.utility.graphics_pipeline;
+
+import csc.pngine.instance.device.command_pool;
 import vulkan_hpp;
 
 namespace csc {
 namespace pngine {
 
-const std::vector<pngine::vertex> triangle = {
+std::vector<pngine::vertex> triangle = {
     pngine::vertex{{-0.35f, -0.25f}, {1.f, 1.f, 1.f}},
     pngine::vertex{{0.35f, -0.25f}, {1.f, 1.f, 1.f}},
     pngine::vertex{{-0.35f, 0.25f}, {0.f, 0.f, 0.f}},
 
-    pngine::vertex{{-0.35f, 0.5f}, {1.f, 0.f, 0.f}},
-    pngine::vertex{{0.35f, 0.5f}, {0.f, 1.f, 0.f}},
-    pngine::vertex{{0.35f, -0.5f}, {0.f, 0.f, 1.f}}};
-uint32_t choose_memory_type(
-    vk::PhysicalDeviceMemoryProperties supported,
-    vk::MemoryRequirements specified,
-    vk::MemoryPropertyFlags required) {
-  for (uint32_t i = 0u; i < supported.memoryTypeCount; ++i) {
-    if ((specified.memoryTypeBits & (1 << i)) && (supported.memoryTypes[i].propertyFlags & required) == required)
-      return i;
-  }
-  throw std::runtime_error("Pngine: типы памяти не поддерживаются для текущей видеокарты!");
-}
+    //     pngine::vertex{{0.35f, -0.25f}, {1.f, 1.f, 1.f}},
+    //     pngine::vertex{{-0.35f, 0.25f}, {1.f, 1.f, 1.f}},
+    //     pngine::vertex{{0.35f, 0.25f}, {0.f, 0.f, 0.f}},
+};
 
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
@@ -75,13 +68,20 @@ export class pngine_core {
   std::array<vk::Semaphore, m_flight_count> m_image_available_s;
   std::array<vk::Semaphore, m_flight_count> m_render_finished_s;
   std::array<vk::Fence, m_flight_count> m_in_flight_f;
+
+  vk::UniqueBuffer m_stage_png_surface_mesh;
+  vk::UniqueDeviceMemory m_stage_png_surface_mesh_memory;
   vk::UniqueBuffer m_png_surface_mesh;
   vk::UniqueDeviceMemory m_png_surface_mesh_memory;
+
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
+  pngine::command_pool m_graphics_pool;
+  pngine::command_pool m_transfer_pool;
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   void Render_Frame();
+  void Update();
 
  public:
   pngine_core() = delete;
@@ -135,29 +135,26 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   device.create_pipeline("basic_pipeline", "basic_layout", "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
 
-  vk::BufferCreateInfo vertex_buffer_desc{};
-  vertex_buffer_desc.sharingMode = vk::SharingMode::eExclusive;
-  vertex_buffer_desc.usage = vk::BufferUsageFlagBits::eVertexBuffer;
-  vertex_buffer_desc.size = triangle.size() * sizeof(pngine::vertex); // для обычного треугольника
-  m_png_surface_mesh = device.get().createBufferUnique(vertex_buffer_desc, nullptr);
-  const auto spec_props = device.get().getBufferMemoryRequirements(m_png_surface_mesh.get());
-  const auto supported_props = device.get_physdev().getMemoryProperties();
-  const auto required_props = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
+  const uint32_t vtx_buf_size = sizeof(pngine::vertex) * triangle.size();
+  std::tie(m_stage_png_surface_mesh, m_stage_png_surface_mesh_memory) = device.create_buffer(
+      vtx_buf_size,
+      vk::BufferUsageFlagBits::eTransferSrc,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-  vk::MemoryAllocateInfo alloc_info{};
-  alloc_info.sType = vk::StructureType::eMemoryAllocateInfo;
-  alloc_info.allocationSize = spec_props.size;
-  alloc_info.memoryTypeIndex = pngine::choose_memory_type(supported_props, spec_props, required_props);
-  m_png_surface_mesh_memory = device.get().allocateMemoryUnique(alloc_info);
+  void* data =
+      device.get().mapMemory(m_stage_png_surface_mesh_memory.get(), 0u, triangle.size() * sizeof(pngine::vertex));
+  ::memcpy(data, triangle.data(), vtx_buf_size);
+  device.get().unmapMemory(m_stage_png_surface_mesh_memory.get());
 
-  device.get().bindBufferMemory(m_png_surface_mesh.get(), m_png_surface_mesh_memory.get(), 0u);
+  std::tie(m_png_surface_mesh, m_png_surface_mesh_memory) = device.create_buffer(
+      vtx_buf_size,
+      vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+      vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-  void* data = device.get().mapMemory(m_png_surface_mesh_memory.get(), 0u, triangle.size() * sizeof(pngine::vertex));
-  ::memcpy(data, triangle.data(), triangle.size() * sizeof(pngine::vertex));
-  device.get().unmapMemory(m_png_surface_mesh_memory.get());
+  m_graphics_pool = device.create_graphics_command_pool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+  m_transfer_pool = device.create_transfer_command_pool(vk::CommandPoolCreateFlagBits::eTransient);
 
-  auto& command_pool = device.create_command_pool();
-  m_command_buffers = command_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
+  m_command_buffers = m_graphics_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
 
   vk::SemaphoreCreateInfo semaphore_info{};
   semaphore_info.sType = vk::StructureType::eSemaphoreCreateInfo;
@@ -183,27 +180,49 @@ pngine_core::~pngine_core() noexcept {
   }
   // m_png_surface_mesh.release();
 }
+static double time = 0.0;
+static uint64_t frames_count = 0u;
 void pngine_core::run() {
+  Update(); // присылаем данные перед рендерингом
   while (!m_window_handler.should_close()) {
     m_glfw_state.poll_events();
     const auto start = std::chrono::high_resolution_clock::now();
     Render_Frame();
     const auto end = std::chrono::high_resolution_clock::now();
-    const double time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
-    // std::cout << "Render frame time: " << time << "; Framerate: " << 1 / time << '\n';
+    time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
+    frames_count += 1u;
+    if (time >= 1.0) {
+      std::cout << "Render frames per second: " << frames_count << '\n';
+      frames_count = 0u, time = 0.0;
+    }
   }
 }
-const char* pngine_core::get_engine_name() const noexcept {
-  return pngine::bring_engine_name(); // статично, на этапе компиляции
-}
-pngine::human_version pngine_core::get_engine_version() const noexcept {
-  return pngine::bring_human_version(bring_engine_version()); // статично, на этапе компиляции
-}
-std::string_view pngine_core::get_app_name() const noexcept {
-  return m_app_name;
-}
-pngine::human_version pngine_core::get_vk_api_version() const noexcept {
-  return pngine::bring_human_version(m_vk_api_version);
+void pngine_core::Update() {
+  const auto& device = m_instance.get_device();
+  const auto vtx_buf_size = sizeof(pngine::vertex) * triangle.size();
+  auto transfer_buffer = std::move(m_transfer_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, 1u)[0]);
+
+  vk::CommandBufferBeginInfo begin_info{};
+  begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+  begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+  void* data = device.get().mapMemory(m_stage_png_surface_mesh_memory.get(), 0u, vtx_buf_size);
+  ::memcpy(data, triangle.data(), vtx_buf_size);
+  device.get().unmapMemory(m_stage_png_surface_mesh_memory.get());
+
+  transfer_buffer.begin(begin_info);
+  vk::BufferCopy copy_region(0u, 0u, sizeof(pngine::vertex) * triangle.size());
+  transfer_buffer.copyBuffer(m_stage_png_surface_mesh.get(), m_png_surface_mesh.get(), 1u, &copy_region);
+  transfer_buffer.end();
+
+  vk::SubmitInfo submit_info{};
+  submit_info.sType = vk::StructureType::eSubmitInfo;
+  submit_info.pCommandBuffers = &transfer_buffer;
+  submit_info.commandBufferCount = 1u;
+  auto transfer_queue = m_instance.get_device().get_transfer_queue();
+  vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
 }
 
 void pngine_core::Render_Frame() {
@@ -231,7 +250,7 @@ void pngine_core::Render_Frame() {
   render_pass_config.renderArea.setOffset({0, 0});
   render_pass_config.renderArea.extent = extent;
 
-  vk::ClearValue clear_color = vk::ClearColorValue{70.f / 256, 70.f / 256, 70.f / 256, 12.f / 256};
+  vk::ClearValue clear_color = vk::ClearColorValue{200.f / 256, 200.f / 256, 200.f / 256, 12.f / 256};
   render_pass_config.pClearValues = &clear_color;
   render_pass_config.clearValueCount = 1u;
 
@@ -291,6 +310,19 @@ void pngine_core::Render_Frame() {
   else if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не удалось произвести отображение на экране!");
   m_current_frame = (m_current_frame + 1) % m_flight_count;
+}
+
+const char* pngine_core::get_engine_name() const noexcept {
+  return pngine::bring_engine_name(); // статично, на этапе компиляции
+}
+pngine::human_version pngine_core::get_engine_version() const noexcept {
+  return pngine::bring_human_version(bring_engine_version()); // статично, на этапе компиляции
+}
+std::string_view pngine_core::get_app_name() const noexcept {
+  return m_app_name;
+}
+pngine::human_version pngine_core::get_vk_api_version() const noexcept {
+  return pngine::bring_human_version(m_vk_api_version);
 }
 
 } // namespace pngine

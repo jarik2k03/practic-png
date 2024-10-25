@@ -32,6 +32,19 @@ import csc.pngine.commons.utility.graphics_pipeline;
 
 export namespace csc {
 namespace pngine {
+using buf_and_mem = std::pair<vk::UniqueBuffer, vk::UniqueDeviceMemory>;
+
+uint32_t choose_memory_type(
+    vk::PhysicalDeviceMemoryProperties supported,
+    vk::MemoryRequirements specified,
+    vk::MemoryPropertyFlags required) {
+  for (uint32_t i = 0u; i < supported.memoryTypeCount; ++i) {
+    if ((specified.memoryTypeBits & (1 << i)) && (supported.memoryTypes[i].propertyFlags & required) == required)
+      return i;
+  }
+  throw std::runtime_error("Pngine: типы памяти не поддерживаются для текущей видеокарты!");
+}
+
 class device {
  private:
   vk::Device m_device{};
@@ -46,7 +59,6 @@ class device {
   std::map<std::string, pngine::pipeline_layout> m_pipeline_layouts{};
   std::map<std::string, pngine::render_pass> m_render_passes{};
   std::vector<pngine::framebuffer> m_framebuffers{};
-  pngine::command_pool m_com_pool{};
 
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
@@ -61,6 +73,7 @@ class device {
   vk::Device get() const;
   vk::Queue get_present_queue() const;
   vk::Queue get_graphics_queue() const;
+  vk::Queue get_transfer_queue() const;
   const pngine::shader_module& get_shader_module(std::string_view name) const;
   const pngine::swapchainKHR& get_swapchain() const;
   const pngine::render_pass& get_render_pass(std::string_view name) const;
@@ -80,7 +93,10 @@ class device {
   void create_pipeline_layout(std::string_view layout_name);
   void create_render_pass(std::string_view pass_name);
   void create_framebuffers(std::string_view pass_name);
-  pngine::command_pool& create_command_pool();
+
+  buf_and_mem create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+  pngine::command_pool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
+  pngine::command_pool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
 };
 
 device::~device() noexcept {
@@ -102,7 +118,6 @@ device& device::operator=(device&& move) noexcept {
   m_pipeline_layouts = std::move(move.m_pipeline_layouts);
   m_render_passes = std::move(move.m_render_passes);
   m_framebuffers = std::move(move.m_framebuffers);
-  m_com_pool = std::move(move.m_com_pool);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
@@ -114,14 +129,21 @@ device::device(const vk::PhysicalDevice& dev, const vk::SurfaceKHR& surface)
   m_enabled_extensions.reserve(256ul);
   m_enabled_extensions.emplace_back("VK_KHR_swapchain");
 
-  if (!m_indices.graphics.has_value())
-    throw std::runtime_error("Device: Не найдено graphics-семейство очередей для устройства!");
-  if (!m_indices.present.has_value())
+  [[unlikely]] if (!m_indices.transfer.has_value())
+    throw std::runtime_error("Device: Не найдено transfer-семейство очередей для поверхности окна!");
+  [[unlikely]] if (!m_indices.present.has_value())
     throw std::runtime_error("Device: Не найдено present-семейство очередей для поверхности окна!");
+  [[unlikely]] if (!m_indices.graphics.has_value())
+    throw std::runtime_error("Device: Не найдено graphics-семейство очередей для устройства!");
 
   std::vector<vk::DeviceQueueCreateInfo> q_descriptions;
   pngine::queues graphics_queues(m_indices.graphics.value(), {1.0});
   q_descriptions.emplace_back(graphics_queues.bring_info());
+  // учёт поддержки разделения очередей на семейства
+  if (m_indices.graphics.value() != m_indices.transfer.value()) {
+    pngine::queues transfer_queues(m_indices.transfer.value(), {1.0}); // если индексы разные - то и очереди тоже
+    q_descriptions.emplace_back(transfer_queues.bring_info());
+  }
   if (m_indices.graphics.value() != m_indices.present.value()) {
     pngine::queues present_queues(m_indices.present.value(), {1.0}); // если индексы разные - то и очереди тоже
     q_descriptions.emplace_back(present_queues.bring_info());
@@ -200,9 +222,33 @@ void device::create_framebuffers(std::string_view pass_name) {
   });
 }
 
-pngine::command_pool& device::create_command_pool() {
-  m_com_pool = pngine::command_pool(m_device, m_indices.graphics.value());
-  return m_com_pool;
+pngine::command_pool device::create_graphics_command_pool(vk::CommandPoolCreateFlags flags) {
+  return pngine::command_pool(m_device, m_indices.graphics.value(), flags);
+}
+pngine::command_pool device::create_transfer_command_pool(vk::CommandPoolCreateFlags flags) {
+  return pngine::command_pool(m_device, m_indices.transfer.value(), flags);
+}
+
+buf_and_mem
+device::create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags required_props) {
+  buf_and_mem result;
+  vk::BufferCreateInfo buffer_info{};
+  buffer_info.sType = vk::StructureType::eBufferCreateInfo;
+  buffer_info.usage = usage;
+  buffer_info.size = size;
+  buffer_info.sharingMode = vk::SharingMode::eExclusive;
+  result.first = m_device.createBufferUnique(buffer_info, nullptr);
+
+  const auto spec_props = m_device.getBufferMemoryRequirements(result.first.get());
+  const auto supported_props = m_keep_phdevice->getMemoryProperties();
+  vk::MemoryAllocateInfo alloc_info{};
+  alloc_info.sType = vk::StructureType::eMemoryAllocateInfo;
+  alloc_info.allocationSize = spec_props.size;
+  alloc_info.memoryTypeIndex = pngine::choose_memory_type(supported_props, spec_props, required_props);
+  result.second = m_device.allocateMemoryUnique(alloc_info, nullptr);
+
+  m_device.bindBufferMemory(result.first.get(), result.second.get(), 0u);
+  return result;
 }
 
 const pngine::shader_module& device::get_shader_module(std::string_view name) const {
@@ -244,12 +290,15 @@ vk::Queue device::get_graphics_queue() const {
   return m_device.getQueue(m_indices.graphics.value(), 0);
 }
 
+vk::Queue device::get_transfer_queue() const {
+  return m_device.getQueue(m_indices.transfer.value(), 0);
+}
+
 vk::Queue device::get_present_queue() const {
   return m_device.getQueue(m_indices.present.value(), 0);
 }
 void device::clear() noexcept {
   if (m_is_created != false) {
-    m_com_pool.clear();
     m_pipelines.clear();
     m_pipeline_layouts.clear();
     m_framebuffers.clear();
