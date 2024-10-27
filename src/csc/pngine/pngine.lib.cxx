@@ -4,6 +4,8 @@ module;
 #include <bits/move.h>
 #include <limits>
 #include <cstring>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <chrono>
 #include <shaders_triangle.h>
@@ -33,14 +35,14 @@ import vulkan_hpp;
 namespace csc {
 namespace pngine {
 
-std::vector<pngine::vertex> rectangle = {
+const std::vector<pngine::vertex> rectangle = {
     pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}},
     pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}},
     pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}},
     pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}},
 };
+const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
-std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
   auto& window_obj = *reinterpret_cast<pngine::window_handler*>(&window);
@@ -77,6 +79,13 @@ export class pngine_core {
   vk::UniqueBuffer m_png_surface_ids;
   vk::UniqueDeviceMemory m_png_surface_ids_memory;
 
+  std::vector<vk::UniqueBuffer> m_uniform_mvps;
+  std::vector<vk::UniqueDeviceMemory> m_uniform_mvp_memories;
+
+  vk::UniqueDescriptorSetLayout m_descr_layout;
+
+  vk::UniquePipelineLayout m_pipeline_layout;
+
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
   pngine::command_pool m_graphics_pool;
@@ -84,7 +93,8 @@ export class pngine_core {
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   void Render_Frame();
-  void Update();
+  void Load_Mesh();
+  void Update(uint32_t swap_img_idx);
 
  public:
   pngine_core() = delete;
@@ -103,7 +113,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   vk::ApplicationInfo app_info(
       m_app_name.c_str(), m_app_version, pngine::bring_engine_name(), pngine::bring_engine_version(), m_vk_api_version);
   // высокоуровневый алгоритм...
-  m_window_handler = pngine::window_handler(1050u, 450u, m_app_name);
+  m_window_handler = pngine::window_handler(1280u, 720u, m_app_name);
   m_instance = pngine::instance(app_info);
   m_window_handler.set_user_pointer(&m_instance);
   m_window_handler.set_framebuffer_size_callback(recreate_swapchain);
@@ -118,7 +128,27 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   device.create_image_views();
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
-  device.create_pipeline_layout("basic_layout");
+
+  vk::DescriptorSetLayoutBinding descriptor_layout_binding{};
+  descriptor_layout_binding.binding = 0u;
+  descriptor_layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  descriptor_layout_binding.descriptorCount = 1u;
+  descriptor_layout_binding.pImmutableSamplers = nullptr;
+  descriptor_layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+  vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
+  descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+  descriptor_layout_info.bindingCount = 1u;
+  descriptor_layout_info.pBindings = &descriptor_layout_binding;
+
+  m_descr_layout = device.get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
+
+  vk::PipelineLayoutCreateInfo pipeline_layout_info{};
+  pipeline_layout_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+  pipeline_layout_info.setLayoutCount = 1u;
+  pipeline_layout_info.pSetLayouts = &m_descr_layout.get();
+  m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
+
   device.create_render_pass("basic_pass");
 
   pngine::graphics_pipeline_config triangle_cfg;
@@ -135,7 +165,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.vtx_bindings = {bind_descs};
   triangle_cfg.vtx_attributes = std::vector(attr_descs.cbegin(), attr_descs.cend());
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  device.create_pipeline("basic_pipeline", "basic_layout", "basic_pass", triangle_cfg);
+  device.create_pipeline("basic_pipeline", m_pipeline_layout.get(), "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
   /* vertex buffer */
   const uint32_t vtx_buf_size = sizeof(pngine::vertex) * rectangle.size();
@@ -168,6 +198,16 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
       idx_buf_size,
       vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
+  /* uniform buffers */
+  const auto swapchain_size = device.get_swapchain().get_images().size();
+  m_uniform_mvps.resize(swapchain_size);
+  m_uniform_mvp_memories.resize(swapchain_size);
+  for (uint32_t i = 0u; i < swapchain_size; ++i) {
+    std::tie(m_uniform_mvps[i], m_uniform_mvp_memories[i]) = device.create_buffer(
+        sizeof(pngine::MVP),
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+  }
 
   /* creating pools */
   m_graphics_pool = device.create_graphics_command_pool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
@@ -197,10 +237,9 @@ pngine_core::~pngine_core() noexcept {
     device.get().destroySemaphore(m_image_available_s[i]);
     device.get().destroyFence(m_in_flight_f[i]);
   }
-  // m_png_surface_mesh.release();
 }
 void pngine_core::run() {
-  Update(); // присылаем данные перед рендерингом
+  Load_Mesh(); // присылаем данные перед рендерингом
   double time = 0.0;
   uint64_t frames_count = 0u;
   while (!m_window_handler.should_close()) {
@@ -216,7 +255,7 @@ void pngine_core::run() {
     }
   }
 }
-void pngine_core::Update() {
+void pngine_core::Load_Mesh() {
   const auto& device = m_instance.get_device();
   auto transfer_buffer = std::move(m_transfer_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, 1u)[0]);
 
@@ -239,6 +278,21 @@ void pngine_core::Update() {
   vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
+  transfer_queue.waitIdle();
+  device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+}
+void pngine_core::Update(uint32_t swap_img_idx) {
+  const auto& device = m_instance.get_device();
+  const auto extent = device.get_swapchain().get_extent();
+  pngine::MVP mvp_host_buffer;
+  mvp_host_buffer.model = glm::mat4{1.0};
+  mvp_host_buffer.view = glm::lookAt(glm::vec3{2.f, 2.f, 2.f}, glm::vec3{}, glm::vec3{});
+  mvp_host_buffer.proj =
+      glm::perspective(glm::radians(45.f), static_cast<float>(extent.width / extent.height), 0.1f, 10.f);
+
+  void* data = device.get().mapMemory(m_uniform_mvp_memories[swap_img_idx].get(), 0u, sizeof(pngine::MVP));
+  ::memcpy(data, &mvp_host_buffer, sizeof(pngine::MVP));
+  device.get().unmapMemory(m_uniform_mvp_memories[swap_img_idx].get());
 }
 
 void pngine_core::Render_Frame() {
@@ -258,6 +312,7 @@ void pngine_core::Render_Frame() {
   const uint32_t current_image =
       dev.get().acquireNextImageKHR(swapchain.get(), without_delays, image_available_s).value;
   const auto extent = dev.get_swapchain().get_extent();
+  Update(current_image);
 
   vk::RenderPassBeginInfo render_pass_config{};
   render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;

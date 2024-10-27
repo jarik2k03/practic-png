@@ -36,5 +36,11 @@ struct vertex {
   }
 };
 
+struct MVP {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
+};
+
 } // namespace pngine
 } // namespace csc
