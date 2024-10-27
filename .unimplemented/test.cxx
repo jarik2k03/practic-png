@@ -1,5 +1,4 @@
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_xcb.h>
 int main() {
   struct dispatch_t {};
   dispatch_t dispatch;
@@ -34,4 +33,16 @@ int main() {
   device.acquireNextImageKHR(swapchain, std::numeric_limits<uint64_t>::max(), m_image_available_s);
   vk::CommandBuffer cb;
   instance.destroySurfaceKHR(surface, nullptr);
+  vk::BufferCreateInfo buffer{};
+  buffer.sharingMode = vk::SharingMode::eExclusive;
+  buffer.usage = vk::BufferUsageFlagBits::eVertexBuffer;
+  buffer.size = sizeof(pngine::vertex) * 3u; // для обычного треугольника
+  vk::Buffer vertex_buffer{};
+  const auto required_properties = device.getBufferMemoryRequirements(vertex_buffer);
+  const auto all_properties = dev[0].getMemoryProperties();
+  all_properties.memoryTypes;
+  vk::CommandPool pool;
+  const vk::UniqueDeviceMemory mem = device.allocateMemoryUnique({});
+  void* data = device.mapMemory(m_png_surface_mesh_memory, 0u, vk::WholeSize);
+  device.unmapMemory(m_png_surface_mesh_memory);
 }

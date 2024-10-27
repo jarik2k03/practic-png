@@ -136,11 +136,14 @@ swapchainKHR::swapchainKHR(
   description.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
   description.imageArrayLayers = 1u;
 
-  const uint32_t queue_family_indices[] = {indices.graphics.value(), indices.present.value()};
-  if (indices.graphics.value() != indices.present.value()) {
+  std::vector<uint32_t> unique_indices = {indices.graphics.value(), indices.present.value(), indices.transfer.value()};
+  const auto rng = std::ranges::unique(unique_indices);
+  unique_indices.erase(rng.begin(), rng.end());
+
+  if (unique_indices.size() > 1u) {
     description.imageSharingMode = vk::SharingMode::eConcurrent;
-    description.queueFamilyIndexCount = 2u;
-    description.pQueueFamilyIndices = queue_family_indices;
+    description.queueFamilyIndexCount = unique_indices.size();
+    description.pQueueFamilyIndices = unique_indices.data();
   } else {
     description.imageSharingMode = vk::SharingMode::eExclusive;
     description.queueFamilyIndexCount = 0u;
