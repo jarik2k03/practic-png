@@ -46,5 +46,8 @@ int main() {
   void* data = device.mapMemory(m_png_surface_mesh_memory, 0u, vk::WholeSize);
   device.unmapMemory(m_png_surface_mesh_memory);
   vk::DescriptorSetLayoutBinding descr_layout_bind;
-  descr_layout_bind.stageFlags
+  cb.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0u, {m_set}, {});
+  vk::PipelineLayoutCreateInfo pip_lay{};
+  vk::DescriptorSetLayoutBinding lay_bind{};
+
 }

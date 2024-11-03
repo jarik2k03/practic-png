@@ -85,7 +85,7 @@ class device {
   template <pngine::c_graphics_pipeline_config Config>
   pngine::graphics_pipeline& create_pipeline(
       std::string_view pipeline_name,
-      vk::PipelineLayout layout,
+      const vk::UniquePipelineLayout& layout,
       std::string_view pass_name,
       Config&& config);
   void create_render_pass(std::string_view pass_name);
@@ -177,7 +177,7 @@ void device::create_shader_module(std::string_view name, std::string_view compil
 template <pngine::c_graphics_pipeline_config Config>
 pngine::graphics_pipeline& device::create_pipeline(
     std::string_view named_pipeline,
-    vk::PipelineLayout layout,
+    const vk::UniquePipelineLayout& layout,
     std::string_view pass_name,
     Config&& config) {
   const auto render_pass_pos = m_render_passes.find(pass_name.data());
@@ -186,7 +186,7 @@ pngine::graphics_pipeline& device::create_pipeline(
 
   const auto [pipeline_pos, is_success] = m_pipelines.insert(std::make_pair(
       named_pipeline.data(),
-      pngine::graphics_pipeline(m_device, render_pass_pos->second.get(), layout, std::forward<Config>(config))));
+      pngine::graphics_pipeline(m_device, render_pass_pos->second.get(), layout.get(), std::forward<Config>(config))));
 
   [[unlikely]] if (!is_success)
     throw std::runtime_error("Device: не удалось добавить конвейер в реестр!");

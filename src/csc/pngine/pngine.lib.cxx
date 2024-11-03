@@ -79,12 +79,12 @@ export class pngine_core {
   vk::UniqueBuffer m_png_surface_ids;
   vk::UniqueDeviceMemory m_png_surface_ids_memory;
 
+  vk::UniqueDescriptorSetLayout m_descr_layout;
+  vk::UniquePipelineLayout m_pipeline_layout;
+
   std::vector<vk::UniqueBuffer> m_uniform_mvps;
   std::vector<vk::UniqueDeviceMemory> m_uniform_mvp_memories;
-
-  vk::UniqueDescriptorSetLayout m_descr_layout;
-
-  vk::UniquePipelineLayout m_pipeline_layout;
+  std::vector<void*> m_uniform_mvp_mappings;
 
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
@@ -165,7 +165,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.vtx_bindings = {bind_descs};
   triangle_cfg.vtx_attributes = std::vector(attr_descs.cbegin(), attr_descs.cend());
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  device.create_pipeline("basic_pipeline", m_pipeline_layout.get(), "basic_pass", triangle_cfg);
+  device.create_pipeline("basic_pipeline", m_pipeline_layout, "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
   /* vertex buffer */
   const uint32_t vtx_buf_size = sizeof(pngine::vertex) * rectangle.size();
@@ -202,11 +202,13 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   const auto swapchain_size = device.get_swapchain().get_images().size();
   m_uniform_mvps.resize(swapchain_size);
   m_uniform_mvp_memories.resize(swapchain_size);
+  m_uniform_mvp_mappings.resize(swapchain_size);
   for (uint32_t i = 0u; i < swapchain_size; ++i) {
     std::tie(m_uniform_mvps[i], m_uniform_mvp_memories[i]) = device.create_buffer(
         sizeof(pngine::MVP),
         vk::BufferUsageFlagBits::eUniformBuffer,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    m_uniform_mvp_mappings[i] = device.get().mapMemory(m_uniform_mvp_memories[i].get(), 0u, sizeof(pngine::MVP));
   }
 
   /* creating pools */
@@ -232,6 +234,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 pngine_core::~pngine_core() noexcept {
   auto& device = m_instance.get_device();
   device.get().waitIdle();
+
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     device.get().destroySemaphore(m_render_finished_s[i]);
     device.get().destroySemaphore(m_image_available_s[i]);
@@ -284,15 +287,14 @@ void pngine_core::Load_Mesh() {
 void pngine_core::Update(uint32_t swap_img_idx) {
   const auto& device = m_instance.get_device();
   const auto extent = device.get_swapchain().get_extent();
+  const auto& current_mapping = m_uniform_mvp_mappings[swap_img_idx];
   pngine::MVP mvp_host_buffer;
   mvp_host_buffer.model = glm::mat4{1.0};
   mvp_host_buffer.view = glm::lookAt(glm::vec3{2.f, 2.f, 2.f}, glm::vec3{}, glm::vec3{});
   mvp_host_buffer.proj =
       glm::perspective(glm::radians(45.f), static_cast<float>(extent.width / extent.height), 0.1f, 10.f);
 
-  void* data = device.get().mapMemory(m_uniform_mvp_memories[swap_img_idx].get(), 0u, sizeof(pngine::MVP));
-  ::memcpy(data, &mvp_host_buffer, sizeof(pngine::MVP));
-  device.get().unmapMemory(m_uniform_mvp_memories[swap_img_idx].get());
+  ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
 }
 
 void pngine_core::Render_Frame() {
@@ -305,14 +307,14 @@ void pngine_core::Render_Frame() {
   vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не получилось синхронизировать устройство при помощи барьера!");
-  r = dev.get().resetFences(1u, &in_flight_f);
-  if (r != vk::Result::eSuccess)
-    throw std::runtime_error("Pngine: не удалось сбросить барьер!");
   const auto& swapchain = dev.get_swapchain();
   const uint32_t current_image =
       dev.get().acquireNextImageKHR(swapchain.get(), without_delays, image_available_s).value;
   const auto extent = dev.get_swapchain().get_extent();
   Update(current_image);
+  r = dev.get().resetFences(1u, &in_flight_f);
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Pngine: не удалось сбросить барьер!");
 
   vk::RenderPassBeginInfo render_pass_config{};
   render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
