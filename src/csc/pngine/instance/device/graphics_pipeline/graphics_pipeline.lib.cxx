@@ -111,7 +111,7 @@ graphics_pipeline::graphics_pipeline(
   rasterizer_desc.polygonMode = m_config.rasterizer_poly_mode;
   rasterizer_desc.lineWidth = 1.0f;
   rasterizer_desc.cullMode = vk::CullModeFlagBits::eBack;
-  rasterizer_desc.frontFace = vk::FrontFace::eClockwise;
+  rasterizer_desc.frontFace = vk::FrontFace::eCounterClockwise;
   rasterizer_desc.depthBiasEnable = vk::False;
   rasterizer_desc.depthBiasConstantFactor = 0.0f;
   rasterizer_desc.depthBiasClamp = 0.0f;

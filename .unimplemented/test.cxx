@@ -49,5 +49,4 @@ int main() {
   cb.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0u, {m_set}, {});
   vk::PipelineLayoutCreateInfo pip_lay{};
   vk::DescriptorSetLayoutBinding lay_bind{};
-
 }
