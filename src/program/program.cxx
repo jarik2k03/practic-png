@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
-      core.set_canvas_size(png.header().width, png.header().height);
+      core.set_drawing(png.m_image_data, png.header().width, png.header().height);
       core.run();
     } else {
       throw std::invalid_argument("Не назначен входной файл!");

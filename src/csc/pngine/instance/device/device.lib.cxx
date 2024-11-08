@@ -32,6 +32,7 @@ import csc.pngine.commons.utility.graphics_pipeline;
 export namespace csc {
 namespace pngine {
 using buf_and_mem = std::pair<vk::UniqueBuffer, vk::UniqueDeviceMemory>;
+using img_and_mem = std::pair<vk::UniqueImage, vk::UniqueDeviceMemory>;
 
 uint32_t choose_memory_type(
     vk::PhysicalDeviceMemoryProperties supported,
@@ -92,6 +93,12 @@ class device {
   void create_framebuffers(std::string_view pass_name);
 
   buf_and_mem create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+  img_and_mem create_image(
+      vk::Extent2D img_size,
+      vk::Format format,
+      vk::ImageTiling tiling,
+      vk::ImageUsageFlags usage,
+      vk::MemoryPropertyFlags required_props);
   pngine::command_pool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
   pngine::command_pool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
 };
@@ -236,6 +243,41 @@ device::create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::Memor
   result.second = m_device.allocateMemoryUnique(alloc_info, nullptr);
 
   m_device.bindBufferMemory(result.first.get(), result.second.get(), 0u);
+  return result;
+}
+
+img_and_mem device::create_image(
+    vk::Extent2D img_size,
+    vk::Format format,
+    vk::ImageTiling tiling,
+    vk::ImageUsageFlags usage,
+    vk::MemoryPropertyFlags required_props) {
+  img_and_mem result;
+  vk::ImageCreateInfo img_info{};
+  img_info.sType = vk::StructureType::eImageCreateInfo;
+  img_info.imageType = vk::ImageType::e2D;
+  img_info.usage = usage;
+  img_info.extent.width = img_size.width;
+  img_info.extent.height = img_size.height;
+  img_info.extent.depth = 1u;
+  img_info.tiling = tiling;
+  img_info.format = format;
+  img_info.samples = vk::SampleCountFlagBits::e1;
+  img_info.mipLevels = 1u;
+  img_info.arrayLayers = 1u;
+  img_info.initialLayout = vk::ImageLayout::eUndefined;
+  img_info.sharingMode = vk::SharingMode::eExclusive;
+  result.first = m_device.createImageUnique(img_info, nullptr);
+
+  const auto spec_props = m_device.getImageMemoryRequirements(result.first.get());
+  const auto supported_props = m_keep_phdevice->getMemoryProperties();
+
+  vk::MemoryAllocateInfo alloc_info{};
+  alloc_info.sType = vk::StructureType::eMemoryAllocateInfo;
+  alloc_info.allocationSize = spec_props.size;
+  alloc_info.memoryTypeIndex = pngine::choose_memory_type(supported_props, spec_props, required_props);
+  result.second = m_device.allocateMemoryUnique(alloc_info, nullptr);
+  m_device.bindImageMemory(result.first.get(), result.second.get(), 0u);
   return result;
 }
 
