@@ -61,6 +61,7 @@ export class pngine_core {
   pngine::version m_app_version = pngine::bring_version(1u, 0u, 0u);
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
+  vk::Extent2D m_png_canvas_size{640u, 480u};
 
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
@@ -104,6 +105,7 @@ export class pngine_core {
  public:
   pngine_core() = delete;
   pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
+  void set_canvas_size(uint32_t width, uint32_t height);
   void run();
   ~pngine_core() noexcept;
 
@@ -278,6 +280,11 @@ pngine_core::~pngine_core() noexcept {
     device.get().destroyFence(m_in_flight_f[i]);
   }
 }
+
+void pngine_core::set_canvas_size(uint32_t width, uint32_t height) {
+  m_png_canvas_size = vk::Extent2D(width, height);
+}
+
 void pngine_core::run() {
   Load_Mesh(); // присылаем данные перед рендерингом
   double time = 0.0;
@@ -327,8 +334,15 @@ void pngine_core::Update(uint32_t frame_index) {
   const auto& current_mapping = m_uniform_mvp_mappings[frame_index];
 
   const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+  const auto &w = m_png_canvas_size.width, &h = m_png_canvas_size.height;
+  const auto big_side = std::max(w, h), little_side = std::min(w, h);
+  const auto canvas_sides_ratio = static_cast<float>(little_side) / static_cast<float>(big_side);
   pngine::MVP mvp_host_buffer;
-  mvp_host_buffer.model = glm::mat4{1.0};
+  if (w < h)
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
+  else
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(canvas_sides_ratio, 1.f, 1.f));
+
   mvp_host_buffer.view = glm::lookAt(glm::vec3{1e-7f, 0.f, 1.f}, glm::vec3{0.f, 0.f, -2.f}, glm::vec3{0.f, 0.f, 1.f});
   mvp_host_buffer.proj = glm::perspective(glm::radians(70.f), aspect, 0.1f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;

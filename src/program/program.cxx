@@ -108,13 +108,14 @@ int main(int argc, char** argv) {
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
       csc::pngine::pngine_core core(
-          "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 1u), "Intel(R) HD Graphics 2500 (IVB GT1)");
+          "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 2u), "Intel(R) HD Graphics 2500 (IVB GT1)");
       std::cout << "Движок: " << core.get_engine_name() << '\n';
       const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
+      core.set_canvas_size(png.header().width, png.header().height);
       core.run();
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
