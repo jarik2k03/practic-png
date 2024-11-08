@@ -45,4 +45,11 @@ int main() {
   const vk::UniqueDeviceMemory mem = device.allocateMemoryUnique({});
   void* data = device.mapMemory(m_png_surface_mesh_memory, 0u, vk::WholeSize);
   device.unmapMemory(m_png_surface_mesh_memory);
+  vk::DescriptorSetLayoutBinding descr_layout_bind;
+  cb.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0u, {m_set}, {});
+  vk::PipelineLayoutCreateInfo pip_lay{};
+  vk::DescriptorSetLayoutBinding lay_bind{};
+  vk::ImageMemoryBarrier img_info;
+  img_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+  vk::ImageSubresourceLayers subres;
 }

@@ -4,6 +4,8 @@ module;
 #include <bits/move.h>
 #include <limits>
 #include <cstring>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <chrono>
 #include <shaders_triangle.h>
@@ -33,14 +35,14 @@ import vulkan_hpp;
 namespace csc {
 namespace pngine {
 
-std::vector<pngine::vertex> rectangle = {
+const std::vector<pngine::vertex> rectangle = {
     pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}},
     pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}},
     pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}},
     pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}},
 };
+const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
-std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
   auto& window_obj = *reinterpret_cast<pngine::window_handler*>(&window);
@@ -59,6 +61,12 @@ export class pngine_core {
   pngine::version m_app_version = pngine::bring_version(1u, 0u, 0u);
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
+  const std::vector<uint8_t>* m_png_pixels = nullptr;
+  vk::Extent2D m_png_canvas_size{640u, 480u};
+
+  pngine::glfw_handler m_glfw_state{};
+  pngine::window_handler m_window_handler;
+
   pngine::instance m_instance;
   uint32_t m_current_frame = 0u;
   static constexpr uint32_t m_flight_count = 2u;
@@ -77,18 +85,34 @@ export class pngine_core {
   vk::UniqueBuffer m_png_surface_ids;
   vk::UniqueDeviceMemory m_png_surface_ids_memory;
 
-  pngine::glfw_handler m_glfw_state{};
-  pngine::window_handler m_window_handler;
+  vk::UniqueDescriptorSetLayout m_descr_layout;
+  vk::UniquePipelineLayout m_pipeline_layout;
+
+  std::array<vk::UniqueBuffer, m_flight_count> m_uniform_mvps;
+  std::array<vk::UniqueDeviceMemory, m_flight_count> m_uniform_mvp_memories;
+  std::array<void*, m_flight_count> m_uniform_mvp_mappings;
+
+  vk::UniqueDescriptorPool m_descr_pool;
+  std::vector<vk::UniqueDescriptorSet> m_descr_sets;
+
+  vk::UniqueBuffer m_stage_image_buffer{};
+  vk::UniqueDeviceMemory m_stage_image_memory{};
+  vk::UniqueImage m_image_buffer{};
+  vk::UniqueDeviceMemory m_image_memory{};
+
   pngine::command_pool m_graphics_pool;
   pngine::command_pool m_transfer_pool;
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   void Render_Frame();
-  void Update();
+  void Load_Mesh();
+  void Load_Textures();
+  void Update(uint32_t frame_index);
 
  public:
   pngine_core() = delete;
   pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
+  void set_drawing(const std::vector<uint8_t>& blob, uint32_t width, uint32_t height);
   void run();
   ~pngine_core() noexcept;
 
@@ -103,7 +127,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   vk::ApplicationInfo app_info(
       m_app_name.c_str(), m_app_version, pngine::bring_engine_name(), pngine::bring_engine_version(), m_vk_api_version);
   // высокоуровневый алгоритм...
-  m_window_handler = pngine::window_handler(1050u, 450u, m_app_name);
+  m_window_handler = pngine::window_handler(1280u, 720u, m_app_name);
   m_instance = pngine::instance(app_info);
   m_window_handler.set_user_pointer(&m_instance);
   m_window_handler.set_framebuffer_size_callback(recreate_swapchain);
@@ -118,7 +142,27 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   device.create_image_views();
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
-  device.create_pipeline_layout("basic_layout");
+
+  vk::DescriptorSetLayoutBinding descriptor_layout_binding{};
+  descriptor_layout_binding.binding = 0u;
+  descriptor_layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  descriptor_layout_binding.descriptorCount = 1u;
+  descriptor_layout_binding.pImmutableSamplers = nullptr;
+  descriptor_layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+  vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
+  descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+  descriptor_layout_info.bindingCount = 1u;
+  descriptor_layout_info.pBindings = &descriptor_layout_binding;
+
+  m_descr_layout = device.get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
+
+  vk::PipelineLayoutCreateInfo pipeline_layout_info{};
+  pipeline_layout_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+  pipeline_layout_info.setLayoutCount = 1u;
+  pipeline_layout_info.pSetLayouts = &m_descr_layout.get();
+  m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
+
   device.create_render_pass("basic_pass");
 
   pngine::graphics_pipeline_config triangle_cfg;
@@ -135,7 +179,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   triangle_cfg.vtx_bindings = {bind_descs};
   triangle_cfg.vtx_attributes = std::vector(attr_descs.cbegin(), attr_descs.cend());
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  device.create_pipeline("basic_pipeline", "basic_layout", "basic_pass", triangle_cfg);
+  device.create_pipeline("basic_pipeline", m_pipeline_layout, "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
   /* vertex buffer */
   const uint32_t vtx_buf_size = sizeof(pngine::vertex) * rectangle.size();
@@ -168,6 +212,14 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
       idx_buf_size,
       vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
+  /* uniform buffers */
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    std::tie(m_uniform_mvps[i], m_uniform_mvp_memories[i]) = device.create_buffer(
+        sizeof(pngine::MVP),
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    m_uniform_mvp_mappings[i] = device.get().mapMemory(m_uniform_mvp_memories[i].get(), 0u, sizeof(pngine::MVP));
+  }
 
   /* creating pools */
   m_graphics_pool = device.create_graphics_command_pool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
@@ -175,6 +227,42 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 
   m_command_buffers = m_graphics_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
 
+  /* descriptor sets */
+  vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count);
+  vk::DescriptorPoolCreateInfo des_pool_info{};
+  des_pool_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+  des_pool_info.pPoolSizes = &pool_size;
+  des_pool_info.poolSizeCount = 1u;
+  des_pool_info.maxSets = m_flight_count;
+  des_pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+
+  m_descr_pool = device.get().createDescriptorPoolUnique(des_pool_info, nullptr);
+
+  std::array<vk::DescriptorSetLayout, m_flight_count> layouts;
+  std::ranges::fill(layouts, m_descr_layout.get());
+  vk::DescriptorSetAllocateInfo alloc_sets_info{};
+  alloc_sets_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+  alloc_sets_info.descriptorPool = m_descr_pool.get();
+  alloc_sets_info.descriptorSetCount = layouts.size();
+  alloc_sets_info.pSetLayouts = layouts.data();
+
+  m_descr_sets = device.get().allocateDescriptorSetsUnique(alloc_sets_info);
+
+  /* setup descriptor sets */
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorBufferInfo buf_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
+    vk::WriteDescriptorSet write{};
+    write.sType = vk::StructureType::eWriteDescriptorSet;
+    write.descriptorCount = 1u;
+    write.pBufferInfo = &buf_info;
+    write.descriptorType = vk::DescriptorType::eUniformBuffer;
+    write.dstSet = m_descr_sets[i].get();
+    write.dstBinding = 0u;
+    write.dstArrayElement = 0u;
+    device.get().updateDescriptorSets(1u, &write, 0u, nullptr);
+  }
+
+  /* syncronisation primitives */
   vk::SemaphoreCreateInfo semaphore_info{};
   semaphore_info.sType = vk::StructureType::eSemaphoreCreateInfo;
 
@@ -192,15 +280,38 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 pngine_core::~pngine_core() noexcept {
   auto& device = m_instance.get_device();
   device.get().waitIdle();
+
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     device.get().destroySemaphore(m_render_finished_s[i]);
     device.get().destroySemaphore(m_image_available_s[i]);
     device.get().destroyFence(m_in_flight_f[i]);
   }
-  // m_png_surface_mesh.release();
 }
+
+void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, uint32_t height) {
+  auto& device = m_instance.get_device();
+  m_png_canvas_size = vk::Extent2D(width, height);
+  m_png_pixels = &blob;
+  std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(
+      blob.size(),
+      vk::BufferUsageFlagBits::eTransferSrc,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+  void* staged_image_mapping = device.get().mapMemory(m_stage_image_memory.get(), 0u, blob.size());
+  ::memcpy(staged_image_mapping, blob.data(), blob.size());
+  device.get().unmapMemory(m_stage_image_memory.get());
+
+  std::tie(m_image_buffer, m_image_memory) = device.create_image(
+      m_png_canvas_size,
+      vk::Format::eR8G8B8A8Srgb,
+      vk::ImageTiling::eOptimal,
+      vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+      vk::MemoryPropertyFlagBits::eDeviceLocal);
+}
+
 void pngine_core::run() {
-  Update(); // присылаем данные перед рендерингом
+  Load_Mesh(); // присылаем данные перед рендерингом
+  Load_Textures(); // присылаем текстуру картинки перед рендерингом
   double time = 0.0;
   uint64_t frames_count = 0u;
   while (!m_window_handler.should_close()) {
@@ -216,7 +327,7 @@ void pngine_core::run() {
     }
   }
 }
-void pngine_core::Update() {
+void pngine_core::Load_Mesh() {
   const auto& device = m_instance.get_device();
   auto transfer_buffer = std::move(m_transfer_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, 1u)[0]);
 
@@ -239,6 +350,83 @@ void pngine_core::Update() {
   vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
+  transfer_queue.waitIdle();
+  device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+}
+void pngine_core::Load_Textures() {
+  const auto& device = m_instance.get_device();
+  auto transfer_buffer = std::move(m_transfer_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, 1u)[0]);
+
+  vk::CommandBufferBeginInfo begin_info{};
+  begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+  begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+  /* preparing to copy image */
+  vk::ImageMemoryBarrier barrier_template{};
+  barrier_template.sType = vk::StructureType::eImageMemoryBarrier;
+  barrier_template.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+  barrier_template.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+  barrier_template.image = m_image_buffer.get();
+  barrier_template.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+  /* our barriers */
+  vk::ImageMemoryBarrier undef_to_transferDst = barrier_template, transferDst_to_shaderRD = barrier_template;
+
+  undef_to_transferDst.srcAccessMask = vk::AccessFlags{};
+  undef_to_transferDst.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+  transferDst_to_shaderRD.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+  transferDst_to_shaderRD.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+  transfer_buffer.begin(begin_info);
+  using enum vk::PipelineStageFlagBits;
+  transfer_buffer.pipelineBarrier(
+      eTopOfPipe, eTransfer, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &undef_to_transferDst);
+
+  vk::BufferImageCopy copy_img_region{};
+  copy_img_region.bufferOffset = 0u;
+  copy_img_region.bufferRowLength = 0u;
+  copy_img_region.bufferImageHeight = 0u;
+  copy_img_region.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0u, 0u, 1u);
+  // copy_img_region.imageOffset = vk::Extent3D(0u, 0u, 0u);
+  copy_img_region.imageExtent = vk::Extent3D(m_png_canvas_size, 1u);
+
+  transfer_buffer.copyBufferToImage(
+      m_stage_image_buffer.get(), m_image_buffer.get(), vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
+  transfer_buffer.pipelineBarrier(
+      eTransfer, eFragmentShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &transferDst_to_shaderRD);
+  transfer_buffer.end();
+
+  vk::SubmitInfo submit_info{};
+  submit_info.sType = vk::StructureType::eSubmitInfo;
+  submit_info.pCommandBuffers = &transfer_buffer;
+  submit_info.commandBufferCount = 1u;
+  auto transfer_queue = device.get_transfer_queue();
+  vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
+  transfer_queue.waitIdle();
+  device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+}
+
+void pngine_core::Update(uint32_t frame_index) {
+  const auto& device = m_instance.get_device();
+  const auto extent = device.get_swapchain().get_extent();
+  const auto& current_mapping = m_uniform_mvp_mappings[frame_index];
+
+  const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+  const auto &w = m_png_canvas_size.width, &h = m_png_canvas_size.height;
+  const auto big_side = std::max(w, h), little_side = std::min(w, h);
+  const auto canvas_sides_ratio = static_cast<float>(little_side) / static_cast<float>(big_side);
+  pngine::MVP mvp_host_buffer;
+  if (w < h)
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
+  else
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(canvas_sides_ratio, 1.f, 1.f));
+
+  mvp_host_buffer.view = glm::lookAt(glm::vec3{1e-7f, 0.f, 1.f}, glm::vec3{0.f, 0.f, -2.f}, glm::vec3{0.f, 0.f, 1.f});
+  mvp_host_buffer.proj = glm::perspective(glm::radians(70.f), aspect, 0.1f, 10.f);
+  mvp_host_buffer.proj[1][1] *= -1.f;
+  ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
 }
 
 void pngine_core::Render_Frame() {
@@ -246,18 +434,20 @@ void pngine_core::Render_Frame() {
   const auto& in_flight_f = m_in_flight_f[m_current_frame];
   const auto& image_available_s = m_image_available_s[m_current_frame];
   const auto& render_finished_s = m_render_finished_s[m_current_frame];
+  const auto& cur_descr_set = m_descr_sets[m_current_frame];
   const auto& cur_command_buffer = m_command_buffers[m_current_frame];
   constexpr const auto without_delays = std::numeric_limits<uint64_t>::max();
   vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не получилось синхронизировать устройство при помощи барьера!");
-  r = dev.get().resetFences(1u, &in_flight_f);
-  if (r != vk::Result::eSuccess)
-    throw std::runtime_error("Pngine: не удалось сбросить барьер!");
   const auto& swapchain = dev.get_swapchain();
   const uint32_t current_image =
       dev.get().acquireNextImageKHR(swapchain.get(), without_delays, image_available_s).value;
   const auto extent = dev.get_swapchain().get_extent();
+  Update(m_current_frame);
+  r = dev.get().resetFences(1u, &in_flight_f);
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Pngine: не удалось сбросить барьер!");
 
   vk::RenderPassBeginInfo render_pass_config{};
   render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
@@ -286,6 +476,8 @@ void pngine_core::Render_Frame() {
   const vk::DeviceSize offsets[1] = {0u};
   cur_command_buffer.bindVertexBuffers(0u, vertex_buffer_count, buffers, offsets);
   cur_command_buffer.bindIndexBuffer(m_png_surface_ids.get(), 0u, vk::IndexType::eUint16);
+  cur_command_buffer.bindDescriptorSets(
+      vk::PipelineBindPoint::eGraphics, m_pipeline_layout.get(), 0u, 1u, &cur_descr_set.get(), 0u, nullptr);
   const uint32_t rectangle_indices = rectangle_ids.size(), inst_count = 1u, first_vert = 0u, first_inst = 0u;
   cur_command_buffer.drawIndexed(rectangle_indices, inst_count, first_vert, 0, first_inst);
   cur_command_buffer.endRenderPass();

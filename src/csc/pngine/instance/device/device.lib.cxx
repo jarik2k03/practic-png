@@ -19,7 +19,6 @@ import csc.pngine.instance.device.swapchainKHR;
 import csc.pngine.instance.device.image_view;
 import csc.pngine.instance.device.shader_module;
 import csc.pngine.instance.device.graphics_pipeline;
-import csc.pngine.instance.device.pipeline_layout;
 import csc.pngine.instance.device.render_pass;
 import csc.pngine.instance.device.framebuffer;
 import csc.pngine.instance.device.command_pool;
@@ -33,6 +32,7 @@ import csc.pngine.commons.utility.graphics_pipeline;
 export namespace csc {
 namespace pngine {
 using buf_and_mem = std::pair<vk::UniqueBuffer, vk::UniqueDeviceMemory>;
+using img_and_mem = std::pair<vk::UniqueImage, vk::UniqueDeviceMemory>;
 
 uint32_t choose_memory_type(
     vk::PhysicalDeviceMemoryProperties supported,
@@ -56,7 +56,6 @@ class device {
   std::vector<pngine::image_view> m_image_views{};
   std::map<std::string, pngine::shader_module> m_shader_modules{};
   std::map<std::string, pngine::graphics_pipeline> m_pipelines{};
-  std::map<std::string, pngine::pipeline_layout> m_pipeline_layouts{};
   std::map<std::string, pngine::render_pass> m_render_passes{};
   std::vector<pngine::framebuffer> m_framebuffers{};
 
@@ -87,14 +86,19 @@ class device {
   template <pngine::c_graphics_pipeline_config Config>
   pngine::graphics_pipeline& create_pipeline(
       std::string_view pipeline_name,
-      std::string_view layout_name,
+      const vk::UniquePipelineLayout& layout,
       std::string_view pass_name,
       Config&& config);
-  void create_pipeline_layout(std::string_view layout_name);
   void create_render_pass(std::string_view pass_name);
   void create_framebuffers(std::string_view pass_name);
 
   buf_and_mem create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+  img_and_mem create_image(
+      vk::Extent2D img_size,
+      vk::Format format,
+      vk::ImageTiling tiling,
+      vk::ImageUsageFlags usage,
+      vk::MemoryPropertyFlags required_props);
   pngine::command_pool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
   pngine::command_pool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
 };
@@ -115,7 +119,6 @@ device& device::operator=(device&& move) noexcept {
   m_image_views = std::move(move.m_image_views);
   m_shader_modules = std::move(move.m_shader_modules);
   m_pipelines = std::move(move.m_pipelines);
-  m_pipeline_layouts = std::move(move.m_pipeline_layouts);
   m_render_passes = std::move(move.m_render_passes);
   m_framebuffers = std::move(move.m_framebuffers);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
@@ -181,30 +184,22 @@ void device::create_shader_module(std::string_view name, std::string_view compil
 template <pngine::c_graphics_pipeline_config Config>
 pngine::graphics_pipeline& device::create_pipeline(
     std::string_view named_pipeline,
-    std::string_view layout_name,
+    const vk::UniquePipelineLayout& layout,
     std::string_view pass_name,
     Config&& config) {
   const auto render_pass_pos = m_render_passes.find(pass_name.data());
   [[unlikely]] if (render_pass_pos == m_render_passes.cend())
     throw std::runtime_error("Device: не удалось найти указанный проход конвейера!");
 
-  const auto pipeline_layout_pos = m_pipeline_layouts.find(layout_name.data());
-  [[unlikely]] if (pipeline_layout_pos == m_pipeline_layouts.cend())
-    throw std::runtime_error("Device: не удалось найти указанный макет конвейера!");
-
   const auto [pipeline_pos, is_success] = m_pipelines.insert(std::make_pair(
       named_pipeline.data(),
-      pngine::graphics_pipeline(
-          m_device, render_pass_pos->second.get(), pipeline_layout_pos->second.get(), std::forward<Config>(config))));
+      pngine::graphics_pipeline(m_device, render_pass_pos->second.get(), layout.get(), std::forward<Config>(config))));
 
   [[unlikely]] if (!is_success)
     throw std::runtime_error("Device: не удалось добавить конвейер в реестр!");
   return pipeline_pos->second;
 }
 
-void device::create_pipeline_layout(std::string_view name) {
-  m_pipeline_layouts.insert(std::make_pair(name.data(), pngine::pipeline_layout(m_device)));
-}
 void device::create_render_pass(std::string_view name) {
   m_render_passes.insert(std::make_pair(name.data(), pngine::render_pass(m_device, m_swapchain.get_image_format())));
 }
@@ -248,6 +243,41 @@ device::create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::Memor
   result.second = m_device.allocateMemoryUnique(alloc_info, nullptr);
 
   m_device.bindBufferMemory(result.first.get(), result.second.get(), 0u);
+  return result;
+}
+
+img_and_mem device::create_image(
+    vk::Extent2D img_size,
+    vk::Format format,
+    vk::ImageTiling tiling,
+    vk::ImageUsageFlags usage,
+    vk::MemoryPropertyFlags required_props) {
+  img_and_mem result;
+  vk::ImageCreateInfo img_info{};
+  img_info.sType = vk::StructureType::eImageCreateInfo;
+  img_info.imageType = vk::ImageType::e2D;
+  img_info.usage = usage;
+  img_info.extent.width = img_size.width;
+  img_info.extent.height = img_size.height;
+  img_info.extent.depth = 1u;
+  img_info.tiling = tiling;
+  img_info.format = format;
+  img_info.samples = vk::SampleCountFlagBits::e1;
+  img_info.mipLevels = 1u;
+  img_info.arrayLayers = 1u;
+  img_info.initialLayout = vk::ImageLayout::eUndefined;
+  img_info.sharingMode = vk::SharingMode::eExclusive;
+  result.first = m_device.createImageUnique(img_info, nullptr);
+
+  const auto spec_props = m_device.getImageMemoryRequirements(result.first.get());
+  const auto supported_props = m_keep_phdevice->getMemoryProperties();
+
+  vk::MemoryAllocateInfo alloc_info{};
+  alloc_info.sType = vk::StructureType::eMemoryAllocateInfo;
+  alloc_info.allocationSize = spec_props.size;
+  alloc_info.memoryTypeIndex = pngine::choose_memory_type(supported_props, spec_props, required_props);
+  result.second = m_device.allocateMemoryUnique(alloc_info, nullptr);
+  m_device.bindImageMemory(result.first.get(), result.second.get(), 0u);
   return result;
 }
 
@@ -300,7 +330,6 @@ vk::Queue device::get_present_queue() const {
 void device::clear() noexcept {
   if (m_is_created != false) {
     m_pipelines.clear();
-    m_pipeline_layouts.clear();
     m_framebuffers.clear();
     m_render_passes.clear();
     m_shader_modules.clear();
