@@ -371,9 +371,13 @@ void pngine_core::Load_Textures() {
   /* our barriers */
   vk::ImageMemoryBarrier undef_to_transferDst = barrier_template, transferDst_to_shaderRD = barrier_template;
 
+  undef_to_transferDst.oldLayout = vk::ImageLayout::eUndefined;
+  undef_to_transferDst.newLayout = vk::ImageLayout::eTransferDstOptimal;
   undef_to_transferDst.srcAccessMask = vk::AccessFlags{};
   undef_to_transferDst.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
+  transferDst_to_shaderRD.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+  transferDst_to_shaderRD.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
   transferDst_to_shaderRD.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
   transferDst_to_shaderRD.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
@@ -397,9 +401,7 @@ void pngine_core::Load_Textures() {
   transfer_buffer.end();
 
   vk::SubmitInfo submit_info{};
-  submit_info.sType = vk::StructureType::eSubmitInfo;
-  submit_info.pCommandBuffers = &transfer_buffer;
-  submit_info.commandBufferCount = 1u;
+  submit_info.pCommandBuffers = &transfer_buffer, submit_info.commandBufferCount = 1u;
   auto transfer_queue = device.get_transfer_queue();
   vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
