@@ -98,6 +98,8 @@ export class pngine_core {
   vk::UniqueBuffer m_stage_image_buffer{};
   vk::UniqueDeviceMemory m_stage_image_memory{};
   vk::UniqueImage m_image_buffer{};
+  vk::UniqueImageView m_image_view{};
+  vk::UniqueSampler m_image_sampler{};
   vk::UniqueDeviceMemory m_image_memory{};
 
   pngine::command_pool m_graphics_pool;
@@ -292,6 +294,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
   auto& device = m_instance.get_device();
   m_png_canvas_size = vk::Extent2D(width, height);
   m_png_pixels = &blob;
+  /* image data */
   std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(
       blob.size(),
       vk::BufferUsageFlagBits::eTransferSrc,
@@ -307,6 +310,34 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
+  /* image view */
+  vk::ImageViewCreateInfo image_view_info{};
+  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+  image_view_info.image = m_image_buffer.get();
+  image_view_info.format = vk::Format::eR8G8B8A8Srgb;
+  image_view_info.viewType = vk::ImageViewType::e2D;
+  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+
+  m_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
+  /* image sampler */
+  vk::SamplerCreateInfo sampler_info{};
+  sampler_info.sType = vk::StructureType::eSamplerCreateInfo;
+  sampler_info.magFilter = vk::Filter::eLinear;
+  sampler_info.minFilter = vk::Filter::eNearest;
+  sampler_info.addressModeU = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeV = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.anisotropyEnable = vk::False;
+  sampler_info.maxAnisotropy = 1.f;
+  sampler_info.borderColor = vk::BorderColor::eIntOpaqueBlack;
+  sampler_info.unnormalizedCoordinates = vk::False;
+  sampler_info.compareEnable = vk::False;
+  sampler_info.compareOp = vk::CompareOp::eAlways;
+  sampler_info.mipmapMode = vk::SamplerMipmapMode::eLinear;
+  sampler_info.mipLodBias = 0.f, sampler_info.minLod = 0.f, sampler_info.maxLod = 0.f;
+
+  m_image_sampler = device.get().createSamplerUnique(sampler_info, nullptr);
+
 }
 
 void pngine_core::run() {

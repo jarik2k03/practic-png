@@ -52,5 +52,4 @@ int main() {
   vk::ImageMemoryBarrier img_info;
   img_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
   vk::ImageSubresourceLayers subres;
-  vk::SubmitInfo submit(.
 }
