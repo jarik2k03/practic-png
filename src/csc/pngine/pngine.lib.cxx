@@ -36,11 +36,10 @@ namespace csc {
 namespace pngine {
 
 const std::vector<pngine::vertex> rectangle = {
-    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}},
-    pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}},
-    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}},
-    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}},
-};
+    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}, {0.5f, 0.f}},
+    pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.5f}},
+    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {0.5f, 0.5f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
 // колбэки
@@ -145,17 +144,17 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
 
-  vk::DescriptorSetLayoutBinding descriptor_layout_binding{};
-  descriptor_layout_binding.binding = 0u;
-  descriptor_layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
-  descriptor_layout_binding.descriptorCount = 1u;
-  descriptor_layout_binding.pImmutableSamplers = nullptr;
-  descriptor_layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+  /* descriptor layouts */
+  vk::DescriptorSetLayoutBinding u0_bind(
+      0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
+  vk::DescriptorSetLayoutBinding s1_bind(
+      1u, vk::DescriptorType::eCombinedImageSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+  const auto binds = std::array{u0_bind, s1_bind}; // deduction guides!
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
   descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-  descriptor_layout_info.bindingCount = 1u;
-  descriptor_layout_info.pBindings = &descriptor_layout_binding;
+  descriptor_layout_info.bindingCount = binds.size();
+  descriptor_layout_info.pBindings = binds.data();
 
   m_descr_layout = device.get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
 
@@ -165,8 +164,10 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   pipeline_layout_info.pSetLayouts = &m_descr_layout.get();
   m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
 
+  /* render pass */
   device.create_render_pass("basic_pass");
 
+  /* creating pipeline and framebuffers */
   pngine::graphics_pipeline_config triangle_cfg;
   const auto shader_stages = {
       pngine::shader_stage{"main", device.get_shader_module("vs_triangle").get(), vk::ShaderStageFlagBits::eVertex},
@@ -229,12 +230,15 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 
   m_command_buffers = m_graphics_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
 
-  /* descriptor sets */
-  vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count);
+  /* descriptor pool */
+  vk::DescriptorPoolSize mvp_pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count);
+  vk::DescriptorPoolSize image_sampler_pool_size(vk::DescriptorType::eCombinedImageSampler, m_flight_count);
+  const auto pool_sizes = std::array{mvp_pool_size, image_sampler_pool_size};
+
   vk::DescriptorPoolCreateInfo des_pool_info{};
   des_pool_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-  des_pool_info.pPoolSizes = &pool_size;
-  des_pool_info.poolSizeCount = 1u;
+  des_pool_info.pPoolSizes = pool_sizes.data();
+  des_pool_info.poolSizeCount = pool_sizes.size();
   des_pool_info.maxSets = m_flight_count;
   des_pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
@@ -249,20 +253,6 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   alloc_sets_info.pSetLayouts = layouts.data();
 
   m_descr_sets = device.get().allocateDescriptorSetsUnique(alloc_sets_info);
-
-  /* setup descriptor sets */
-  for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    vk::DescriptorBufferInfo buf_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
-    vk::WriteDescriptorSet write{};
-    write.sType = vk::StructureType::eWriteDescriptorSet;
-    write.descriptorCount = 1u;
-    write.pBufferInfo = &buf_info;
-    write.descriptorType = vk::DescriptorType::eUniformBuffer;
-    write.dstSet = m_descr_sets[i].get();
-    write.dstBinding = 0u;
-    write.dstArrayElement = 0u;
-    device.get().updateDescriptorSets(1u, &write, 0u, nullptr);
-  }
 
   /* syncronisation primitives */
   vk::SemaphoreCreateInfo semaphore_info{};
@@ -322,7 +312,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
   /* image sampler */
   vk::SamplerCreateInfo sampler_info{};
   sampler_info.sType = vk::StructureType::eSamplerCreateInfo;
-  sampler_info.magFilter = vk::Filter::eLinear;
+  // sampler_info.magFilter = vk::Filter::eLinear;
   sampler_info.minFilter = vk::Filter::eNearest;
   sampler_info.addressModeU = vk::SamplerAddressMode::eClampToBorder;
   sampler_info.addressModeV = vk::SamplerAddressMode::eClampToBorder;
@@ -337,7 +327,32 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
   sampler_info.mipLodBias = 0.f, sampler_info.minLod = 0.f, sampler_info.maxLod = 0.f;
 
   m_image_sampler = device.get().createSamplerUnique(sampler_info, nullptr);
+  /* setup descriptor sets */
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
+    vk::DescriptorImageInfo d_image_sampler_info(
+        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
 
+    vk::WriteDescriptorSet write_mvp{}, write_image_sampler{};
+    write_mvp.sType = vk::StructureType::eWriteDescriptorSet;
+    write_mvp.descriptorCount = 1u;
+    write_mvp.pBufferInfo = &d_mvp_info;
+    write_mvp.descriptorType = vk::DescriptorType::eUniformBuffer;
+    write_mvp.dstSet = m_descr_sets[i].get();
+    write_mvp.dstBinding = 0u;
+    write_mvp.dstArrayElement = 0u;
+
+    write_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
+    write_image_sampler.descriptorCount = 1u;
+    write_image_sampler.pImageInfo = &d_image_sampler_info;
+    write_image_sampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    write_image_sampler.dstSet = m_descr_sets[i].get();
+    write_image_sampler.dstBinding = 1u;
+    write_image_sampler.dstArrayElement = 0u;
+
+    const auto writings = std::array{write_mvp, write_image_sampler};
+    device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
+  }
 }
 
 void pngine_core::run() {

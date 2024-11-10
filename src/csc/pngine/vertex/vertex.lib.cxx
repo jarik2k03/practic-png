@@ -8,10 +8,11 @@ import stl.array;
 export namespace csc {
 namespace pngine {
 
-using vertex_attrubute_descriptions = std::array<vk::VertexInputAttributeDescription, 2u>;
+using vertex_attrubute_descriptions = std::array<vk::VertexInputAttributeDescription, 3u>;
 struct vertex {
   glm::vec2 position;
   glm::vec3 vtx_color;
+  glm::vec2 texcoord;
 
   static auto get_binding_description() {
     vk::VertexInputBindingDescription desc{};
@@ -27,11 +28,16 @@ struct vertex {
     descs[0].location = 0u;
     descs[0].format = vk::Format::eR32G32Sfloat;
     descs[0].offset = offsetof(vertex, position);
-    /* color */
+    /* vtx_color */
     descs[1].binding = 0u;
     descs[1].location = 1u;
     descs[1].format = vk::Format::eR32G32B32Sfloat;
     descs[1].offset = offsetof(vertex, vtx_color);
+    /* texcoord */
+    descs[2].binding = 0u;
+    descs[2].location = 2u;
+    descs[2].format = vk::Format::eR32G32Sfloat;
+    descs[2].offset = offsetof(vertex, texcoord);
     return descs;
   }
 };
