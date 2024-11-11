@@ -36,10 +36,10 @@ namespace csc {
 namespace pngine {
 
 const std::vector<pngine::vertex> rectangle = {
-    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}, {0.5f, 0.f}},
+    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}, {1.f, 0.f}},
     pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
-    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.5f}},
-    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {0.5f, 0.5f}}};
+    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
 // колбэки
@@ -467,11 +467,11 @@ void pngine_core::Update(uint32_t frame_index) {
   const auto canvas_sides_ratio = static_cast<float>(little_side) / static_cast<float>(big_side);
   pngine::MVP mvp_host_buffer;
   if (w < h)
-    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
-  else
     mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(canvas_sides_ratio, 1.f, 1.f));
+  else
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
 
-  mvp_host_buffer.view = glm::lookAt(glm::vec3{1e-7f, 0.f, 1.f}, glm::vec3{0.f, 0.f, -2.f}, glm::vec3{0.f, 0.f, 1.f});
+  mvp_host_buffer.view = glm::lookAt(glm::vec3{0.f, 1e-7f, 1.f}, glm::vec3{0.0f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
   mvp_host_buffer.proj = glm::perspective(glm::radians(70.f), aspect, 0.1f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;
   ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));

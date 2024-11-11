@@ -5,6 +5,9 @@
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #ifndef NDEBUG
 import csc.png.picture_debug;
 #endif
@@ -14,6 +17,8 @@ import csc.pngine;
 import stl.string_view;
 import stl.string;
 import stl.iostream;
+import stl.fstream;
+import stl.ios;
 import stl.stdexcept;
 
 csc::png::e_compression_level bring_compression_level(const char* arg) {
@@ -102,9 +107,23 @@ int main(int argc, char** argv) {
 
     csc::png::picture png;
     csc::png::deserializer png_executor;
+
+
+
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
+      /* stb temp */
+      int w, h, channels;
+      uint8_t* pixels = ::stbi_load(i_pos->second.data(), &w, &h, &channels, STBI_rgb_alpha);
+      std::vector<uint8_t> image_data(pixels, pixels + w * h * channels);
+
+      png = png_executor.deserialize(i_pos->second, ignore_checksum);
+
+      std::ofstream write_stb("images/stb_prod.image", std::ios_base::binary), write_png("images/png_prod.image", std::ios_base::binary);
+      write_stb.write(reinterpret_cast<char*>(image_data.data()), image_data.size());
+      write_png.write(reinterpret_cast<char*>(png.m_image_data.data()), png.m_image_data.size());
+      /* */
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
       csc::pngine::pngine_core core(
@@ -114,8 +133,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
-      png = png_executor.deserialize(i_pos->second, ignore_checksum);
-      core.set_drawing(png.m_image_data, png.header().width, png.header().height);
+      core.set_drawing(image_data, static_cast<uint32_t>(w), static_cast<uint32_t>(h));
       core.run();
     } else {
       throw std::invalid_argument("Не назначен входной файл!");

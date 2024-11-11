@@ -16,6 +16,6 @@ layout(location = 1) out vec2 fragTexcoord;
 
 void main() {
     gl_Position = mvp.proj * mvp.view * mvp.model * vec4(in_vtxPosition, 0.0, 1.0);
-    fragColor = in_vtxColor * 0.85;
+    fragColor = in_vtxColor;
     fragTexcoord = in_vtxTexcoord;
 }
