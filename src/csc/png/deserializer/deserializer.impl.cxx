@@ -28,6 +28,7 @@ namespace png {
 class deserializer_impl {
  public:
   png::picture do_deserialize(std::string_view filepath, bool ignore_checksum);
+  void do_prepare_to_present(png::picture& deserialized);
 };
 
 png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool ignore_checksum) {
@@ -40,17 +41,17 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
   png::read_png_signature_from_file(png_fs, image);
   try {
     auto header_chunk = png::read_chunk_from_ifstream(png_fs);
-    consume_chunk_and_write_to_image(header_chunk, image), check_sum(header_chunk);
-    image.m_image_data.reserve(png::bring_image_size(std::get<IHDR>(image.m_structured.at(0))));
+    png::consume_chunk_and_write_to_image(header_chunk, image), png::check_sum(header_chunk);
+    image.m_image_data.reserve(png::bring_filtered_image_size(image.header(), 1.1f));
     while (png_fs.tellg() != -1) {
       auto chunk = png::read_chunk_from_ifstream(png_fs);
 
       if (chunk.chunk_name == std::array<char, 4>{'I', 'D', 'A', 'T'}) {
-        inflate_fragment_to_image(chunk, image, z_stream);
+        png::inflate_fragment_to_image(chunk, image, z_stream);
         if (ignore_checksum == false)
           check_sum(chunk);
       } else {
-        consume_chunk_and_write_to_image(chunk, image);
+        png::consume_chunk_and_write_to_image(chunk, image);
         if (ignore_checksum == false)
           check_sum(chunk);
       }
@@ -71,6 +72,23 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
     throw std::domain_error(std::string("PNG-изображение не прошло пост-проверку: ") + e.what());
   }
   return image;
+}
+
+void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
+  const auto& ihdr = deserialized.header();
+  const auto& filtered = deserialized.m_image_data;
+  std::vector<uint8_t> unfiltered_image;
+  unfiltered_image.reserve(png::bring_unfiltered_image_size(ihdr));
+  for (auto height = 0u; height < ihdr.height; ++height) {
+    std::ranges::copy(filtered.begin(), filtered.begin() + ihdr.width, std::back_inserter(unfiltered_image));
+
+
+
+    // unfiltered_image.emplace_back(
+  }
+
+  // и всё ради этого!
+  deserialized.m_image_data = unfiltered_image; // теперь вместо фильтрованного изображения будет лежать нефильтрованное
 }
 } // namespace png
 } // namespace csc

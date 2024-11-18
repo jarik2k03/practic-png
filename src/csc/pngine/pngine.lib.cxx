@@ -21,6 +21,8 @@ import stl.stdexcept;
 #ifndef NDEBUG
 import stl.iostream;
 #endif
+import csc.png.picture.sections.IHDR;
+
 import csc.pngine.instance;
 import csc.pngine.instance.device;
 import csc.pngine.window_handler;
@@ -42,6 +44,26 @@ const std::vector<pngine::vertex> rectangle = {
     pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
+
+// utility
+vk::Format bring_texture_format_from_png(png::e_color_type type, uint8_t bit_depth) noexcept {
+  using enum png::e_color_type;
+  switch (type) {
+    case rgba:
+      return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // Srgb только rgba8
+    case rgb:
+      return (bit_depth == 8) ? vk::Format::eR8G8B8Unorm : vk::Format::eR16G16B16Unorm; // только линейное
+    case bw:
+      return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
+    case bwa:
+      return (bit_depth == 8) ? vk::Format::eR8G8Unorm : vk::Format::eR16G16Unorm; // только линейное
+    case indexed:
+      return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
+    default:
+      return vk::Format::eUndefined;
+  }
+}
+
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
   auto& window_obj = *reinterpret_cast<pngine::window_handler*>(&window);
@@ -61,7 +83,8 @@ export class pngine_core {
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
   const std::vector<uint8_t>* m_png_pixels = nullptr;
-  vk::Extent2D m_png_canvas_size{640u, 480u};
+
+  const png::IHDR* m_png_info = nullptr;
 
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
@@ -113,7 +136,7 @@ export class pngine_core {
  public:
   pngine_core() = delete;
   pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
-  void set_drawing(const std::vector<uint8_t>& blob, uint32_t width, uint32_t height);
+  void set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info);
   void run();
   ~pngine_core() noexcept;
 
@@ -280,10 +303,13 @@ pngine_core::~pngine_core() noexcept {
   }
 }
 
-void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, uint32_t height) {
+void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
   auto& device = m_instance.get_device();
-  m_png_canvas_size = vk::Extent2D(width, height);
+  m_png_info = &img_info;
   m_png_pixels = &blob;
+
+  /* png pixel format */
+
   /* image data */
   std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(
       blob.size(),
@@ -295,8 +321,8 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
   device.get().unmapMemory(m_stage_image_memory.get());
 
   std::tie(m_image_buffer, m_image_memory) = device.create_image(
-      m_png_canvas_size,
-      vk::Format::eR8G8B8A8Srgb,
+      vk::Extent2D(m_png_info->width, m_png_info->height),
+      pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -304,7 +330,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
   vk::ImageViewCreateInfo image_view_info{};
   image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
   image_view_info.image = m_image_buffer.get();
-  image_view_info.format = vk::Format::eR8G8B8A8Srgb;
+  image_view_info.format = pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth);
   image_view_info.viewType = vk::ImageViewType::e2D;
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
@@ -438,7 +464,7 @@ void pngine_core::Load_Textures() {
   copy_img_region.bufferImageHeight = 0u;
   copy_img_region.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0u, 0u, 1u);
   // copy_img_region.imageOffset = vk::Extent3D(0u, 0u, 0u);
-  copy_img_region.imageExtent = vk::Extent3D(m_png_canvas_size, 1u);
+  copy_img_region.imageExtent = vk::Extent3D(m_png_info->width, m_png_info->height, 1u);
 
   transfer_buffer.copyBufferToImage(
       m_stage_image_buffer.get(), m_image_buffer.get(), vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
@@ -462,7 +488,7 @@ void pngine_core::Update(uint32_t frame_index) {
   const auto& current_mapping = m_uniform_mvp_mappings[frame_index];
 
   const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-  const auto &w = m_png_canvas_size.width, &h = m_png_canvas_size.height;
+  const auto &w = m_png_info->width, &h = m_png_info->height;
   const auto big_side = std::max(w, h), little_side = std::min(w, h);
   const auto canvas_sides_ratio = static_cast<float>(little_side) / static_cast<float>(big_side);
   pngine::MVP mvp_host_buffer;

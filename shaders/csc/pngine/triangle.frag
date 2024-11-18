@@ -10,5 +10,7 @@ layout(binding = 1) uniform sampler2D image_sampler;
 
 
 void main() {
-    outColor = texture(image_sampler, fragTexcoord);
+    float idx = texture(image_sampler, fragTexcoord).r;
+    outColor = vec4(idx, idx, idx, 1.f);
+    // outColor = texture(image_sampler, fragTexcoord); // - стандартный rgba 
 }
