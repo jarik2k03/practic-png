@@ -65,7 +65,8 @@ constexpr uint32_t bring_filtered_image_size(const png::IHDR& header, float rese
   const float pixel_size = header.bit_depth / 8.f;
   const uint32_t channels = png::channels_count_from_color_type(header.color_type);
   // (длина * высота * размер * общий размер пикселя + байт фильтрации на каждую строку) + 10% резерв
-  return static_cast<uint32_t>((header.width * header.height * pixel_size * channels + (header.height * 1)) * reserve_coefficient);
+  return static_cast<uint32_t>(
+      (header.width * header.height * pixel_size * channels + (header.height * 1)) * reserve_coefficient);
 }
 
 constexpr std::optional<png::v_section> init_section(const png::chunk& ch) {

@@ -105,8 +105,6 @@ int main(int argc, char** argv) {
     csc::png::picture png;
     csc::png::deserializer png_executor;
 
-
-
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
@@ -122,10 +120,6 @@ int main(int argc, char** argv) {
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
       core.set_drawing(png.m_image_data, png.header());
-      /* пиксели в файл */
-      std::ofstream ofs("images/data.raw");
-      ofs.write(reinterpret_cast<char*>(png.m_image_data.data()), png.m_image_data.size());
-      /* */
       core.run();
     } else {
       throw std::invalid_argument("Не назначен входной файл!");

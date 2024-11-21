@@ -44,7 +44,6 @@ const std::vector<pngine::vertex> rectangle = {
     pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
-
 // utility
 vk::Format bring_texture_format_from_png(png::e_color_type type, uint8_t bit_depth) noexcept {
   using enum png::e_color_type;
@@ -305,10 +304,7 @@ pngine_core::~pngine_core() noexcept {
 
 void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
   auto& device = m_instance.get_device();
-  m_png_info = &img_info;
-  m_png_pixels = &blob;
-
-  /* png pixel format */
+  m_png_info = &img_info, m_png_pixels = &blob;
 
   /* image data */
   std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(

@@ -3,7 +3,10 @@ module;
 #include <bits/stl_construct.h>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
+#include <cmath>
 #include <cstdint>
+#include <fstream>
+#include <ios>
 export module csc.png.deserializer:impl;
 import stl.string_view;
 import stl.string;
@@ -19,6 +22,7 @@ import :utility;
 export import csc.png.picture;
 
 import csc.png.commons.chunk;
+import csc.png.deserializer.unfilterer;
 import csc.png.deserializer.consume_chunk;
 import csc.png.deserializer.consume_chunk.inflater;
 
@@ -77,18 +81,28 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
 void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
   const auto& ihdr = deserialized.header();
   const auto& filtered = deserialized.m_image_data;
-  std::vector<uint8_t> unfiltered_image;
-  unfiltered_image.reserve(png::bring_unfiltered_image_size(ihdr));
+
+  png::u8buffer unfiltered_image(png::bring_unfiltered_image_size(ihdr));
+  auto channels_count = png::channels_count_from_color_type(ihdr.color_type);
+  const auto pixel_bytesize = channels_count * (static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f)));
+  const auto width_bytes = ihdr.width * pixel_bytesize;
+
+
+  png::unfilterer decoder({filtered.begin(), filtered.end()}, unfiltered_image, width_bytes, pixel_bytesize);
+  std::ofstream dump("images/vk_small.dump", std::ios_base::binary);
+  dump.write(reinterpret_cast<const char*>(filtered.data()), filtered.size());
+  dump.close();
   for (auto height = 0u; height < ihdr.height; ++height) {
-    std::ranges::copy(filtered.begin(), filtered.begin() + ihdr.width, std::back_inserter(unfiltered_image));
-
-
-
+    decoder.unfilter_line();
     // unfiltered_image.emplace_back(
   }
-
-  // и всё ради этого!
-  deserialized.m_image_data = unfiltered_image; // теперь вместо фильтрованного изображения будет лежать нефильтрованное
+  // теперь вместо фильтрованного изображения будет лежать нефильтрованное
+  deserialized.m_image_data = std::vector(unfiltered_image.begin(), unfiltered_image.end());
 }
+
+
+
+
+
 } // namespace png
 } // namespace csc
