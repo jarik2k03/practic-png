@@ -85,7 +85,11 @@ void filtering::up(uint8_t* to, const uint8_t* current, const uint8_t* previous)
 }
 
 void filtering::average(uint8_t* to, const uint8_t* current, const uint8_t* previous) const noexcept {
-  ::memcpy(to, current, m_pixel_bytesize); // копируем первый пиксель
+  for (auto i = 0u; i < m_pixel_bytesize; ++i) {
+    const auto recon_b = previous[i];
+    to[i] = current[i] + average_arithmetic(0u, recon_b);
+  } // первый пиксель в строке не учитывает предыдущие
+
   for (auto i = m_pixel_bytesize; i < m_linebytes_width; ++i) {
     const auto recon_a = to[i - m_pixel_bytesize];
     const auto recon_b = previous[i];
@@ -94,7 +98,10 @@ void filtering::average(uint8_t* to, const uint8_t* current, const uint8_t* prev
 }
 
 void filtering::average(uint8_t* to, const uint8_t* current) const noexcept {
-  ::memcpy(to, current, m_pixel_bytesize); // копируем первый пиксель
+  for (auto i = 0u; i < m_pixel_bytesize; ++i) {
+    to[i] = current[i] + average_arithmetic(0u, 0u);
+  } // первый пиксель в строке не учитывает предыдущие
+
   for (auto i = m_pixel_bytesize; i < m_linebytes_width; ++i) {
     const auto recon_a = to[i - m_pixel_bytesize];
     to[i] = current[i] + static_cast<uint8_t>(png::average_arithmetic(recon_a, 0u)); // recon_b замещает пустой байт
