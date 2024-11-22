@@ -3,7 +3,7 @@
 *.a
 *.so
 # безобразно тяжелый файл - приблизительно равен восьми тоннам...
-images/elephant.png
+elephant.png
 *.d
 *.exe
 build/

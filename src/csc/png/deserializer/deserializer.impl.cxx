@@ -5,8 +5,6 @@ module;
 #include <bits/ranges_algo.h>
 #include <cmath>
 #include <cstdint>
-#include <fstream>
-#include <ios>
 export module csc.png.deserializer:impl;
 import stl.string_view;
 import stl.string;
@@ -87,22 +85,13 @@ void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
   const auto pixel_bytesize = channels_count * (static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f)));
   const auto width_bytes = ihdr.width * pixel_bytesize;
 
-
   png::unfilterer decoder({filtered.begin(), filtered.end()}, unfiltered_image, width_bytes, pixel_bytesize);
-  std::ofstream dump("images/vk_small.dump", std::ios_base::binary);
-  dump.write(reinterpret_cast<const char*>(filtered.data()), filtered.size());
-  dump.close();
   for (auto height = 0u; height < ihdr.height; ++height) {
     decoder.unfilter_line();
-    // unfiltered_image.emplace_back(
   }
   // теперь вместо фильтрованного изображения будет лежать нефильтрованное
   deserialized.m_image_data = std::vector(unfiltered_image.begin(), unfiltered_image.end());
 }
-
-
-
-
 
 } // namespace png
 } // namespace csc
