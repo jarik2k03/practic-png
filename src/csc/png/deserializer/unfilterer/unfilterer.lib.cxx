@@ -26,14 +26,16 @@ constexpr int32_t average_arithmetic(int32_t a, int32_t b) noexcept {
 }
 
 constexpr uint8_t paeth_predictor(uint8_t a, uint8_t b, uint8_t c) noexcept {
-  int32_t p = a + b - c;
-  const int32_t pa = std::abs(p - a), pb = std::abs(p - b), pc = std::abs(p - c);
-  if (pa <= pb && pa <= pc)
-    return a;
-  else if (pb <= pc)
-    return b;
-  else
-    return c;
+  short pa = std::abs(b - c);
+  short pb = std::abs(a - c);
+  /* writing it out like this compiles to something faster than introducing a temp variable*/
+  const short pc = std::abs(a + b - c - c);
+  /* return input value associated with smallest of pa, pb, pc (with certain priority if equal) */
+  if (pb < pa) {
+    a = b;
+    pa = pb;
+  }
+  return (pc < pa) ? c : a;
 }
 
 class filtering {
@@ -183,10 +185,10 @@ void unfilterer::unfilter_line() {
       throw std::domain_error("Неизвестный тип фильтра. Дефильтровать невозможно.");
       break;
   }
-  std::cout << " - - READ OFFSET: " << m_read_offset << "; WRITE OFFSET: " << m_write_offset
-            << "; FILTER: " << +filter_algo << '\n';
-  std::cout << "WIDTH BYTES: " << m_algo.get_linebytes_width() << " ; PIXEL SIZE: " << m_algo.get_pixel_bytesize()
-            << '\n';
+  //  std::cout << " - - READ OFFSET: " << m_read_offset << "; WRITE OFFSET: " << m_write_offset
+  //             << "; FILTER: " << +filter_algo << '\n';
+  //   std::cout << "WIDTH BYTES: " << m_algo.get_linebytes_width() << " ; PIXEL SIZE: " << m_algo.get_pixel_bytesize()
+  //             << '\n';
   m_previous_line = m_write.data() + m_write_offset; // предыдущая дефильтрованная строка
   m_read_offset += m_algo.get_linebytes_width() + sizeof(filter_algo); // учитываем фильтр-байт
   m_write_offset += m_algo.get_linebytes_width();

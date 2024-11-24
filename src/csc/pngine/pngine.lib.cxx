@@ -51,7 +51,7 @@ vk::Format bring_texture_format_from_png(png::e_color_type type, uint8_t bit_dep
     case rgba:
       return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // Srgb только rgba8
     case rgb:
-      return (bit_depth == 8) ? vk::Format::eR8G8B8Unorm : vk::Format::eR16G16B16Unorm; // только линейное
+      return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // только линейное
     case bw:
       return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
     case bwa:
