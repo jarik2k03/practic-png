@@ -21,6 +21,8 @@ import stl.stdexcept;
 #ifndef NDEBUG
 import stl.iostream;
 #endif
+import csc.png.picture.sections.IHDR;
+
 import csc.pngine.instance;
 import csc.pngine.instance.device;
 import csc.pngine.window_handler;
@@ -36,12 +38,30 @@ namespace csc {
 namespace pngine {
 
 const std::vector<pngine::vertex> rectangle = {
-    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}},
-    pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}},
-    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}},
-    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}},
-};
+    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}, {1.f, 0.f}},
+    pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
+
+// utility
+vk::Format bring_texture_format_from_png(png::e_color_type type, uint8_t bit_depth) noexcept {
+  using enum png::e_color_type;
+  switch (type) {
+    case rgba:
+      return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // Srgb только rgba8
+    case rgb:
+      return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // только линейное
+    case bw:
+      return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
+    case bwa:
+      return (bit_depth == 8) ? vk::Format::eR8G8Unorm : vk::Format::eR16G16Unorm; // только линейное
+    case indexed:
+      return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
+    default:
+      return vk::Format::eUndefined;
+  }
+}
 
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
@@ -62,7 +82,8 @@ export class pngine_core {
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
   const std::vector<uint8_t>* m_png_pixels = nullptr;
-  vk::Extent2D m_png_canvas_size{640u, 480u};
+
+  const png::IHDR* m_png_info = nullptr;
 
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
@@ -98,6 +119,8 @@ export class pngine_core {
   vk::UniqueBuffer m_stage_image_buffer{};
   vk::UniqueDeviceMemory m_stage_image_memory{};
   vk::UniqueImage m_image_buffer{};
+  vk::UniqueImageView m_image_view{};
+  vk::UniqueSampler m_image_sampler{};
   vk::UniqueDeviceMemory m_image_memory{};
 
   pngine::command_pool m_graphics_pool;
@@ -112,7 +135,7 @@ export class pngine_core {
  public:
   pngine_core() = delete;
   pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
-  void set_drawing(const std::vector<uint8_t>& blob, uint32_t width, uint32_t height);
+  void set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info);
   void run();
   ~pngine_core() noexcept;
 
@@ -143,17 +166,17 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
 
-  vk::DescriptorSetLayoutBinding descriptor_layout_binding{};
-  descriptor_layout_binding.binding = 0u;
-  descriptor_layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
-  descriptor_layout_binding.descriptorCount = 1u;
-  descriptor_layout_binding.pImmutableSamplers = nullptr;
-  descriptor_layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+  /* descriptor layouts */
+  vk::DescriptorSetLayoutBinding u0_bind(
+      0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
+  vk::DescriptorSetLayoutBinding s1_bind(
+      1u, vk::DescriptorType::eCombinedImageSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+  const auto binds = std::array{u0_bind, s1_bind}; // deduction guides!
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
   descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-  descriptor_layout_info.bindingCount = 1u;
-  descriptor_layout_info.pBindings = &descriptor_layout_binding;
+  descriptor_layout_info.bindingCount = binds.size();
+  descriptor_layout_info.pBindings = binds.data();
 
   m_descr_layout = device.get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
 
@@ -163,8 +186,10 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   pipeline_layout_info.pSetLayouts = &m_descr_layout.get();
   m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
 
+  /* render pass */
   device.create_render_pass("basic_pass");
 
+  /* creating pipeline and framebuffers */
   pngine::graphics_pipeline_config triangle_cfg;
   const auto shader_stages = {
       pngine::shader_stage{"main", device.get_shader_module("vs_triangle").get(), vk::ShaderStageFlagBits::eVertex},
@@ -227,12 +252,15 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 
   m_command_buffers = m_graphics_pool.allocate_command_buffers(vk::CommandBufferLevel::ePrimary, m_flight_count);
 
-  /* descriptor sets */
-  vk::DescriptorPoolSize pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count);
+  /* descriptor pool */
+  vk::DescriptorPoolSize mvp_pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count);
+  vk::DescriptorPoolSize image_sampler_pool_size(vk::DescriptorType::eCombinedImageSampler, m_flight_count);
+  const auto pool_sizes = std::array{mvp_pool_size, image_sampler_pool_size};
+
   vk::DescriptorPoolCreateInfo des_pool_info{};
   des_pool_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-  des_pool_info.pPoolSizes = &pool_size;
-  des_pool_info.poolSizeCount = 1u;
+  des_pool_info.pPoolSizes = pool_sizes.data();
+  des_pool_info.poolSizeCount = pool_sizes.size();
   des_pool_info.maxSets = m_flight_count;
   des_pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
@@ -247,20 +275,6 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   alloc_sets_info.pSetLayouts = layouts.data();
 
   m_descr_sets = device.get().allocateDescriptorSetsUnique(alloc_sets_info);
-
-  /* setup descriptor sets */
-  for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    vk::DescriptorBufferInfo buf_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
-    vk::WriteDescriptorSet write{};
-    write.sType = vk::StructureType::eWriteDescriptorSet;
-    write.descriptorCount = 1u;
-    write.pBufferInfo = &buf_info;
-    write.descriptorType = vk::DescriptorType::eUniformBuffer;
-    write.dstSet = m_descr_sets[i].get();
-    write.dstBinding = 0u;
-    write.dstArrayElement = 0u;
-    device.get().updateDescriptorSets(1u, &write, 0u, nullptr);
-  }
 
   /* syncronisation primitives */
   vk::SemaphoreCreateInfo semaphore_info{};
@@ -288,10 +302,11 @@ pngine_core::~pngine_core() noexcept {
   }
 }
 
-void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, uint32_t height) {
+void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
   auto& device = m_instance.get_device();
-  m_png_canvas_size = vk::Extent2D(width, height);
-  m_png_pixels = &blob;
+  m_png_info = &img_info, m_png_pixels = &blob;
+
+  /* image data */
   std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(
       blob.size(),
       vk::BufferUsageFlagBits::eTransferSrc,
@@ -302,11 +317,64 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, uint32_t width, 
   device.get().unmapMemory(m_stage_image_memory.get());
 
   std::tie(m_image_buffer, m_image_memory) = device.create_image(
-      m_png_canvas_size,
-      vk::Format::eR8G8B8A8Srgb,
+      vk::Extent2D(m_png_info->width, m_png_info->height),
+      pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
+  /* image view */
+  vk::ImageViewCreateInfo image_view_info{};
+  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+  image_view_info.image = m_image_buffer.get();
+  image_view_info.format = pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth);
+  image_view_info.viewType = vk::ImageViewType::e2D;
+  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+
+  m_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
+  /* image sampler */
+  vk::SamplerCreateInfo sampler_info{};
+  sampler_info.sType = vk::StructureType::eSamplerCreateInfo;
+  // sampler_info.magFilter = vk::Filter::eLinear;
+  sampler_info.minFilter = vk::Filter::eNearest;
+  sampler_info.addressModeU = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeV = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.anisotropyEnable = vk::False;
+  sampler_info.maxAnisotropy = 1.f;
+  sampler_info.borderColor = vk::BorderColor::eIntOpaqueBlack;
+  sampler_info.unnormalizedCoordinates = vk::False;
+  sampler_info.compareEnable = vk::False;
+  sampler_info.compareOp = vk::CompareOp::eAlways;
+  sampler_info.mipmapMode = vk::SamplerMipmapMode::eLinear;
+  sampler_info.mipLodBias = 0.f, sampler_info.minLod = 0.f, sampler_info.maxLod = 0.f;
+
+  m_image_sampler = device.get().createSamplerUnique(sampler_info, nullptr);
+  /* setup descriptor sets */
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
+    vk::DescriptorImageInfo d_image_sampler_info(
+        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    vk::WriteDescriptorSet write_mvp{}, write_image_sampler{};
+    write_mvp.sType = vk::StructureType::eWriteDescriptorSet;
+    write_mvp.descriptorCount = 1u;
+    write_mvp.pBufferInfo = &d_mvp_info;
+    write_mvp.descriptorType = vk::DescriptorType::eUniformBuffer;
+    write_mvp.dstSet = m_descr_sets[i].get();
+    write_mvp.dstBinding = 0u;
+    write_mvp.dstArrayElement = 0u;
+
+    write_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
+    write_image_sampler.descriptorCount = 1u;
+    write_image_sampler.pImageInfo = &d_image_sampler_info;
+    write_image_sampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    write_image_sampler.dstSet = m_descr_sets[i].get();
+    write_image_sampler.dstBinding = 1u;
+    write_image_sampler.dstArrayElement = 0u;
+
+    const auto writings = std::array{write_mvp, write_image_sampler};
+    device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
+  }
 }
 
 void pngine_core::run() {
@@ -371,9 +439,13 @@ void pngine_core::Load_Textures() {
   /* our barriers */
   vk::ImageMemoryBarrier undef_to_transferDst = barrier_template, transferDst_to_shaderRD = barrier_template;
 
+  undef_to_transferDst.oldLayout = vk::ImageLayout::eUndefined;
+  undef_to_transferDst.newLayout = vk::ImageLayout::eTransferDstOptimal;
   undef_to_transferDst.srcAccessMask = vk::AccessFlags{};
   undef_to_transferDst.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
+  transferDst_to_shaderRD.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+  transferDst_to_shaderRD.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
   transferDst_to_shaderRD.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
   transferDst_to_shaderRD.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
@@ -388,7 +460,7 @@ void pngine_core::Load_Textures() {
   copy_img_region.bufferImageHeight = 0u;
   copy_img_region.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0u, 0u, 1u);
   // copy_img_region.imageOffset = vk::Extent3D(0u, 0u, 0u);
-  copy_img_region.imageExtent = vk::Extent3D(m_png_canvas_size, 1u);
+  copy_img_region.imageExtent = vk::Extent3D(m_png_info->width, m_png_info->height, 1u);
 
   transfer_buffer.copyBufferToImage(
       m_stage_image_buffer.get(), m_image_buffer.get(), vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
@@ -397,9 +469,7 @@ void pngine_core::Load_Textures() {
   transfer_buffer.end();
 
   vk::SubmitInfo submit_info{};
-  submit_info.sType = vk::StructureType::eSubmitInfo;
-  submit_info.pCommandBuffers = &transfer_buffer;
-  submit_info.commandBufferCount = 1u;
+  submit_info.pCommandBuffers = &transfer_buffer, submit_info.commandBufferCount = 1u;
   auto transfer_queue = device.get_transfer_queue();
   vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
@@ -414,16 +484,16 @@ void pngine_core::Update(uint32_t frame_index) {
   const auto& current_mapping = m_uniform_mvp_mappings[frame_index];
 
   const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-  const auto &w = m_png_canvas_size.width, &h = m_png_canvas_size.height;
+  const auto &w = m_png_info->width, &h = m_png_info->height;
   const auto big_side = std::max(w, h), little_side = std::min(w, h);
   const auto canvas_sides_ratio = static_cast<float>(little_side) / static_cast<float>(big_side);
   pngine::MVP mvp_host_buffer;
   if (w < h)
-    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
-  else
     mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(canvas_sides_ratio, 1.f, 1.f));
+  else
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
 
-  mvp_host_buffer.view = glm::lookAt(glm::vec3{1e-7f, 0.f, 1.f}, glm::vec3{0.f, 0.f, -2.f}, glm::vec3{0.f, 0.f, 1.f});
+  mvp_host_buffer.view = glm::lookAt(glm::vec3{0.f, 1e-7f, 1.f}, glm::vec3{0.0f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
   mvp_host_buffer.proj = glm::perspective(glm::radians(70.f), aspect, 0.1f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;
   ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));

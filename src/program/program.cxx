@@ -14,6 +14,8 @@ import csc.pngine;
 import stl.string_view;
 import stl.string;
 import stl.iostream;
+import stl.fstream;
+import stl.ios;
 import stl.stdexcept;
 
 csc::png::e_compression_level bring_compression_level(const char* arg) {
@@ -102,9 +104,12 @@ int main(int argc, char** argv) {
 
     csc::png::picture png;
     csc::png::deserializer png_executor;
+
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
+      png = png_executor.deserialize(i_pos->second, ignore_checksum);
+      png_executor.prepare_to_present(png); // здесь происходит второй этап декодирования изображения
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
       csc::pngine::pngine_core core(
@@ -114,8 +119,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
-      png = png_executor.deserialize(i_pos->second, ignore_checksum);
-      core.set_drawing(png.m_image_data, png.header().width, png.header().height);
+      core.set_drawing(png.m_image_data, png.header());
       core.run();
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
