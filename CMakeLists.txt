@@ -23,6 +23,7 @@ add_subdirectory(shaders)
 include(create_vk_module) # vulkan поддерживает c++ modules с v.1.3.256
 
 find_package(glfw3 REQUIRED) # нужны колбэки событий и устранить утечку памяти из-за деструктора swapchain от xcb surface
+find_package(glm REQUIRED) # матрицы и векторы
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS ON)

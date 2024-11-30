@@ -18,6 +18,9 @@ class deserializer : private deserializer_impl {
   png::picture deserialize(std::string_view filepath, bool ignore_checksum) {
     return do_deserialize(filepath, ignore_checksum);
   }
+  void prepare_to_present(png::picture& deserialized) {
+    do_prepare_to_present(deserialized);
+  }
 };
 
 } // namespace png
