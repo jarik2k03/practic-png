@@ -13,4 +13,4 @@ target_sources(pngine PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES pngine.l
 target_link_libraries(pngine PRIVATE pngine_attributes ${INSTANCE} ${WINDOW_HANDLER} ${GLFW_HANDLER} ${VERTEX} png_picture_sections_IHDR)
 # подключаем сгенерированный заголовок
 target_include_directories(pngine PRIVATE ${CMAKE_BINARY_DIR}/shaders/csc/pngine)
-target_link_libraries(pngine INTERFACE shaders_triangle) # теперь нам доступен сгенерированный заголовок с путями к шейдеру!
+target_link_libraries(pngine INTERFACE shaders_triangle shaders_clipping) # теперь нам доступен сгенерированный заголовок с путями к шейдеру!

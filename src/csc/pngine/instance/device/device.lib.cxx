@@ -73,6 +73,7 @@ class device {
   vk::Queue get_present_queue() const;
   vk::Queue get_graphics_queue() const;
   vk::Queue get_transfer_queue() const;
+  vk::Queue get_compute_queue() const;
   const pngine::shader_module& get_shader_module(std::string_view name) const;
   const pngine::swapchainKHR& get_swapchain() const;
   const pngine::render_pass& get_render_pass(std::string_view name) const;
@@ -326,6 +327,9 @@ vk::Queue device::get_transfer_queue() const {
 
 vk::Queue device::get_present_queue() const {
   return m_device.getQueue(m_indices.present.value(), 0);
+}
+vk::Queue device::get_compute_queue() const {
+  return m_device.getQueue(m_indices.compute.value(), 0);
 }
 void device::clear() noexcept {
   if (m_is_created != false) {
