@@ -336,6 +336,16 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
       vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
 
+  /* uniform buffer with params */
+  const auto& [uniform_params, uniform_params_memory] = device.create_buffer(
+        sizeof(pngine::clipping::params),
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    void* const mapped = device.get().mapMemory(uniform_params_memory.get(), 0u, sizeof(pngine::clipping::params));
+    const pngine::clipping::params params_host_buffer{glm::uvec2(offset.width, offset.height), glm::uvec2(size.width, size.height)};
+    ::memcpy(mapped, &params_host_buffer, sizeof(pngine::clipping::params));
+    device.get().unmapMemory(uniform_params_memory.get());
+
   /* image view */
   vk::ImageViewCreateInfo image_view_info{};
   image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
@@ -370,6 +380,40 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
   alloc_sets_info.pSetLayouts = &layout;
 
   auto clip_descr_set = std::move(device.get().allocateDescriptorSetsUnique(alloc_sets_info).at(0u));
+
+
+  vk::DescriptorBufferInfo d_params_info(uniform_params.get(), 0u, sizeof(pngine::clipping::params));
+  vk::DescriptorImageInfo d_in_image_info(
+        m_image_sampler.get(), in_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+  vk::DescriptorImageInfo d_out_image_info(
+        m_image_sampler.get(), in_image_view.get(), vk::ImageLayout::eGeneral);
+
+  vk::WriteDescriptorSet write_params{}, write_in_image{}, write_out_image{};
+  write_params.sType = vk::StructureType::eWriteDescriptorSet;
+  write_params.descriptorCount = 1u;
+  write_params.pBufferInfo = &d_params_info;
+  write_params.descriptorType = vk::DescriptorType::eUniformBuffer;
+  write_params.dstSet = clip_descr_set.get();
+  write_params.dstBinding = 0u;
+  write_params.dstArrayElement = 0u;
+
+  write_in_image.sType = vk::StructureType::eWriteDescriptorSet;
+  write_in_image.descriptorCount = 1u;
+  write_in_image.pImageInfo = &d_in_image_info;
+  write_in_image.descriptorType = vk::DescriptorType::eStorageImage;
+  write_in_image.dstSet = clip_descr_set.get();
+  write_in_image.dstBinding = 1u;
+  write_in_image.dstArrayElement = 0u;
+
+  write_out_image.sType = vk::StructureType::eWriteDescriptorSet;
+  write_out_image.descriptorCount = 1u;
+  write_out_image.pImageInfo = &d_out_image_info;
+  write_out_image.descriptorType = vk::DescriptorType::eStorageImage;
+  write_out_image.dstSet = clip_descr_set.get();
+  write_out_image.dstBinding = 1u;
+  write_out_image.dstArrayElement = 0u;
+  const auto writings = std::array{write_params, write_in_image, write_out_image};
+  device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
 }
 
 void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
