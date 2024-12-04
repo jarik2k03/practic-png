@@ -107,7 +107,8 @@ export class pngine_core {
   vk::UniqueBuffer m_png_surface_ids;
   vk::UniqueDeviceMemory m_png_surface_ids_memory;
 
-  vk::UniqueDescriptorSetLayout m_descr_layout;
+  vk::UniqueDescriptorSetLayout m_descr_layout_0;
+  vk::UniqueDescriptorSetLayout m_descr_layout_1;
   vk::UniquePipelineLayout m_pipeline_layout;
 
   std::array<vk::UniqueBuffer, m_flight_count> m_uniform_mvps;
@@ -116,7 +117,8 @@ export class pngine_core {
 
   vk::UniqueDescriptorPool m_descr_pool;
   vk::UniqueDescriptorPool m_toolbox_descr_pool;
-  std::vector<vk::UniqueDescriptorSet> m_descr_sets;
+  std::vector<vk::UniqueDescriptorSet> m_descr_sets_0;
+  std::vector<vk::UniqueDescriptorSet> m_descr_sets_1;
 
   vk::UniqueBuffer m_stage_image_buffer{};
   vk::UniqueDeviceMemory m_stage_image_memory{};
@@ -173,20 +175,31 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   vk::DescriptorSetLayoutBinding u0_bind(
       0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
   vk::DescriptorSetLayoutBinding s1_bind(
-      1u, vk::DescriptorType::eCombinedImageSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+      1u, vk::DescriptorType::eSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
   const auto binds = std::array{u0_bind, s1_bind}; // deduction guides!
 
-  vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
-  descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-  descriptor_layout_info.bindingCount = binds.size();
-  descriptor_layout_info.pBindings = binds.data();
+  vk::DescriptorSetLayoutCreateInfo descriptor_layout_0_info{};
+  descriptor_layout_0_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+  descriptor_layout_0_info.bindingCount = binds.size();
+  descriptor_layout_0_info.pBindings = binds.data();
 
-  m_descr_layout = device.get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
+  m_descr_layout_0 = device.get().createDescriptorSetLayoutUnique(descriptor_layout_0_info, nullptr);
 
+  vk::DescriptorSetLayoutBinding t1_bind(
+      1u, vk::DescriptorType::eSampledImage, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+
+  vk::DescriptorSetLayoutCreateInfo descriptor_layout_1_info{};
+  descriptor_layout_1_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+  descriptor_layout_1_info.bindingCount = 1u;
+  descriptor_layout_1_info.pBindings = &t1_bind;
+
+  m_descr_layout_1 = device.get().createDescriptorSetLayoutUnique(descriptor_layout_1_info, nullptr);
+
+  const auto descr_layouts = std::array{m_descr_layout_0.get(), m_descr_layout_1.get()};
   vk::PipelineLayoutCreateInfo pipeline_layout_info{};
   pipeline_layout_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-  pipeline_layout_info.setLayoutCount = 1u;
-  pipeline_layout_info.pSetLayouts = &m_descr_layout.get();
+  pipeline_layout_info.setLayoutCount = descr_layouts.size();
+  pipeline_layout_info.pSetLayouts = descr_layouts.data();
   m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
 
   /* render pass */
@@ -257,14 +270,15 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 
   /* descriptor pool */
   vk::DescriptorPoolSize mvp_pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count);
-  vk::DescriptorPoolSize image_sampler_pool_size(vk::DescriptorType::eCombinedImageSampler, m_flight_count);
-  auto pool_sizes = std::array{mvp_pool_size, image_sampler_pool_size};
+  vk::DescriptorPoolSize image_sampler_pool_size(vk::DescriptorType::eSampler, m_flight_count);
+  vk::DescriptorPoolSize image_texture_pool_size(vk::DescriptorType::eSampledImage, m_flight_count);
+  auto pool_sizes = std::array{mvp_pool_size, image_sampler_pool_size, image_texture_pool_size};
 
   vk::DescriptorPoolCreateInfo des_pool_info{};
   des_pool_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
   des_pool_info.pPoolSizes = pool_sizes.data();
   des_pool_info.poolSizeCount = pool_sizes.size();
-  des_pool_info.maxSets = m_flight_count;
+  des_pool_info.maxSets = 32; // прибито гвоздями
   des_pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
   m_descr_pool = device.get().createDescriptorPoolUnique(des_pool_info, nullptr);
@@ -272,28 +286,35 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   /* descriptor pool for toolbox */
   vk::DescriptorPoolSize params_pool_size(vk::DescriptorType::eUniformBuffer, 1u);
   vk::DescriptorPoolSize images_pool_size(vk::DescriptorType::eStorageImage, 2u);
-  pool_sizes = std::array{params_pool_size, images_pool_size};
+  const auto tbx_pool_sizes = std::array{params_pool_size, images_pool_size};
 
   vk::DescriptorPoolCreateInfo des_pool_toolbox_info{};
   des_pool_toolbox_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-  des_pool_toolbox_info.pPoolSizes = pool_sizes.data();
-  des_pool_toolbox_info.poolSizeCount = pool_sizes.size();
+  des_pool_toolbox_info.pPoolSizes = tbx_pool_sizes.data();
+  des_pool_toolbox_info.poolSizeCount = tbx_pool_sizes.size();
   des_pool_toolbox_info.maxSets = 32u; // гвоздь 10 см
   des_pool_toolbox_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
   m_toolbox_descr_pool = device.get().createDescriptorPoolUnique(des_pool_toolbox_info, nullptr);
 
   /* allocation of graphics_pipeline descriptors */
-  std::array<vk::DescriptorSetLayout, m_flight_count> layouts;
-  std::ranges::fill(layouts, m_descr_layout.get());
-  vk::DescriptorSetAllocateInfo alloc_sets_info{};
-  alloc_sets_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
-  alloc_sets_info.descriptorPool = m_descr_pool.get();
-  alloc_sets_info.descriptorSetCount = layouts.size();
-  alloc_sets_info.pSetLayouts = layouts.data();
+  const auto layouts0 = std::array{m_descr_layout_0.get(), m_descr_layout_0.get()};
+  vk::DescriptorSetAllocateInfo alloc_sets_0_info{};
+  alloc_sets_0_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+  alloc_sets_0_info.descriptorPool = m_descr_pool.get();
+  alloc_sets_0_info.descriptorSetCount = layouts0.size();
+  alloc_sets_0_info.pSetLayouts = layouts0.data();
 
-  m_descr_sets = device.get().allocateDescriptorSetsUnique(alloc_sets_info);
+  m_descr_sets_0 = device.get().allocateDescriptorSetsUnique(alloc_sets_0_info);
 
+  const auto layouts1 = std::array{m_descr_layout_1.get(), m_descr_layout_1.get()};
+  vk::DescriptorSetAllocateInfo alloc_sets_1_info{};
+  alloc_sets_1_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+  alloc_sets_1_info.descriptorPool = m_descr_pool.get();
+  alloc_sets_1_info.descriptorSetCount = layouts1.size();
+  alloc_sets_1_info.pSetLayouts = layouts1.data();
+
+  m_descr_sets_1 = device.get().allocateDescriptorSetsUnique(alloc_sets_1_info);
   /* syncronisation primitives */
   vk::SemaphoreCreateInfo semaphore_info{};
   semaphore_info.sType = vk::StructureType::eSemaphoreCreateInfo;
@@ -346,15 +367,6 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
     ::memcpy(mapped, &params_host_buffer, sizeof(pngine::clipping::params));
     device.get().unmapMemory(uniform_params_memory.get());
 
-  /* image view */
-  vk::ImageViewCreateInfo image_view_info{};
-  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
-  image_view_info.image = m_image_buffer.get();
-  image_view_info.format = pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth);
-  image_view_info.viewType = vk::ImageViewType::e2D;
-  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
-
-  auto in_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
   /* descriptor layouts */
   vk::DescriptorSetLayoutBinding u0_bind(
       0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
@@ -384,9 +396,9 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
 
   vk::DescriptorBufferInfo d_params_info(uniform_params.get(), 0u, sizeof(pngine::clipping::params));
   vk::DescriptorImageInfo d_in_image_info(
-        m_image_sampler.get(), in_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
   vk::DescriptorImageInfo d_out_image_info(
-        m_image_sampler.get(), in_image_view.get(), vk::ImageLayout::eGeneral);
+        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eGeneral);
 
   vk::WriteDescriptorSet write_params{}, write_in_image{}, write_out_image{};
   write_params.sType = vk::StructureType::eWriteDescriptorSet;
@@ -410,7 +422,7 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
   write_out_image.pImageInfo = &d_out_image_info;
   write_out_image.descriptorType = vk::DescriptorType::eStorageImage;
   write_out_image.dstSet = clip_descr_set.get();
-  write_out_image.dstBinding = 1u;
+  write_out_image.dstBinding = 2u;
   write_out_image.dstArrayElement = 0u;
   const auto writings = std::array{write_params, write_in_image, write_out_image};
   device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
@@ -466,28 +478,42 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
   /* setup descriptor sets */
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
-    vk::DescriptorImageInfo d_image_sampler_info(
-        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+    vk::DescriptorImageInfo d_image_texture_info(
+        {}, m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
 
-    vk::WriteDescriptorSet write_mvp{}, write_image_sampler{};
+    vk::WriteDescriptorSet write_mvp{}, write_image_texture{};
     write_mvp.sType = vk::StructureType::eWriteDescriptorSet;
     write_mvp.descriptorCount = 1u;
     write_mvp.pBufferInfo = &d_mvp_info;
     write_mvp.descriptorType = vk::DescriptorType::eUniformBuffer;
-    write_mvp.dstSet = m_descr_sets[i].get();
+    write_mvp.dstSet = m_descr_sets_0[i].get();
     write_mvp.dstBinding = 0u;
     write_mvp.dstArrayElement = 0u;
 
+    write_image_texture.sType = vk::StructureType::eWriteDescriptorSet;
+    write_image_texture.descriptorCount = 1u;
+    write_image_texture.pImageInfo = &d_image_texture_info;
+    write_image_texture.descriptorType = vk::DescriptorType::eSampledImage;
+    write_image_texture.dstSet = m_descr_sets_0[i].get();
+    write_image_texture.dstBinding = 1u;
+    write_image_texture.dstArrayElement = 0u;
+
+    const auto writings = std::array{write_mvp, write_image_texture};
+    device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
+  }
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorImageInfo d_image_sampler_info(m_image_sampler.get(), {}, {});
+
+    vk::WriteDescriptorSet write_image_sampler{};
     write_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
     write_image_sampler.descriptorCount = 1u;
     write_image_sampler.pImageInfo = &d_image_sampler_info;
-    write_image_sampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    write_image_sampler.dstSet = m_descr_sets[i].get();
+    write_image_sampler.descriptorType = vk::DescriptorType::eSampler;
+    write_image_sampler.dstSet = m_descr_sets_1[i].get();
     write_image_sampler.dstBinding = 1u;
     write_image_sampler.dstArrayElement = 0u;
 
-    const auto writings = std::array{write_mvp, write_image_sampler};
-    device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
+    device.get().updateDescriptorSets(1u, &write_image_sampler, 0u, nullptr);
   }
 }
 
@@ -619,7 +645,7 @@ void pngine_core::Render_Frame() {
   const auto& in_flight_f = m_in_flight_f[m_current_frame];
   const auto& image_available_s = m_image_available_s[m_current_frame];
   const auto& render_finished_s = m_render_finished_s[m_current_frame];
-  const auto& cur_descr_set = m_descr_sets[m_current_frame];
+  const auto& cur_descr_set = m_descr_sets_0[m_current_frame];
   const auto& cur_command_buffer = m_command_buffers[m_current_frame];
   constexpr const auto without_delays = std::numeric_limits<uint64_t>::max();
   vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
