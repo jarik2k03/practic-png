@@ -172,26 +172,26 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
 
   /* descriptor layouts */
-  vk::DescriptorSetLayoutBinding u0_bind(
+  vk::DescriptorSetLayoutBinding u0_0_bind(
       0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
-  vk::DescriptorSetLayoutBinding s1_bind(
-      1u, vk::DescriptorType::eSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
-  const auto binds = std::array{u0_bind, s1_bind}; // deduction guides!
+  vk::DescriptorSetLayoutBinding s1_0_bind(
+      1u, vk::DescriptorType::eSampledImage, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+  const auto binds_0 = std::array{u0_0_bind, s1_0_bind}; // deduction guides!
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_0_info{};
   descriptor_layout_0_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-  descriptor_layout_0_info.bindingCount = binds.size();
-  descriptor_layout_0_info.pBindings = binds.data();
+  descriptor_layout_0_info.bindingCount = binds_0.size();
+  descriptor_layout_0_info.pBindings = binds_0.data();
 
   m_descr_layout_0 = device.get().createDescriptorSetLayoutUnique(descriptor_layout_0_info, nullptr);
 
-  vk::DescriptorSetLayoutBinding t1_bind(
-      1u, vk::DescriptorType::eSampledImage, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+  vk::DescriptorSetLayoutBinding t1_1_bind(
+      1u, vk::DescriptorType::eSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_1_info{};
   descriptor_layout_1_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
   descriptor_layout_1_info.bindingCount = 1u;
-  descriptor_layout_1_info.pBindings = &t1_bind;
+  descriptor_layout_1_info.pBindings = &t1_1_bind;
 
   m_descr_layout_1 = device.get().createDescriptorSetLayoutUnique(descriptor_layout_1_info, nullptr);
 
@@ -350,13 +350,6 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
   comp_shader_info.module = device.get_shader_module("cs_clipping").get();
   comp_shader_info.pName = "main";
 
-  const auto& [in_image, in_image_memory] = device.create_image(
-      size,
-      vk::Format::eR8G8B8A8Unorm,
-      vk::ImageTiling::eOptimal,
-      vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
-      vk::MemoryPropertyFlagBits::eDeviceLocal);
-
   /* uniform buffer with params */
   const auto& [uniform_params, uniform_params_memory] = device.create_buffer(
         sizeof(pngine::clipping::params),
@@ -392,13 +385,21 @@ void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
   alloc_sets_info.pSetLayouts = &layout;
 
   auto clip_descr_set = std::move(device.get().allocateDescriptorSetsUnique(alloc_sets_info).at(0u));
+  /* unorm image view */
+  vk::ImageViewCreateInfo image_view_info{};
+  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+  image_view_info.image = m_image_buffer.get();
+  image_view_info.format = vk::Format::eR8G8B8A8Unorm;
+  image_view_info.viewType = vk::ImageViewType::e2D;
+  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
+  const auto norm_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
 
   vk::DescriptorBufferInfo d_params_info(uniform_params.get(), 0u, sizeof(pngine::clipping::params));
   vk::DescriptorImageInfo d_in_image_info(
-        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+      {}, norm_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
   vk::DescriptorImageInfo d_out_image_info(
-        m_image_sampler.get(), m_image_view.get(), vk::ImageLayout::eGeneral);
+      {}, norm_image_view.get(), vk::ImageLayout::eGeneral);
 
   vk::WriteDescriptorSet write_params{}, write_in_image{}, write_out_image{};
   write_params.sType = vk::StructureType::eWriteDescriptorSet;
@@ -442,17 +443,25 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
   ::memcpy(staged_image_mapping, blob.data(), blob.size());
   device.get().unmapMemory(m_stage_image_memory.get());
 
+  const auto used_formats = std::array{vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Unorm};
+  vk::ImageFormatListCreateInfoKHR format_lists_info{};
+  format_lists_info.pViewFormats = used_formats.data();
+  format_lists_info.viewFormatCount = used_formats.size();
+
   std::tie(m_image_buffer, m_image_memory) = device.create_image(
       vk::Extent2D(m_png_info->width, m_png_info->height),
-      pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
+      // pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
+      vk::Format::eR8G8B8A8Unorm,
       vk::ImageTiling::eOptimal,
-      vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-      vk::MemoryPropertyFlagBits::eDeviceLocal);
+      vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
+      vk::MemoryPropertyFlagBits::eDeviceLocal,
+      vk::ImageCreateFlagBits::eMutableFormat | vk::ImageCreateFlagBits::eExtendedUsage,
+      &format_lists_info);
   /* image view */
   vk::ImageViewCreateInfo image_view_info{};
   image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
   image_view_info.image = m_image_buffer.get();
-  image_view_info.format = pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth);
+  image_view_info.format = vk::Format::eR8G8B8A8Srgb;
   image_view_info.viewType = vk::ImageViewType::e2D;
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
@@ -520,7 +529,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
 void pngine_core::run() {
   Load_Mesh(); // присылаем данные перед рендерингом
   Load_Textures(); // присылаем текстуру картинки перед рендерингом
-  ClipImage({0u, 0u}, {1024u, 1024u}); // пока что обрезка происходит сразу при запуске программы
+  // ClipImage({0u, 0u}, {1024u, 1024u}); // пока что обрезка происходит сразу при запуске программы
   double time = 0.0;
   uint64_t frames_count = 0u;
   while (!m_window_handler.should_close()) {
@@ -645,7 +654,7 @@ void pngine_core::Render_Frame() {
   const auto& in_flight_f = m_in_flight_f[m_current_frame];
   const auto& image_available_s = m_image_available_s[m_current_frame];
   const auto& render_finished_s = m_render_finished_s[m_current_frame];
-  const auto& cur_descr_set = m_descr_sets_0[m_current_frame];
+  const auto cur_descr_sets = std::array{m_descr_sets_0[m_current_frame].get(), m_descr_sets_1[m_current_frame].get()};
   const auto& cur_command_buffer = m_command_buffers[m_current_frame];
   constexpr const auto without_delays = std::numeric_limits<uint64_t>::max();
   vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
@@ -688,7 +697,7 @@ void pngine_core::Render_Frame() {
   cur_command_buffer.bindVertexBuffers(0u, vertex_buffer_count, buffers, offsets);
   cur_command_buffer.bindIndexBuffer(m_png_surface_ids.get(), 0u, vk::IndexType::eUint16);
   cur_command_buffer.bindDescriptorSets(
-      vk::PipelineBindPoint::eGraphics, m_pipeline_layout.get(), 0u, 1u, &cur_descr_set.get(), 0u, nullptr);
+      vk::PipelineBindPoint::eGraphics, m_pipeline_layout.get(), 0u, cur_descr_sets.size(), cur_descr_sets.data(), 0u, nullptr);
   const uint32_t rectangle_indices = rectangle_ids.size(), inst_count = 1u, first_vert = 0u, first_inst = 0u;
   cur_command_buffer.drawIndexed(rectangle_indices, inst_count, first_vert, 0, first_inst);
   cur_command_buffer.endRenderPass();
