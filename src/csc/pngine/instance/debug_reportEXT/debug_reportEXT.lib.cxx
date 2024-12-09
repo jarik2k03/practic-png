@@ -12,7 +12,7 @@ namespace pngine {
 
 using pfn_create = PFN_vkCreateDebugReportCallbackEXT;
 using pfn_destroy = PFN_vkDestroyDebugReportCallbackEXT;
-struct debug_dispatch : public vk::DispatchLoaderBase {
+struct debug_dispatch : public vk::detail::DispatchLoaderBase {
   pfn_create vkCreateDebugReportCallbackEXT = 0ul;
   pfn_destroy vkDestroyDebugReportCallbackEXT = 0ul;
 };

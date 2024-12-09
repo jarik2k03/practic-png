@@ -45,25 +45,175 @@ const std::vector<pngine::vertex> rectangle = {
     pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
-// utility
-vk::Format bring_texture_format_from_png(png::e_color_type type, uint8_t bit_depth) noexcept {
-  using enum png::e_color_type;
-  switch (type) {
-    case rgba:
-      return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // Srgb только rgba8
-    case rgb:
-      return (bit_depth == 8) ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR16G16B16A16Unorm; // только линейное
-    case bw:
-      return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
-    case bwa:
-      return (bit_depth == 8) ? vk::Format::eR8G8Unorm : vk::Format::eR16G16Unorm; // только линейное
-    case indexed:
-      return (bit_depth == 8) ? vk::Format::eR8Unorm : vk::Format::eR16Unorm; // только линейное
-    default:
-      return vk::Format::eUndefined;
-  }
+// image manipulator
+class image_manipulator {
+ private:
+  pngine::device* m_device = nullptr;
+
+  vk::UniqueDescriptorPool m_descriptor_pool;
+
+  vk::UniqueDescriptorSetLayout m_descr_set_layout;
+  vk::UniquePipelineLayout m_compute_pipeline_layout;
+
+  // uniform params;
+  vk::UniqueDeviceMemory m_uniform_params_memory;
+  vk::UniqueBuffer m_uniform_params;
+  // uniform readonly image2D in_image;
+  vk::UniqueDeviceMemory m_in_image_memory;
+  vk::UniqueImage m_in_image;
+  vk::UniqueImageView m_in_image_view;
+  // uniform writeonly image2D out_image;
+  vk::UniqueDeviceMemory m_out_image_memory;
+  vk::UniqueImage m_out_image;
+  vk::UniqueImageView m_out_image_view;
+
+ public:
+  image_manipulator() = default;
+  image_manipulator(image_manipulator&& move) noexcept = default;
+  image_manipulator& operator=(image_manipulator&& move) noexcept = default;
+  image_manipulator(pngine::device& handle);
+  void clip_image(const std::vector<uint8_t>& image, vk::Extent2D image_size, vk::Extent2D offset, vk::Extent2D size);
+  ~image_manipulator() noexcept = default;
+};
+
+image_manipulator::image_manipulator(pngine::device& handle) : m_device(&handle) {
+  /* descriptor layouts */
+  vk::DescriptorSetLayoutBinding u0_bind(
+      0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
+  vk::DescriptorSetLayoutBinding rdimg_u1_bind(
+      1u, vk::DescriptorType::eStorageImage, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
+  vk::DescriptorSetLayoutBinding wrimg_u2_bind(
+      2u, vk::DescriptorType::eStorageImage, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
+
+  const auto binds = std::array{u0_bind, rdimg_u1_bind, wrimg_u2_bind}; // deduction guides!
+
+  vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
+  descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+  descriptor_layout_info.bindingCount = binds.size();
+  descriptor_layout_info.pBindings = binds.data();
+
+  m_descr_set_layout = m_device->get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
+
+  /* compute pipeline layout */
+  vk::PipelineLayoutCreateInfo compute_pipeline_layout_info{};
+  compute_pipeline_layout_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+  compute_pipeline_layout_info.pSetLayouts = &m_descr_set_layout.get();
+  compute_pipeline_layout_info.setLayoutCount = 1u;
+
+  m_compute_pipeline_layout = m_device->get().createPipelineLayoutUnique(compute_pipeline_layout_info, nullptr);
+
+  /* descriptor pool for toolbox */
+  vk::DescriptorPoolSize params_pool_size(vk::DescriptorType::eUniformBuffer, 1u);
+  vk::DescriptorPoolSize images_pool_size(vk::DescriptorType::eStorageImage, 2u);
+  const auto tbx_pool_sizes = std::array{params_pool_size, images_pool_size};
+
+  vk::DescriptorPoolCreateInfo des_pool_toolbox_info{};
+  des_pool_toolbox_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+  des_pool_toolbox_info.pPoolSizes = tbx_pool_sizes.data();
+  des_pool_toolbox_info.poolSizeCount = tbx_pool_sizes.size();
+  des_pool_toolbox_info.maxSets = 32u; // гвоздь 10 см
+  des_pool_toolbox_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+
+  m_descriptor_pool = m_device->get().createDescriptorPoolUnique(des_pool_toolbox_info, nullptr);
+
+  /* allocating an empty uniform buffer */
+  std::tie(m_uniform_params, m_uniform_params_memory) = m_device->create_buffer(
+      128u, // зафиксирован максимальный размер параметров
+      vk::BufferUsageFlagBits::eUniformBuffer,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 }
 
+void image_manipulator::clip_image(
+    const std::vector<uint8_t>& image,
+    vk::Extent2D image_size,
+    vk::Extent2D offset,
+    vk::Extent2D size) {
+  if (m_device == nullptr)
+    throw std::runtime_error("image_manipulator:: объект не проининициализирован. Требуется валидный объект!");
+  /* uniform buffer with params */
+  void* const mapped = m_device->get().mapMemory(m_uniform_params_memory.get(), 0u, sizeof(pngine::clipping::params));
+  const pngine::clipping::params params_host_buffer{
+      glm::uvec2(offset.width, offset.height), glm::uvec2(size.width, size.height)};
+  ::memcpy(mapped, &params_host_buffer, sizeof(pngine::clipping::params));
+  m_device->get().unmapMemory(m_uniform_params_memory.get());
+
+  /* allocating input image storage memory */
+  std::tie(m_in_image, m_in_image_memory) = m_device->create_image(
+      image_size,
+      vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
+      vk::ImageTiling::eOptimal,
+      vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst,
+      vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+  /* allocating input image storage memory */
+  const auto clip_size = vk::Extent2D(size.width - offset.width, size.height - offset.height);
+  std::tie(m_out_image, m_out_image_memory) = m_device->create_image(
+      clip_size,
+      vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
+      vk::ImageTiling::eOptimal,
+      vk::ImageUsageFlagBits::eStorage, // запись данных будет в шейдере
+      vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+  /* image view for input image */
+  vk::ImageViewCreateInfo in_image_view_info{};
+  in_image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+  in_image_view_info.image = m_in_image.get();
+  in_image_view_info.format = vk::Format::eR8G8B8A8Unorm;
+  in_image_view_info.viewType = vk::ImageViewType::e2D;
+  in_image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+
+  m_in_image_view = m_device->get().createImageViewUnique(in_image_view_info, nullptr);
+
+  /* image view for output image */
+  vk::ImageViewCreateInfo out_image_view_info{};
+  out_image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+  out_image_view_info.image = m_out_image.get();
+  out_image_view_info.format = vk::Format::eR8G8B8A8Unorm;
+  out_image_view_info.viewType = vk::ImageViewType::e2D;
+  out_image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+
+  m_out_image_view = m_device->get().createImageViewUnique(out_image_view_info, nullptr);
+
+  /* создание и запись дескрипторов */
+  vk::DescriptorSetAllocateInfo alloc_sets_info{};
+  alloc_sets_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+  alloc_sets_info.descriptorPool = m_descriptor_pool.get();
+  alloc_sets_info.descriptorSetCount = 1u;
+  alloc_sets_info.pSetLayouts = &m_descr_set_layout.get();
+
+  auto clip_descr_set = std::move(m_device->get().allocateDescriptorSetsUnique(alloc_sets_info).at(0u));
+
+  vk::DescriptorBufferInfo d_params_info(m_uniform_params.get(), 0u, sizeof(pngine::clipping::params));
+  vk::DescriptorImageInfo d_in_image_info({}, m_in_image_view.get(), vk::ImageLayout::eGeneral);
+  vk::DescriptorImageInfo d_out_image_info({}, m_out_image_view.get(), vk::ImageLayout::eGeneral);
+
+  vk::WriteDescriptorSet write_params{}, write_in_image{}, write_out_image{};
+  write_params.sType = vk::StructureType::eWriteDescriptorSet;
+  write_params.descriptorCount = 1u;
+  write_params.pBufferInfo = &d_params_info;
+  write_params.descriptorType = vk::DescriptorType::eUniformBuffer;
+  write_params.dstSet = clip_descr_set.get();
+  write_params.dstBinding = 0u;
+  write_params.dstArrayElement = 0u;
+
+  write_in_image.sType = vk::StructureType::eWriteDescriptorSet;
+  write_in_image.descriptorCount = 1u;
+  write_in_image.pImageInfo = &d_in_image_info;
+  write_in_image.descriptorType = vk::DescriptorType::eStorageImage;
+  write_in_image.dstSet = clip_descr_set.get();
+  write_in_image.dstBinding = 1u;
+  write_in_image.dstArrayElement = 0u;
+
+  write_out_image.sType = vk::StructureType::eWriteDescriptorSet;
+  write_out_image.descriptorCount = 1u;
+  write_out_image.pImageInfo = &d_out_image_info;
+  write_out_image.descriptorType = vk::DescriptorType::eStorageImage;
+  write_out_image.dstSet = clip_descr_set.get();
+  write_out_image.dstBinding = 2u;
+  write_out_image.dstArrayElement = 0u;
+  const auto writings = std::array{write_params, write_in_image, write_out_image};
+  m_device->get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
+}
 // колбэки
 static void recreate_swapchain(pngine::glfw_window* window, int, int) {
   auto& window_obj = *reinterpret_cast<pngine::window_handler*>(&window);
@@ -116,7 +266,6 @@ export class pngine_core {
   std::array<void*, m_flight_count> m_uniform_mvp_mappings;
 
   vk::UniqueDescriptorPool m_descr_pool;
-  vk::UniqueDescriptorPool m_toolbox_descr_pool;
   std::vector<vk::UniqueDescriptorSet> m_descr_sets_0;
   std::vector<vk::UniqueDescriptorSet> m_descr_sets_1;
 
@@ -131,11 +280,11 @@ export class pngine_core {
   pngine::command_pool m_transfer_pool;
   std::vector<vk::CommandBuffer> m_command_buffers;
 
+  pngine::image_manipulator m_toolbox;
   void Render_Frame();
   void Load_Mesh();
   void Load_Textures();
   void Update(uint32_t frame_index);
-  void ClipImage(vk::Extent2D offset, vk::Extent2D size);
 
  public:
   pngine_core() = delete;
@@ -166,6 +315,7 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
   m_instance.create_surfaceKHR(m_window_handler);
   m_instance.bring_physical_devices();
   auto& device = m_instance.create_device(m_gpu_name);
+  m_toolbox = pngine::image_manipulator(device); // выполняет преобразования изображений
   device.create_swapchainKHR(m_window_handler.get_framebuffer_size(), m_instance.get_swapchainKHR_dispatch());
   device.create_image_views();
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
@@ -283,20 +433,6 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 
   m_descr_pool = device.get().createDescriptorPoolUnique(des_pool_info, nullptr);
 
-  /* descriptor pool for toolbox */
-  vk::DescriptorPoolSize params_pool_size(vk::DescriptorType::eUniformBuffer, 1u);
-  vk::DescriptorPoolSize images_pool_size(vk::DescriptorType::eStorageImage, 2u);
-  const auto tbx_pool_sizes = std::array{params_pool_size, images_pool_size};
-
-  vk::DescriptorPoolCreateInfo des_pool_toolbox_info{};
-  des_pool_toolbox_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-  des_pool_toolbox_info.pPoolSizes = tbx_pool_sizes.data();
-  des_pool_toolbox_info.poolSizeCount = tbx_pool_sizes.size();
-  des_pool_toolbox_info.maxSets = 32u; // гвоздь 10 см
-  des_pool_toolbox_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-
-  m_toolbox_descr_pool = device.get().createDescriptorPoolUnique(des_pool_toolbox_info, nullptr);
-
   /* allocation of graphics_pipeline descriptors */
   const auto layouts0 = std::array{m_descr_layout_0.get(), m_descr_layout_0.get()};
   vk::DescriptorSetAllocateInfo alloc_sets_0_info{};
@@ -309,7 +445,6 @@ pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
 
   const auto layouts1 = std::array{m_descr_layout_1.get(), m_descr_layout_1.get()};
   vk::DescriptorSetAllocateInfo alloc_sets_1_info{};
-  alloc_sets_1_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
   alloc_sets_1_info.descriptorPool = m_descr_pool.get();
   alloc_sets_1_info.descriptorSetCount = layouts1.size();
   alloc_sets_1_info.pSetLayouts = layouts1.data();
@@ -341,94 +476,6 @@ pngine_core::~pngine_core() noexcept {
   }
 }
 
-void pngine_core::ClipImage(vk::Extent2D offset, vk::Extent2D size) {
-  auto& device = m_instance.get_device();
-  device.create_shader_module("cs_clipping", pngine::shaders::shaders_clipping::comp_path);
-  vk::PipelineShaderStageCreateInfo comp_shader_info{};
-  comp_shader_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-  comp_shader_info.stage = vk::ShaderStageFlagBits::eCompute;
-  comp_shader_info.module = device.get_shader_module("cs_clipping").get();
-  comp_shader_info.pName = "main";
-
-  /* uniform buffer with params */
-  const auto& [uniform_params, uniform_params_memory] = device.create_buffer(
-        sizeof(pngine::clipping::params),
-        vk::BufferUsageFlagBits::eUniformBuffer,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    void* const mapped = device.get().mapMemory(uniform_params_memory.get(), 0u, sizeof(pngine::clipping::params));
-    const pngine::clipping::params params_host_buffer{glm::uvec2(offset.width, offset.height), glm::uvec2(size.width, size.height)};
-    ::memcpy(mapped, &params_host_buffer, sizeof(pngine::clipping::params));
-    device.get().unmapMemory(uniform_params_memory.get());
-
-  /* descriptor layouts */
-  vk::DescriptorSetLayoutBinding u0_bind(
-      0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
-  vk::DescriptorSetLayoutBinding rdimg_u1_bind(
-      1u, vk::DescriptorType::eStorageImage, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
-  vk::DescriptorSetLayoutBinding wrimg_u2_bind(
-      2u, vk::DescriptorType::eStorageImage, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
-
-  const auto binds = std::array{u0_bind, rdimg_u1_bind, wrimg_u2_bind}; // deduction guides!
-
-  vk::DescriptorSetLayoutCreateInfo descriptor_layout_info{};
-  descriptor_layout_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-  descriptor_layout_info.bindingCount = binds.size();
-  descriptor_layout_info.pBindings = binds.data();
-
-  auto clip_descr_layout = device.get().createDescriptorSetLayoutUnique(descriptor_layout_info, nullptr);
-
-  vk::DescriptorSetLayout layout = clip_descr_layout.get();
-  vk::DescriptorSetAllocateInfo alloc_sets_info{};
-  alloc_sets_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
-  alloc_sets_info.descriptorPool = m_toolbox_descr_pool.get();
-  alloc_sets_info.descriptorSetCount = 1u;
-  alloc_sets_info.pSetLayouts = &layout;
-
-  auto clip_descr_set = std::move(device.get().allocateDescriptorSetsUnique(alloc_sets_info).at(0u));
-  /* unorm image view */
-  vk::ImageViewCreateInfo image_view_info{};
-  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
-  image_view_info.image = m_image_buffer.get();
-  image_view_info.format = vk::Format::eR8G8B8A8Unorm;
-  image_view_info.viewType = vk::ImageViewType::e2D;
-  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
-
-  const auto norm_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
-
-  vk::DescriptorBufferInfo d_params_info(uniform_params.get(), 0u, sizeof(pngine::clipping::params));
-  vk::DescriptorImageInfo d_in_image_info(
-      {}, norm_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
-  vk::DescriptorImageInfo d_out_image_info(
-      {}, norm_image_view.get(), vk::ImageLayout::eGeneral);
-
-  vk::WriteDescriptorSet write_params{}, write_in_image{}, write_out_image{};
-  write_params.sType = vk::StructureType::eWriteDescriptorSet;
-  write_params.descriptorCount = 1u;
-  write_params.pBufferInfo = &d_params_info;
-  write_params.descriptorType = vk::DescriptorType::eUniformBuffer;
-  write_params.dstSet = clip_descr_set.get();
-  write_params.dstBinding = 0u;
-  write_params.dstArrayElement = 0u;
-
-  write_in_image.sType = vk::StructureType::eWriteDescriptorSet;
-  write_in_image.descriptorCount = 1u;
-  write_in_image.pImageInfo = &d_in_image_info;
-  write_in_image.descriptorType = vk::DescriptorType::eStorageImage;
-  write_in_image.dstSet = clip_descr_set.get();
-  write_in_image.dstBinding = 1u;
-  write_in_image.dstArrayElement = 0u;
-
-  write_out_image.sType = vk::StructureType::eWriteDescriptorSet;
-  write_out_image.descriptorCount = 1u;
-  write_out_image.pImageInfo = &d_out_image_info;
-  write_out_image.descriptorType = vk::DescriptorType::eStorageImage;
-  write_out_image.dstSet = clip_descr_set.get();
-  write_out_image.dstBinding = 2u;
-  write_out_image.dstArrayElement = 0u;
-  const auto writings = std::array{write_params, write_in_image, write_out_image};
-  device.get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
-}
-
 void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
   auto& device = m_instance.get_device();
   m_png_info = &img_info, m_png_pixels = &blob;
@@ -443,20 +490,13 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
   ::memcpy(staged_image_mapping, blob.data(), blob.size());
   device.get().unmapMemory(m_stage_image_memory.get());
 
-  const auto used_formats = std::array{vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Unorm};
-  vk::ImageFormatListCreateInfoKHR format_lists_info{};
-  format_lists_info.pViewFormats = used_formats.data();
-  format_lists_info.viewFormatCount = used_formats.size();
-
   std::tie(m_image_buffer, m_image_memory) = device.create_image(
       vk::Extent2D(m_png_info->width, m_png_info->height),
       // pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
-      vk::Format::eR8G8B8A8Unorm,
+      vk::Format::eR8G8B8A8Srgb,
       vk::ImageTiling::eOptimal,
-      vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
-      vk::MemoryPropertyFlagBits::eDeviceLocal,
-      vk::ImageCreateFlagBits::eMutableFormat | vk::ImageCreateFlagBits::eExtendedUsage,
-      &format_lists_info);
+      vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+      vk::MemoryPropertyFlagBits::eDeviceLocal);
   /* image view */
   vk::ImageViewCreateInfo image_view_info{};
   image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
@@ -487,8 +527,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
   /* setup descriptor sets */
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
-    vk::DescriptorImageInfo d_image_texture_info(
-        {}, m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+    vk::DescriptorImageInfo d_image_texture_info({}, m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
 
     vk::WriteDescriptorSet write_mvp{}, write_image_texture{};
     write_mvp.sType = vk::StructureType::eWriteDescriptorSet;
@@ -529,7 +568,11 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
 void pngine_core::run() {
   Load_Mesh(); // присылаем данные перед рендерингом
   Load_Textures(); // присылаем текстуру картинки перед рендерингом
-  // ClipImage({0u, 0u}, {1024u, 1024u}); // пока что обрезка происходит сразу при запуске программы
+  m_toolbox.clip_image(
+      *m_png_pixels,
+      {m_png_info->width, m_png_info->height},
+      {0u, 0u},
+      {1024u, 1024u}); // пока что обрезка происходит сразу при запуске программы
   double time = 0.0;
   uint64_t frames_count = 0u;
   while (!m_window_handler.should_close()) {
@@ -697,7 +740,13 @@ void pngine_core::Render_Frame() {
   cur_command_buffer.bindVertexBuffers(0u, vertex_buffer_count, buffers, offsets);
   cur_command_buffer.bindIndexBuffer(m_png_surface_ids.get(), 0u, vk::IndexType::eUint16);
   cur_command_buffer.bindDescriptorSets(
-      vk::PipelineBindPoint::eGraphics, m_pipeline_layout.get(), 0u, cur_descr_sets.size(), cur_descr_sets.data(), 0u, nullptr);
+      vk::PipelineBindPoint::eGraphics,
+      m_pipeline_layout.get(),
+      0u,
+      cur_descr_sets.size(),
+      cur_descr_sets.data(),
+      0u,
+      nullptr);
   const uint32_t rectangle_indices = rectangle_ids.size(), inst_count = 1u, first_vert = 0u, first_inst = 0u;
   cur_command_buffer.drawIndexed(rectangle_indices, inst_count, first_vert, 0, first_inst);
   cur_command_buffer.endRenderPass();

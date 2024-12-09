@@ -99,9 +99,7 @@ class device {
       vk::Format format,
       vk::ImageTiling tiling,
       vk::ImageUsageFlags usage,
-      vk::MemoryPropertyFlags required_props,
-      vk::ImageCreateFlags spec_flags,
-      const void* extension_obj_info);
+      vk::MemoryPropertyFlags required_props);
   pngine::command_pool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
   pngine::command_pool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
 };
@@ -254,14 +252,12 @@ img_and_mem device::create_image(
     vk::Format format,
     vk::ImageTiling tiling,
     vk::ImageUsageFlags usage,
-    vk::MemoryPropertyFlags required_props,
-    vk::ImageCreateFlags spec_flags,
-    const void* extension_obj_info) {
+    vk::MemoryPropertyFlags required_props) {
   img_and_mem result;
   vk::ImageCreateInfo img_info{};
   img_info.sType = vk::StructureType::eImageCreateInfo;
-  img_info.pNext = extension_obj_info;
-  img_info.flags = spec_flags;
+  // img_info.pNext = extension_obj_info;
+  // img_info.flags = spec_flags;
   img_info.imageType = vk::ImageType::e2D;
   img_info.usage = usage;
   img_info.extent = vk::Extent3D(img_size, 1u);
