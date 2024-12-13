@@ -4,6 +4,7 @@ module;
 #include <bits/ranges_algo.h>
 #include <map>
 #include <cstdint>
+#include <iostream>
 export module csc.pngine.instance.device;
 
 import vulkan_hpp;
@@ -100,8 +101,9 @@ class device {
       vk::ImageTiling tiling,
       vk::ImageUsageFlags usage,
       vk::MemoryPropertyFlags required_props);
-  pngine::command_pool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
-  pngine::command_pool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
+  vk::UniqueCommandPool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
+  vk::UniqueCommandPool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
+  vk::UniqueCommandPool create_compute_command_pool(vk::CommandPoolCreateFlags flags);
 };
 
 device::~device() noexcept {
@@ -218,11 +220,32 @@ void device::create_framebuffers(std::string_view pass_name) {
   });
 }
 
-pngine::command_pool device::create_graphics_command_pool(vk::CommandPoolCreateFlags flags) {
-  return pngine::command_pool(m_device, m_indices.graphics.value(), flags);
+vk::UniqueCommandPool device::create_graphics_command_pool(vk::CommandPoolCreateFlags flags) {
+  vk::CommandPoolCreateInfo description{};
+  description.sType = vk::StructureType::eCommandPoolCreateInfo;
+  description.queueFamilyIndex = m_indices.graphics.value();
+  description.flags = flags;
+
+  vk::UniqueCommandPool pool = m_device.createCommandPoolUnique(description, nullptr);
+  return pool;
 }
-pngine::command_pool device::create_transfer_command_pool(vk::CommandPoolCreateFlags flags) {
-  return pngine::command_pool(m_device, m_indices.transfer.value(), flags);
+vk::UniqueCommandPool device::create_transfer_command_pool(vk::CommandPoolCreateFlags flags) {
+  vk::CommandPoolCreateInfo description{};
+  description.sType = vk::StructureType::eCommandPoolCreateInfo;
+  description.queueFamilyIndex = m_indices.transfer.value();
+  description.flags = flags;
+
+  vk::UniqueCommandPool pool = m_device.createCommandPoolUnique(description, nullptr);
+  return pool;
+}
+vk::UniqueCommandPool device::create_compute_command_pool(vk::CommandPoolCreateFlags flags) {
+  vk::CommandPoolCreateInfo description{};
+  description.sType = vk::StructureType::eCommandPoolCreateInfo;
+  description.queueFamilyIndex = m_indices.compute.value();
+  description.flags = flags;
+
+  vk::UniqueCommandPool pool = m_device.createCommandPoolUnique(description, nullptr);
+  return pool;
 }
 
 buf_and_mem
