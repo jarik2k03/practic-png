@@ -128,7 +128,6 @@ export class pngine_core {
   pngine::human_version get_vk_api_version() const noexcept;
   std::string_view get_app_name() const noexcept;
 };
-
 pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
     : m_app_name(std::move(nm)), m_app_version(ver), m_gpu_name(std::move(g_nm)) {
   vk::ApplicationInfo app_info(
@@ -314,6 +313,7 @@ pngine_core::~pngine_core() noexcept {
 void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
   auto& device = m_instance.get_device();
   m_png_info = &img_info, m_png_pixels = &blob;
+  device.get().waitIdle(); // ожидаем, когда gpu завершит работу над прошлыми операциями
 
   /* image data */
   std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(
@@ -399,13 +399,13 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
     device.get().updateDescriptorSets(1u, &write_image_sampler, 0u, nullptr);
   }
   m_toolbox = pngine::image_manipulator(
-      device, *m_png_pixels, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
+      device, m_stage_image_buffer, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
 }
 
 void pngine_core::run() {
   Load_Mesh(); // присылаем данные перед рендерингом
   Load_Textures(); // присылаем текстуру картинки перед рендерингом
-  m_toolbox.clip_image({0u, 0u}, {1024u, 1024u}); // пока что обрезка происходит сразу при запуске программы
+  m_toolbox.clip_image({0, 0}, {128u, 128u}); // пока что обрезка происходит сразу при запуске программы
   double time = 0.0;
   uint64_t frames_count = 0u;
   while (!m_window_handler.should_close()) {
@@ -450,7 +450,7 @@ void pngine_core::Load_Mesh() {
   submit_info.pCommandBuffers = &transfer_buffer;
   submit_info.commandBufferCount = 1u;
   auto transfer_queue = device.get_transfer_queue();
-  vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
+  const vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
   transfer_queue.waitIdle();
@@ -504,7 +504,7 @@ void pngine_core::Load_Textures() {
   copy_img_region.bufferRowLength = 0u;
   copy_img_region.bufferImageHeight = 0u;
   copy_img_region.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0u, 0u, 1u);
-  // copy_img_region.imageOffset = vk::Extent3D(0u, 0u, 0u);
+  copy_img_region.imageOffset = vk::Offset3D(0, 0, 0);
   copy_img_region.imageExtent = vk::Extent3D(m_png_info->width, m_png_info->height, 1u);
 
   transfer_buffer.copyBufferToImage(
