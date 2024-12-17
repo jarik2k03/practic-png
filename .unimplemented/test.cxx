@@ -53,4 +53,6 @@ int main() {
   vk::ImageSubresourceLayers subres;
   vk::DescriptorSetLayoutBinding binding(0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
   vk::ImageCreateInfo img_info;
+  cb.dispatch(
+      cb.dispatch(
 }

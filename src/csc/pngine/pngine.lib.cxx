@@ -62,9 +62,8 @@ export class pngine_core {
   pngine::version m_app_version = pngine::bring_version(1u, 0u, 0u);
   pngine::version m_vk_api_version = pngine::bring_version(1u, 3u, 256u);
   std::string m_gpu_name;
-  const std::vector<uint8_t>* m_png_pixels = nullptr;
 
-  const png::IHDR* m_png_info = nullptr;
+  png::IHDR* m_png_info = nullptr;
 
   pngine::glfw_handler m_glfw_state{};
   pngine::window_handler m_window_handler;
@@ -99,8 +98,6 @@ export class pngine_core {
   std::vector<vk::UniqueDescriptorSet> m_descr_sets_0;
   std::vector<vk::UniqueDescriptorSet> m_descr_sets_1;
 
-  vk::UniqueBuffer m_stage_image_buffer{};
-  vk::UniqueDeviceMemory m_stage_image_memory{};
   vk::UniqueImage m_image_buffer{};
   vk::UniqueImageView m_image_view{};
   vk::UniqueSampler m_image_sampler{};
@@ -113,13 +110,13 @@ export class pngine_core {
   pngine::image_manipulator m_toolbox;
   void Render_Frame();
   void Load_Mesh();
-  void Load_Textures();
   void Update(uint32_t frame_index);
 
  public:
   pngine_core() = delete;
   pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
-  void set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info);
+  void init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
+  void change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info);
   void run();
   ~pngine_core() noexcept;
 
@@ -310,21 +307,12 @@ pngine_core::~pngine_core() noexcept {
   }
 }
 
-void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR& img_info) {
+void pngine_core::change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info) {
   auto& device = m_instance.get_device();
-  m_png_info = &img_info, m_png_pixels = &blob;
+  m_png_info = &img_info;
   device.get().waitIdle(); // ожидаем, когда gpu завершит работу над прошлыми операциями
 
-  /* image data */
-  std::tie(m_stage_image_buffer, m_stage_image_memory) = device.create_buffer(
-      blob.size(),
-      vk::BufferUsageFlagBits::eTransferSrc,
-      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-  void* staged_image_mapping = device.get().mapMemory(m_stage_image_memory.get(), 0u, blob.size());
-  ::memcpy(staged_image_mapping, blob.data(), blob.size());
-  device.get().unmapMemory(m_stage_image_memory.get());
-
+  /* image for render */
   std::tie(m_image_buffer, m_image_memory) = device.create_image(
       vk::Extent2D(m_png_info->width, m_png_info->height),
       // pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
@@ -332,6 +320,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
+
   /* image view */
   vk::ImageViewCreateInfo image_view_info{};
   image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
@@ -341,24 +330,7 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
   m_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
-  /* image sampler */
-  vk::SamplerCreateInfo sampler_info{};
-  sampler_info.sType = vk::StructureType::eSamplerCreateInfo;
-  // sampler_info.magFilter = vk::Filter::eLinear;
-  sampler_info.minFilter = vk::Filter::eNearest;
-  sampler_info.addressModeU = vk::SamplerAddressMode::eClampToBorder;
-  sampler_info.addressModeV = vk::SamplerAddressMode::eClampToBorder;
-  sampler_info.addressModeW = vk::SamplerAddressMode::eClampToBorder;
-  sampler_info.anisotropyEnable = vk::False;
-  sampler_info.maxAnisotropy = 1.f;
-  sampler_info.borderColor = vk::BorderColor::eIntOpaqueBlack;
-  sampler_info.unnormalizedCoordinates = vk::False;
-  sampler_info.compareEnable = vk::False;
-  sampler_info.compareOp = vk::CompareOp::eAlways;
-  sampler_info.mipmapMode = vk::SamplerMipmapMode::eLinear;
-  sampler_info.mipLodBias = 0.f, sampler_info.minLod = 0.f, sampler_info.maxLod = 0.f;
 
-  m_image_sampler = device.get().createSamplerUnique(sampler_info, nullptr);
   /* setup descriptor sets */
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
@@ -398,66 +370,6 @@ void pngine_core::set_drawing(const std::vector<uint8_t>& blob, const png::IHDR&
 
     device.get().updateDescriptorSets(1u, &write_image_sampler, 0u, nullptr);
   }
-  m_toolbox = pngine::image_manipulator(
-      device, m_stage_image_buffer, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
-}
-
-void pngine_core::run() {
-  Load_Mesh(); // присылаем данные перед рендерингом
-  Load_Textures(); // присылаем текстуру картинки перед рендерингом
-  m_toolbox.clip_image({0, 0}, {128u, 128u}); // пока что обрезка происходит сразу при запуске программы
-  double time = 0.0;
-  uint64_t frames_count = 0u;
-  while (!m_window_handler.should_close()) {
-    m_glfw_state.poll_events();
-    const auto start = std::chrono::high_resolution_clock::now();
-    Render_Frame();
-    const auto end = std::chrono::high_resolution_clock::now();
-    time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
-    frames_count += 1ul;
-    [[unlikely]] if (time >= 1.0) {
-      std::cout << "Render frames per second: " << frames_count << '\n';
-      frames_count = 0u, time = 0.0;
-    }
-  }
-}
-void pngine_core::Load_Mesh() {
-  const auto& device = m_instance.get_device();
-  /* allocate transfer commands for copy image */
-  vk::CommandBufferAllocateInfo alloc_desc{};
-  alloc_desc.sType = vk::StructureType::eCommandBufferAllocateInfo;
-  alloc_desc.commandPool = m_transfer_pool.get();
-  alloc_desc.level = vk::CommandBufferLevel::ePrimary;
-  alloc_desc.commandBufferCount = 1u;
-
-  auto transfer_buffers = device.get().allocateCommandBuffers(alloc_desc);
-  auto& transfer_buffer = transfer_buffers[0u];
-
-  /* command buffer option */
-  vk::CommandBufferBeginInfo begin_info{};
-  begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
-  begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-
-  transfer_buffer.begin(begin_info);
-  vk::BufferCopy copy_vtx_region(0u, 0u, sizeof(pngine::vertex) * rectangle.size());
-  transfer_buffer.copyBuffer(m_stage_png_surface_mesh.get(), m_png_surface_mesh.get(), 1u, &copy_vtx_region);
-  vk::BufferCopy copy_idx_region(0u, 0u, sizeof(uint16_t) * rectangle_ids.size());
-  transfer_buffer.copyBuffer(m_stage_png_surface_ids.get(), m_png_surface_ids.get(), 1u, &copy_idx_region);
-  transfer_buffer.end();
-
-  vk::SubmitInfo submit_info{};
-  submit_info.sType = vk::StructureType::eSubmitInfo;
-  submit_info.pCommandBuffers = &transfer_buffer;
-  submit_info.commandBufferCount = 1u;
-  auto transfer_queue = device.get_transfer_queue();
-  const vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
-  if (r != vk::Result::eSuccess)
-    throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
-  transfer_queue.waitIdle();
-  device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
-}
-void pngine_core::Load_Textures() {
-  const auto& device = m_instance.get_device();
 
   /* allocate transfer commands for copy image */
   vk::CommandBufferAllocateInfo alloc_desc{};
@@ -508,7 +420,7 @@ void pngine_core::Load_Textures() {
   copy_img_region.imageExtent = vk::Extent3D(m_png_info->width, m_png_info->height, 1u);
 
   transfer_buffer.copyBufferToImage(
-      m_stage_image_buffer.get(), m_image_buffer.get(), vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
+      staging.first.get(), m_image_buffer.get(), vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
   transfer_buffer.pipelineBarrier(
       eTransfer, eFragmentShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &transferDst_to_shaderRD);
   transfer_buffer.end();
@@ -517,6 +429,102 @@ void pngine_core::Load_Textures() {
   submit_info.pCommandBuffers = &transfer_buffer, submit_info.commandBufferCount = 1u;
   auto transfer_queue = device.get_transfer_queue();
   vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
+  transfer_queue.waitIdle();
+  device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+}
+
+void pngine_core::init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info) {
+  auto& device = m_instance.get_device();
+  /* image data */
+  const auto staged = device.create_buffer(
+      blob.size(),
+      vk::BufferUsageFlagBits::eTransferSrc,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+  void* staged_image_mapping = device.get().mapMemory(staged.second.get(), 0u, blob.size());
+  ::memcpy(staged_image_mapping, blob.data(), blob.size());
+  device.get().unmapMemory(staged.second.get());
+
+  /* image sampler */
+  vk::SamplerCreateInfo sampler_info{};
+  sampler_info.sType = vk::StructureType::eSamplerCreateInfo;
+  // sampler_info.magFilter = vk::Filter::eLinear;
+  sampler_info.minFilter = vk::Filter::eNearest;
+  sampler_info.addressModeU = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeV = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.anisotropyEnable = vk::False;
+  sampler_info.maxAnisotropy = 1.f;
+  sampler_info.borderColor = vk::BorderColor::eIntOpaqueBlack;
+  sampler_info.unnormalizedCoordinates = vk::False;
+  sampler_info.compareEnable = vk::False;
+  sampler_info.compareOp = vk::CompareOp::eAlways;
+  sampler_info.mipmapMode = vk::SamplerMipmapMode::eLinear;
+  sampler_info.mipLodBias = 0.f, sampler_info.minLod = 0.f, sampler_info.maxLod = 0.f;
+
+  m_image_sampler = device.get().createSamplerUnique(sampler_info, nullptr);
+
+  /* изменение только подвижных частей */
+  change_drawing(staged, img_info);
+
+  /* clip & rotate & scale */
+  m_toolbox = pngine::image_manipulator(
+      device, staged.first, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
+
+}
+
+void pngine_core::run() {
+  Load_Mesh(); // присылаем данные перед рендерингом
+  double time = 0.0;
+  uint64_t frames_count = 0u;
+  while (!m_window_handler.should_close()) {
+    m_glfw_state.poll_events();
+    const auto start = std::chrono::high_resolution_clock::now();
+    Render_Frame();
+    const auto end = std::chrono::high_resolution_clock::now();
+    time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
+    frames_count += 1ul;
+    [[unlikely]] if (time >= 5.0) {
+      const auto clipped = m_toolbox.clip_image({0, 0}, {32u, 32u}); // пока что обрезка происходит сразу при запуске программы
+      m_png_info->width = 32u, m_png_info->height = 32u;
+      change_drawing(clipped, *m_png_info);
+      std::cout << "Render frames per second: " << frames_count << '\n';
+      frames_count = 0u, time = 0.0;
+    }
+  }
+}
+void pngine_core::Load_Mesh() {
+  const auto& device = m_instance.get_device();
+  /* allocate transfer commands for copy image */
+  vk::CommandBufferAllocateInfo alloc_desc{};
+  alloc_desc.sType = vk::StructureType::eCommandBufferAllocateInfo;
+  alloc_desc.commandPool = m_transfer_pool.get();
+  alloc_desc.level = vk::CommandBufferLevel::ePrimary;
+  alloc_desc.commandBufferCount = 1u;
+
+  auto transfer_buffers = device.get().allocateCommandBuffers(alloc_desc);
+  auto& transfer_buffer = transfer_buffers[0u];
+
+  /* command buffer option */
+  vk::CommandBufferBeginInfo begin_info{};
+  begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+  begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+  transfer_buffer.begin(begin_info);
+  vk::BufferCopy copy_vtx_region(0u, 0u, sizeof(pngine::vertex) * rectangle.size());
+  transfer_buffer.copyBuffer(m_stage_png_surface_mesh.get(), m_png_surface_mesh.get(), 1u, &copy_vtx_region);
+  vk::BufferCopy copy_idx_region(0u, 0u, sizeof(uint16_t) * rectangle_ids.size());
+  transfer_buffer.copyBuffer(m_stage_png_surface_ids.get(), m_png_surface_ids.get(), 1u, &copy_idx_region);
+  transfer_buffer.end();
+
+  vk::SubmitInfo submit_info{};
+  submit_info.sType = vk::StructureType::eSubmitInfo;
+  submit_info.pCommandBuffers = &transfer_buffer;
+  submit_info.commandBufferCount = 1u;
+  auto transfer_queue = device.get_transfer_queue();
+  const vk::Result r = transfer_queue.submit(1u, &submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
   transfer_queue.waitIdle();

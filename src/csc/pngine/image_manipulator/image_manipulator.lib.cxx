@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 #include <cstring>
 #include <tuple>
-#include <glm/glm.hpp>
+#include <unistd.h>
 #include <shaders_clipping.h>
 export module csc.pngine.image_manipulator;
 
@@ -11,6 +11,8 @@ import :shaderdata;
 import stl.vector;
 import stl.array;
 import stl.stdexcept;
+
+import glm_hpp;
 
 import csc.pngine.instance.device;
 
@@ -46,7 +48,7 @@ class image_manipulator {
       pngine::device& handle,
       const vk::UniqueBuffer& staged_buffer,
       vk::Extent2D src_image_size);
-  void clip_image(vk::Offset2D offset, vk::Extent2D size);
+  pngine::buf_and_mem clip_image(vk::Offset2D offset, vk::Extent2D size);
   ~image_manipulator() noexcept = default;
 };
 
@@ -199,7 +201,7 @@ image_manipulator::image_manipulator(
   queue_submit_info.sType = vk::StructureType::eSubmitInfo;
   queue_submit_info.pCommandBuffers = &transfer_buffer;
   queue_submit_info.commandBufferCount = 1u;
-  const auto transfer_queue = m_device->get_compute_queue();
+  const auto transfer_queue = m_device->get_transfer_queue();
   const vk::Result r = transfer_queue.submit(1u, &queue_submit_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Image manipulator: не удалось записать входное изображение в очередь передачи!");
@@ -208,7 +210,7 @@ image_manipulator::image_manipulator(
 
 }
 
-void image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
+pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
   if (m_device == nullptr) // проверка на валидность класса
     throw std::runtime_error("image_manipulator:: объект не проининициализирован. Требуется валидный объект!");
   /* uniform buffer with params */
@@ -224,7 +226,7 @@ void image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
       clip_size,
       vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
       vk::ImageTiling::eOptimal,
-      vk::ImageUsageFlagBits::eStorage, // запись данных будет в шейдере
+      vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc, // запись данных будет в шейдере
       vk::MemoryPropertyFlagBits::eDeviceLocal);
 
   /* image view for output image */
@@ -277,8 +279,128 @@ void image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
   const auto writings = std::array{write_params, write_in_image, write_out_image};
   m_device->get().updateDescriptorSets(writings.size(), writings.data(), 0u, nullptr);
 
+  /* запись команд */
+  vk::CommandBufferAllocateInfo comp_alloc_info{};
+  comp_alloc_info.sType = vk::StructureType::eCommandBufferAllocateInfo;
+  comp_alloc_info.commandPool = m_compute_pool.get();
+  comp_alloc_info.level = vk::CommandBufferLevel::ePrimary;
+  comp_alloc_info.commandBufferCount = 1u;
+  auto compute_buffers = m_device->get().allocateCommandBuffers(comp_alloc_info);
+  auto compute_buffer = compute_buffers[0u];
+
+  vk::CommandBufferBeginInfo compute_begin_info{};
+  compute_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+  compute_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+  compute_buffer.begin(compute_begin_info);
+  /* pipelineBarrier */
+  vk::ImageMemoryBarrier undef_to_general_2{};
+  undef_to_general_2.sType = vk::StructureType::eImageMemoryBarrier;
+  undef_to_general_2.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+  undef_to_general_2.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+  undef_to_general_2.image = second_image.get();
+  undef_to_general_2.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+  undef_to_general_2.oldLayout = vk::ImageLayout::eUndefined;
+  undef_to_general_2.newLayout = vk::ImageLayout::eGeneral;
+  undef_to_general_2.srcAccessMask = vk::AccessFlags{};
+  undef_to_general_2.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+  using stg = vk::PipelineStageFlagBits;
+  compute_buffer.pipelineBarrier(
+      stg::eTopOfPipe, stg::eComputeShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &undef_to_general_2);
+  /* bindPipeline */
+  compute_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, m_compute_pipeline.get());
+  /* bindDescriptorSets */
+  compute_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, m_compute_pipeline_layout.get(), 0u, 1u, &clip_descr_set.get(), 0u, nullptr);
+  /* dispatch */
+  compute_buffer.dispatch(clip_size.width / 8u, clip_size.height / 8u, 1u);
+
+  compute_buffer.end();
+
+  vk::SubmitInfo submit_comp_info{};
+  submit_comp_info.sType = vk::StructureType::eSubmitInfo;
+  submit_comp_info.pCommandBuffers = &compute_buffer;
+  submit_comp_info.commandBufferCount = 1u;
+
+  const auto compute_queue = m_device->get_compute_queue();
+  vk::Result r = compute_queue.submit(1u, &submit_comp_info, vk::Fence{});
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Image manipulator: не удалось сделать запись в вычислительную очередь успешно!");
+  compute_queue.waitIdle();
+  m_device->get().freeCommandBuffers(m_compute_pool.get(), 1u, &compute_buffer);
+
+  auto staged = m_device->create_buffer(
+      clip_size.width * clip_size.height * 4u,
+      vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+  /* command buffer for transfer */
+  vk::CommandBufferAllocateInfo transfer_alloc_info{};
+  transfer_alloc_info.sType = vk::StructureType::eCommandBufferAllocateInfo;
+  transfer_alloc_info.commandPool = m_transfer_pool.get();
+  transfer_alloc_info.level = vk::CommandBufferLevel::ePrimary;
+  transfer_alloc_info.commandBufferCount = 1u;
+
+  auto transfer_buffers = m_device->get().allocateCommandBuffers(transfer_alloc_info);
+  auto& transfer_buffer = transfer_buffers[0u];
+
+  vk::CommandBufferBeginInfo transfer_begin_info{};
+  transfer_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+  transfer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+  transfer_buffer.begin(transfer_begin_info);
+  /* pipelineBarrier */
+  vk::ImageMemoryBarrier general_to_transferSrc_2{};
+  general_to_transferSrc_2.sType = vk::StructureType::eImageMemoryBarrier;
+  general_to_transferSrc_2.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+  general_to_transferSrc_2.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+  general_to_transferSrc_2.image = second_image.get();
+  general_to_transferSrc_2.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+  general_to_transferSrc_2.oldLayout = vk::ImageLayout::eGeneral;
+  general_to_transferSrc_2.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+  general_to_transferSrc_2.srcAccessMask = vk::AccessFlagBits::eShaderWrite;
+  general_to_transferSrc_2.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+  transfer_buffer.pipelineBarrier(
+      stg::eComputeShader, stg::eTransfer, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &general_to_transferSrc_2);
+  /* copyImageToBuffer */
+  vk::BufferImageCopy copy_img_region{};
+  copy_img_region.bufferOffset = 0u;
+  copy_img_region.bufferRowLength = 0u;
+  copy_img_region.bufferImageHeight = 0u;
+  copy_img_region.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0u, 0u, 1u);
+  copy_img_region.imageOffset = vk::Offset3D(0, 0, 0);
+  copy_img_region.imageExtent = vk::Extent3D(clip_size, 1u);
+  transfer_buffer.copyImageToBuffer(second_image.get(), vk::ImageLayout::eTransferSrcOptimal, staged.first.get(), 1u, &copy_img_region);
+  /* pipelineBarrier */
+  vk::ImageMemoryBarrier transferSrc_2_to_general{};
+  transferSrc_2_to_general.sType = vk::StructureType::eImageMemoryBarrier;
+  transferSrc_2_to_general.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+  transferSrc_2_to_general.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+  transferSrc_2_to_general.image = second_image.get();
+  transferSrc_2_to_general.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+  transferSrc_2_to_general.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+  transferSrc_2_to_general.newLayout = vk::ImageLayout::eGeneral;
+  transferSrc_2_to_general.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+  transferSrc_2_to_general.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+  transfer_buffer.pipelineBarrier(
+      stg::eTransfer, stg::eComputeShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &transferSrc_2_to_general);
+  transfer_buffer.end();
+
+  vk::SubmitInfo submit_transfer_info{};
+  submit_transfer_info.sType = vk::StructureType::eSubmitInfo;
+  submit_transfer_info.pCommandBuffers = &transfer_buffer;
+  submit_transfer_info.commandBufferCount = 1u;
+
+  const auto transfer_queue = m_device->get_transfer_queue();
+  r = transfer_queue.submit(1u, &submit_transfer_info, vk::Fence{});
+  if (r != vk::Result::eSuccess)
+    throw std::runtime_error("Image manipulator: не удалось скопировать изображение в промежуточный буфер!");
+  transfer_queue.waitIdle();
+  m_device->get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+
+  ::sleep(1u);
   m_first_image = std::move(second_image), m_first_image_view = std::move(second_image_view);
   m_first_image_memory = std::move(second_image_memory); // теперь выходной буфер станет входным
+  return staged;
 }
 
 } // namespace pngine

@@ -100,7 +100,8 @@ class device {
       vk::Format format,
       vk::ImageTiling tiling,
       vk::ImageUsageFlags usage,
-      vk::MemoryPropertyFlags required_props);
+      vk::MemoryPropertyFlags required_props,
+      vk::ImageLayout layout = vk::ImageLayout::eUndefined);
   vk::UniqueCommandPool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
   vk::UniqueCommandPool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
   vk::UniqueCommandPool create_compute_command_pool(vk::CommandPoolCreateFlags flags);
@@ -275,12 +276,10 @@ img_and_mem device::create_image(
     vk::Format format,
     vk::ImageTiling tiling,
     vk::ImageUsageFlags usage,
-    vk::MemoryPropertyFlags required_props) {
+    vk::MemoryPropertyFlags required_props, vk::ImageLayout layout) {
   img_and_mem result;
   vk::ImageCreateInfo img_info{};
   img_info.sType = vk::StructureType::eImageCreateInfo;
-  // img_info.pNext = extension_obj_info;
-  // img_info.flags = spec_flags;
   img_info.imageType = vk::ImageType::e2D;
   img_info.usage = usage;
   img_info.extent = vk::Extent3D(img_size, 1u);
@@ -289,7 +288,7 @@ img_and_mem device::create_image(
   img_info.samples = vk::SampleCountFlagBits::e1;
   img_info.mipLevels = 1u;
   img_info.arrayLayers = 1u;
-  img_info.initialLayout = vk::ImageLayout::eUndefined;
+  img_info.initialLayout = layout;
   img_info.sharingMode = vk::SharingMode::eExclusive;
   result.first = m_device.createImageUnique(img_info, nullptr);
 
