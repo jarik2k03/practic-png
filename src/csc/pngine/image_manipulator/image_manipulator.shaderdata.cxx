@@ -9,7 +9,6 @@ namespace pngine {
 namespace clipping {
 struct params {
   alignas(16) glm::uvec2 clip_offset;
-  alignas(16) glm::uvec2 clip_size;
 };
 } // namespace clipping
 

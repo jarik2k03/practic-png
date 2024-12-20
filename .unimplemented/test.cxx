@@ -52,7 +52,4 @@ int main() {
   img_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
   vk::ImageSubresourceLayers subres;
   vk::DescriptorSetLayoutBinding binding(0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
-  vk::ImageCreateInfo img_info;
-  cb.dispatch(
-      cb.dispatch(
 }

@@ -10,5 +10,6 @@ using glm::perspective;
 using glm::radians;
 using glm::scale;
 using glm::uvec2;
+using glm::ivec2;
 using glm::vec3;
 } // namespace glm

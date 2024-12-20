@@ -486,10 +486,10 @@ void pngine_core::run() {
     const auto end = std::chrono::high_resolution_clock::now();
     time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
     frames_count += 1ul;
-    [[unlikely]] if (time >= 5.0) {
-      const auto clipped = m_toolbox.clip_image({0, 0}, {32u, 32u}); // пока что обрезка происходит сразу при запуске программы
-      m_png_info->width = 32u, m_png_info->height = 32u;
-      change_drawing(clipped, *m_png_info);
+    [[unlikely]] if (time >= 1.0) {
+      const auto clipped = m_toolbox.clip_image({10, 10}, {m_png_info->width, m_png_info->height}); // пока что обрезка происходит сразу при запуске программы
+      m_png_info->width = clipped.image_size.width, m_png_info->height = clipped.image_size.height;
+      change_drawing(clipped.staged, *m_png_info);
       std::cout << "Render frames per second: " << frames_count << '\n';
       frames_count = 0u, time = 0.0;
     }

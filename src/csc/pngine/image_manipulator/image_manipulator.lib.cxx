@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 #include <tuple>
 #include <unistd.h>
 #include <shaders_clipping.h>
@@ -20,6 +21,13 @@ import vulkan_hpp;
 
 export namespace csc {
 namespace pngine {
+
+
+struct image_manipulator_bundle {
+  pngine::buf_and_mem staged;
+  vk::Extent2D image_size;
+};
+
 class image_manipulator {
  private:
   pngine::device* m_device = nullptr;
@@ -48,7 +56,7 @@ class image_manipulator {
       pngine::device& handle,
       const vk::UniqueBuffer& staged_buffer,
       vk::Extent2D src_image_size);
-  pngine::buf_and_mem clip_image(vk::Offset2D offset, vk::Extent2D size);
+  pngine::image_manipulator_bundle clip_image(vk::Offset2D offset, vk::Extent2D size);
   ~image_manipulator() noexcept = default;
 };
 
@@ -210,13 +218,12 @@ image_manipulator::image_manipulator(
 
 }
 
-pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
+pngine::image_manipulator_bundle image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
   if (m_device == nullptr) // проверка на валидность класса
     throw std::runtime_error("image_manipulator:: объект не проининициализирован. Требуется валидный объект!");
   /* uniform buffer with params */
   void* const mapped = m_device->get().mapMemory(m_uniform_params_memory.get(), 0u, sizeof(pngine::clipping::params));
-  const pngine::clipping::params params_host_buffer{
-      glm::uvec2(offset.x, offset.y), glm::uvec2(size.width, size.height)};
+  const pngine::clipping::params params_host_buffer{ glm::ivec2(offset.x, offset.y) };
   ::memcpy(mapped, &params_host_buffer, sizeof(pngine::clipping::params));
   m_device->get().unmapMemory(m_uniform_params_memory.get());
 
@@ -312,7 +319,7 @@ pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Exten
   /* bindDescriptorSets */
   compute_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, m_compute_pipeline_layout.get(), 0u, 1u, &clip_descr_set.get(), 0u, nullptr);
   /* dispatch */
-  compute_buffer.dispatch(clip_size.width / 8u, clip_size.height / 8u, 1u);
+  compute_buffer.dispatch(std::ceilf(clip_size.width / 16.f), std::ceilf(clip_size.height / 16.f), 1u);
 
   compute_buffer.end();
 
@@ -327,11 +334,12 @@ pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Exten
     throw std::runtime_error("Image manipulator: не удалось сделать запись в вычислительную очередь успешно!");
   compute_queue.waitIdle();
   m_device->get().freeCommandBuffers(m_compute_pool.get(), 1u, &compute_buffer);
-
-  auto staged = m_device->create_buffer(
+  pngine::image_manipulator_bundle staged;
+  staged.staged = m_device->create_buffer(
       clip_size.width * clip_size.height * 4u,
       vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+  staged.image_size = clip_size;
 
   /* command buffer for transfer */
   vk::CommandBufferAllocateInfo transfer_alloc_info{};
@@ -367,9 +375,9 @@ pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Exten
   copy_img_region.bufferRowLength = 0u;
   copy_img_region.bufferImageHeight = 0u;
   copy_img_region.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0u, 0u, 1u);
-  copy_img_region.imageOffset = vk::Offset3D(0, 0, 0);
+  copy_img_region.imageOffset = vk::Offset3D(0u, 0u, 0u);
   copy_img_region.imageExtent = vk::Extent3D(clip_size, 1u);
-  transfer_buffer.copyImageToBuffer(second_image.get(), vk::ImageLayout::eTransferSrcOptimal, staged.first.get(), 1u, &copy_img_region);
+  transfer_buffer.copyImageToBuffer(second_image.get(), vk::ImageLayout::eTransferSrcOptimal, staged.staged.first.get(), 1u, &copy_img_region);
   /* pipelineBarrier */
   vk::ImageMemoryBarrier transferSrc_2_to_general{};
   transferSrc_2_to_general.sType = vk::StructureType::eImageMemoryBarrier;
@@ -389,7 +397,6 @@ pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Exten
   submit_transfer_info.sType = vk::StructureType::eSubmitInfo;
   submit_transfer_info.pCommandBuffers = &transfer_buffer;
   submit_transfer_info.commandBufferCount = 1u;
-
   const auto transfer_queue = m_device->get_transfer_queue();
   r = transfer_queue.submit(1u, &submit_transfer_info, vk::Fence{});
   if (r != vk::Result::eSuccess)
@@ -397,7 +404,6 @@ pngine::buf_and_mem image_manipulator::clip_image(vk::Offset2D offset, vk::Exten
   transfer_queue.waitIdle();
   m_device->get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
 
-  ::sleep(1u);
   m_first_image = std::move(second_image), m_first_image_view = std::move(second_image_view);
   m_first_image_memory = std::move(second_image_memory); // теперь выходной буфер станет входным
   return staged;
