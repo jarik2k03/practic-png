@@ -54,7 +54,7 @@ const vk::SurfaceKHR& surfaceKHR::get() const noexcept {
 
 void surfaceKHR::clear() noexcept {
   if (m_is_created != false) {
-    struct surface_dispatch : vk::DispatchLoaderBase {
+    struct surface_dispatch : vk::detail::DispatchLoaderBase {
       PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
     };
     surface_dispatch dispatch{};

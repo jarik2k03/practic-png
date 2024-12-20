@@ -10,7 +10,7 @@ export namespace csc {
 namespace pngine {
 using swapchain_createKHR = PFN_vkCreateSwapchainKHR;
 using swapchain_destroyKHR = PFN_vkDestroySwapchainKHR;
-struct swapchain_dispatch : public vk::DispatchLoaderBase {
+struct swapchain_dispatch : public vk::detail::DispatchLoaderBase {
   swapchain_createKHR vkCreateSwapchainKHR = 0ul;
   swapchain_destroyKHR vkDestroySwapchainKHR = 0ul;
 };
