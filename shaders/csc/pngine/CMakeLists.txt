@@ -7,3 +7,7 @@ create_shaderpath_header(shaders_triangle)
 add_library(shaders_clipping INTERFACE)
 compile_shader(shaders_clipping ENV vulkan FORMAT bin SOURCES clipping.comp)
 create_shaderpath_header(shaders_clipping)
+
+add_library(shaders_scaling INTERFACE)
+compile_shader(shaders_scaling ENV vulkan FORMAT bin SOURCES scaling.comp)
+create_shaderpath_header(shaders_scaling)

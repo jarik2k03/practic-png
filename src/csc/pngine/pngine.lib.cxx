@@ -30,7 +30,6 @@ import csc.pngine.image_manipulator;
 
 import csc.pngine.commons.utility.graphics_pipeline;
 
-import csc.pngine.instance.device.command_pool;
 import vulkan_hpp;
 import glm_hpp;
 
@@ -487,9 +486,10 @@ void pngine_core::run() {
     time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
     frames_count += 1ul;
     [[unlikely]] if (time >= 1.0) {
-      const auto clipped = m_toolbox.clip_image({10, 10}, {m_png_info->width, m_png_info->height}); // пока что обрезка происходит сразу при запуске программы
-      m_png_info->width = clipped.image_size.width, m_png_info->height = clipped.image_size.height;
-      change_drawing(clipped.staged, *m_png_info);
+      // const auto prod = m_toolbox.clip_image({10, 10}, {m_png_info->width, m_png_info->height});
+      const auto prod = m_toolbox.scale_image(2.87f, 2.87f);
+      m_png_info->width = prod.image_size.width, m_png_info->height = prod.image_size.height;
+      change_drawing(prod.staged, *m_png_info);
       std::cout << "Render frames per second: " << frames_count << '\n';
       frames_count = 0u, time = 0.0;
     }
