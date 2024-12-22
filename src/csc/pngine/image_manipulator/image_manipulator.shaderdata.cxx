@@ -16,6 +16,12 @@ namespace scaling {
 struct params {
   alignas(16) glm::vec2 scale_coeff;
 };
+}
+
+namespace rotating {
+struct params {
+  alignas(16) float radians;
+};
 
 }
 

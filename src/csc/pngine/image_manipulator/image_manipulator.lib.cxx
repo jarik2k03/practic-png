@@ -63,6 +63,7 @@ class image_manipulator {
       vk::Extent2D src_image_size);
   pngine::image_manipulator_bundle clip_image(vk::Offset2D offset, vk::Extent2D size);
   pngine::image_manipulator_bundle scale_image(float scaleX, float scaleY);
+  pngine::image_manipulator_bundle rotate_image(float rotate_angle_radians);
   ~image_manipulator() noexcept = default;
 };
 
@@ -236,6 +237,26 @@ image_manipulator::image_manipulator(
   transfer_queue.waitIdle();
   m_device->get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
 
+}
+
+pngine::image_manipulator_bundle image_manipulator::rotate_image(float rotate_angle_radians) {
+  if (m_device == nullptr) // проверка на валидность класса
+    throw std::runtime_error("image_manipulator:: объект не проининициализирован. Требуется валидный объект!");
+  /* uniform buffer with params */
+  void* const mapped = m_device->get().mapMemory(m_uniform_params_memory.get(), 0u, sizeof(pngine::rotating::params));
+  const pngine::rotating::params params_host_buffer{ rotate_angle_radians };
+  ::memcpy(mapped, &params_host_buffer, sizeof(pngine::rotating::params));
+  m_device->get().unmapMemory(m_uniform_params_memory.get());
+
+  /* создание промежуточного буфера для копирования изображения */
+  pngine::image_manipulator_bundle staged;
+  staged.staged = m_device->create_buffer(
+      16u, // временно
+      vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+  staged.image_size = m_first_image_size;
+
+  return staged;
 }
 
 pngine::image_manipulator_bundle image_manipulator::scale_image(float scaleX, float scaleY) {
