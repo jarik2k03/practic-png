@@ -1,0 +1,28 @@
+#version 450
+
+layout(binding = 0) uniform range {
+  vec2 scale_coeff;
+}params;
+
+layout(rgba8, binding = 1) uniform readonly image2D in_image;
+layout(rgba8, binding = 2) uniform writeonly image2D out_image;
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main() {
+  const ivec2 out_image_idx = ivec2(gl_GlobalInvocationID.xy);
+  const vec2 super_idx = out_image_idx / params.scale_coeff; // позиция пикселя
+  const ivec2 in_image_idx = ivec2(floor(super_idx)); // целая часть позиции пикселя
+  const vec2 super_idx_relative = super_idx - in_image_idx; // дробная часть позиции пикселя
+
+  const vec4 first_pixel = imageLoad(in_image, in_image_idx);
+  const vec4 right_pixel = imageLoad(in_image, in_image_idx + ivec2(1, 0));
+  const vec4 down_pixel = imageLoad(in_image, in_image_idx + ivec2(0, 1));
+
+  const vec4 interpolated_pixel_by_x = (1.f - super_idx_relative.x) * first_pixel + super_idx_relative.x * right_pixel;
+  const vec4 interpolated_pixel_by_y = (1.f - super_idx_relative.y) * first_pixel + super_idx_relative.y * down_pixel;
+  const vec4 interpolated_pixel = (interpolated_pixel_by_x + interpolated_pixel_by_y) / 2.f;
+
+  imageStore(out_image, out_image_idx, interpolated_pixel);
+}
+

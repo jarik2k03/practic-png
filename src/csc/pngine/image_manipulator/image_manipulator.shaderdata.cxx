@@ -8,9 +8,23 @@ namespace pngine {
 
 namespace clipping {
 struct params {
-  alignas(16) glm::uvec2 clip_offset;
+  alignas(16) glm::ivec2 clip_offset;
 };
 } // namespace clipping
+
+namespace scaling {
+struct params {
+  alignas(16) glm::vec2 scale_coeff;
+};
+}
+
+namespace rotating {
+struct params {
+  alignas(16) float radians;
+};
+
+}
+
 
 } // namespace pngine
 } // namespace csc
