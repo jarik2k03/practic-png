@@ -471,7 +471,6 @@ void pngine_core::init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_
   /* clip & rotate & scale */
   m_toolbox = pngine::image_manipulator(
       device, staged.first, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
-
 }
 
 void pngine_core::run() {
@@ -487,7 +486,8 @@ void pngine_core::run() {
     frames_count += 1ul;
     [[unlikely]] if (time >= 1.0) {
       // const auto prod = m_toolbox.clip_image({10, 10}, {m_png_info->width, m_png_info->height});
-      const auto prod = m_toolbox.scale_image(2.87f, 2.87f);
+      const auto prod = m_toolbox.rotate_image(3.1415 / 3);
+      // const auto prod = m_toolbox.scale_image(1.13f, 1.13f);
       m_png_info->width = prod.image_size.width, m_png_info->height = prod.image_size.height;
       change_drawing(prod.staged, *m_png_info);
       std::cout << "Render frames per second: " << frames_count << '\n';

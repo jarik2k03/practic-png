@@ -11,3 +11,7 @@ create_shaderpath_header(shaders_clipping)
 add_library(shaders_scaling INTERFACE)
 compile_shader(shaders_scaling ENV vulkan FORMAT bin SOURCES scaling.comp)
 create_shaderpath_header(shaders_scaling)
+
+add_library(shaders_rotating INTERFACE)
+compile_shader(shaders_rotating ENV vulkan FORMAT bin SOURCES rotating.comp)
+create_shaderpath_header(shaders_rotating)

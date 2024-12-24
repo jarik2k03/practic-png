@@ -1,13 +1,23 @@
 #version 450
 
 layout(binding = 0) uniform range {
-  vec2 scale_coeff;
+  vec2 in_middle_idx;
+  vec2 out_middle_idx;
+  float cos_angle;
+  float sin_angle;
 }params;
 
 layout(rgba8, binding = 1) uniform readonly image2D in_image;
 layout(rgba8, binding = 2) uniform writeonly image2D out_image;
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+vec2 get_in_image_index_with_rotation(ivec2 out_index) {
+  const vec2 relative_idx = out_index - params.out_middle_idx;
+  const float rotated_x = relative_idx.x * params.cos_angle - relative_idx.y * params.sin_angle;
+  const float rotated_y = relative_idx.x * params.sin_angle + relative_idx.y * params.cos_angle;
+  return vec2(rotated_x + params.in_middle_idx.x, rotated_y + params.in_middle_idx.y);
+}
 
 vec4 get_pixel_with_linear_interpolation(vec2 floating_index) {
   const ivec2 solid_idx = ivec2(round(floating_index)); // целая часть позиции пикселя
@@ -30,9 +40,10 @@ vec4 get_pixel_with_no_linear_interpolation(vec2 floating_index) {
   return main_pixel;
 }
 
+
 void main() {
   const ivec2 out_image_idx = ivec2(gl_GlobalInvocationID.xy);
-  const vec2 in_image_floating_index = out_image_idx / params.scale_coeff; // позиция пикселя
+  const vec2 in_image_floating_index = get_in_image_index_with_rotation(out_image_idx); // позиция пикселя
 
   const vec4 out_pixel = get_pixel_with_linear_interpolation(in_image_floating_index);
   imageStore(out_image, out_image_idx, out_pixel);
