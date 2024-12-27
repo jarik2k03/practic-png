@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
-      core.set_drawing(png.m_image_data, png.header());
+      core.init_drawing(png.m_image_data, png.header());
       core.run();
     } else {
       throw std::invalid_argument("Не назначен входной файл!");

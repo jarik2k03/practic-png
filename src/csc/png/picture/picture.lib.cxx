@@ -31,6 +31,9 @@ class picture {
   const png::IHDR& header() const {
     return std::get<png::IHDR>(m_structured.at(0u));
   }
+  png::IHDR& header() {
+    return std::get<png::IHDR>(m_structured.at(0u));
+  }
 };
 
 } // namespace png

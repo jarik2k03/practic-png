@@ -49,7 +49,6 @@ int main() {
   cb.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0u, {m_set}, {});
   vk::PipelineLayoutCreateInfo pip_lay{};
   vk::DescriptorSetLayoutBinding lay_bind{};
-  vk::ImageMemoryBarrier img_info;
   img_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
   vk::ImageSubresourceLayers subres;
   vk::DescriptorSetLayoutBinding binding(0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);

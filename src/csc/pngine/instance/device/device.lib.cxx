@@ -4,6 +4,7 @@ module;
 #include <bits/ranges_algo.h>
 #include <map>
 #include <cstdint>
+#include <iostream>
 export module csc.pngine.instance.device;
 
 import vulkan_hpp;
@@ -21,7 +22,6 @@ import csc.pngine.instance.device.shader_module;
 import csc.pngine.instance.device.graphics_pipeline;
 import csc.pngine.instance.device.render_pass;
 import csc.pngine.instance.device.framebuffer;
-import csc.pngine.instance.device.command_pool;
 import csc.pngine.instance.device.fence;
 import csc.pngine.instance.device.semaphore;
 
@@ -73,6 +73,7 @@ class device {
   vk::Queue get_present_queue() const;
   vk::Queue get_graphics_queue() const;
   vk::Queue get_transfer_queue() const;
+  vk::Queue get_compute_queue() const;
   const pngine::shader_module& get_shader_module(std::string_view name) const;
   const pngine::swapchainKHR& get_swapchain() const;
   const pngine::render_pass& get_render_pass(std::string_view name) const;
@@ -98,9 +99,11 @@ class device {
       vk::Format format,
       vk::ImageTiling tiling,
       vk::ImageUsageFlags usage,
-      vk::MemoryPropertyFlags required_props);
-  pngine::command_pool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
-  pngine::command_pool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
+      vk::MemoryPropertyFlags required_props,
+      vk::ImageLayout layout = vk::ImageLayout::eUndefined);
+  vk::UniqueCommandPool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
+  vk::UniqueCommandPool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
+  vk::UniqueCommandPool create_compute_command_pool(vk::CommandPoolCreateFlags flags);
 };
 
 device::~device() noexcept {
@@ -217,11 +220,32 @@ void device::create_framebuffers(std::string_view pass_name) {
   });
 }
 
-pngine::command_pool device::create_graphics_command_pool(vk::CommandPoolCreateFlags flags) {
-  return pngine::command_pool(m_device, m_indices.graphics.value(), flags);
+vk::UniqueCommandPool device::create_graphics_command_pool(vk::CommandPoolCreateFlags flags) {
+  vk::CommandPoolCreateInfo description{};
+  description.sType = vk::StructureType::eCommandPoolCreateInfo;
+  description.queueFamilyIndex = m_indices.graphics.value();
+  description.flags = flags;
+
+  vk::UniqueCommandPool pool = m_device.createCommandPoolUnique(description, nullptr);
+  return pool;
 }
-pngine::command_pool device::create_transfer_command_pool(vk::CommandPoolCreateFlags flags) {
-  return pngine::command_pool(m_device, m_indices.transfer.value(), flags);
+vk::UniqueCommandPool device::create_transfer_command_pool(vk::CommandPoolCreateFlags flags) {
+  vk::CommandPoolCreateInfo description{};
+  description.sType = vk::StructureType::eCommandPoolCreateInfo;
+  description.queueFamilyIndex = m_indices.transfer.value();
+  description.flags = flags;
+
+  vk::UniqueCommandPool pool = m_device.createCommandPoolUnique(description, nullptr);
+  return pool;
+}
+vk::UniqueCommandPool device::create_compute_command_pool(vk::CommandPoolCreateFlags flags) {
+  vk::CommandPoolCreateInfo description{};
+  description.sType = vk::StructureType::eCommandPoolCreateInfo;
+  description.queueFamilyIndex = m_indices.compute.value();
+  description.flags = flags;
+
+  vk::UniqueCommandPool pool = m_device.createCommandPoolUnique(description, nullptr);
+  return pool;
 }
 
 buf_and_mem
@@ -251,21 +275,20 @@ img_and_mem device::create_image(
     vk::Format format,
     vk::ImageTiling tiling,
     vk::ImageUsageFlags usage,
-    vk::MemoryPropertyFlags required_props) {
+    vk::MemoryPropertyFlags required_props,
+    vk::ImageLayout layout) {
   img_and_mem result;
   vk::ImageCreateInfo img_info{};
   img_info.sType = vk::StructureType::eImageCreateInfo;
   img_info.imageType = vk::ImageType::e2D;
   img_info.usage = usage;
-  img_info.extent.width = img_size.width;
-  img_info.extent.height = img_size.height;
-  img_info.extent.depth = 1u;
+  img_info.extent = vk::Extent3D(img_size, 1u);
   img_info.tiling = tiling;
   img_info.format = format;
   img_info.samples = vk::SampleCountFlagBits::e1;
   img_info.mipLevels = 1u;
   img_info.arrayLayers = 1u;
-  img_info.initialLayout = vk::ImageLayout::eUndefined;
+  img_info.initialLayout = layout;
   img_info.sharingMode = vk::SharingMode::eExclusive;
   result.first = m_device.createImageUnique(img_info, nullptr);
 
@@ -326,6 +349,9 @@ vk::Queue device::get_transfer_queue() const {
 
 vk::Queue device::get_present_queue() const {
   return m_device.getQueue(m_indices.present.value(), 0);
+}
+vk::Queue device::get_compute_queue() const {
+  return m_device.getQueue(m_indices.compute.value(), 0);
 }
 void device::clear() noexcept {
   if (m_is_created != false) {
