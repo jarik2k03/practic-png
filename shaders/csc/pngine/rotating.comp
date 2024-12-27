@@ -20,7 +20,7 @@ vec2 get_in_image_index_with_rotation(ivec2 out_index) {
 }
 
 vec4 get_pixel_with_linear_interpolation(vec2 floating_index) {
-  const ivec2 solid_idx = ivec2(round(floating_index)); // целая часть позиции пикселя
+  const ivec2 solid_idx = ivec2(floor(floating_index)); // целая часть позиции пикселя
   const vec2 relative_floating_idx = abs(floating_index - solid_idx); // дробная часть позиции пикселя
 
   const vec4 main_pixel = imageLoad(in_image, solid_idx);
@@ -34,7 +34,7 @@ vec4 get_pixel_with_linear_interpolation(vec2 floating_index) {
 }
 
 vec4 get_pixel_with_no_linear_interpolation(vec2 floating_index) {
-  const ivec2 solid_idx = ivec2(round(floating_index)); // целая часть позиции пикселя
+  const ivec2 solid_idx = ivec2(floor(floating_index)); // целая часть позиции пикселя
 
   const vec4 main_pixel = imageLoad(in_image, solid_idx);
   return main_pixel;

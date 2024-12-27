@@ -10,8 +10,8 @@ layout(rgba8, binding = 2) uniform writeonly image2D out_image;
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 vec4 get_pixel_with_linear_interpolation(vec2 floating_index) {
-  const ivec2 solid_idx = ivec2(round(floating_index)); // целая часть позиции пикселя
-  const vec2 relative_floating_idx = abs(floating_index - solid_idx); // дробная часть позиции пикселя
+  const ivec2 solid_idx = ivec2(floor(floating_index)); // целая часть позиции пикселя
+  const vec2 relative_floating_idx = floating_index - solid_idx; // дробная часть позиции пикселя
 
   const vec4 main_pixel = imageLoad(in_image, solid_idx);
   const vec4 right_pixel = imageLoad(in_image, solid_idx + ivec2(1, 0));
@@ -24,7 +24,7 @@ vec4 get_pixel_with_linear_interpolation(vec2 floating_index) {
 }
 
 vec4 get_pixel_with_no_linear_interpolation(vec2 floating_index) {
-  const ivec2 solid_idx = ivec2(round(floating_index)); // целая часть позиции пикселя
+  const ivec2 solid_idx = ivec2(floor(floating_index)); // целая часть позиции пикселя
 
   const vec4 main_pixel = imageLoad(in_image, solid_idx);
   return main_pixel;
