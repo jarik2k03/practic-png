@@ -275,7 +275,8 @@ img_and_mem device::create_image(
     vk::Format format,
     vk::ImageTiling tiling,
     vk::ImageUsageFlags usage,
-    vk::MemoryPropertyFlags required_props, vk::ImageLayout layout) {
+    vk::MemoryPropertyFlags required_props,
+    vk::ImageLayout layout) {
   img_and_mem result;
   vk::ImageCreateInfo img_info{};
   img_info.sType = vk::StructureType::eImageCreateInfo;

@@ -16,15 +16,17 @@ namespace scaling {
 struct params {
   alignas(16) glm::vec2 scale_coeff;
 };
-}
+} // namespace scaling
 
 namespace rotating {
 struct params {
-  alignas(16) float radians;
+  glm::vec2 in_middle_idx;
+  glm::vec2 out_middle_idx;
+  float cos_angle;
+  float sin_angle;
 };
 
-}
-
+} // namespace rotating
 
 } // namespace pngine
 } // namespace csc
