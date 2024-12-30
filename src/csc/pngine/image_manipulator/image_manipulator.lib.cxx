@@ -379,7 +379,8 @@ pngine::image_manipulator_bundle image_manipulator::rotate_image(float rotate_an
   compute_buffer.bindDescriptorSets(
       vk::PipelineBindPoint::eCompute, m_compute_pipeline_layout.get(), 0u, 1u, &rotate_descr_set.get(), 0u, nullptr);
   /* dispatch */
-  compute_buffer.dispatch(std::roundf(second_image_size.width / 16.f), std::roundf(second_image_size.height / 16.f), 1u);
+  compute_buffer.dispatch(
+      std::roundf(second_image_size.width / 16.f), std::roundf(second_image_size.height / 16.f), 1u);
 
   compute_buffer.end();
 

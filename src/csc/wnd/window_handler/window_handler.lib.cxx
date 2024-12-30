@@ -2,13 +2,14 @@ module;
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <utility>
-export module csc.pngine.window_handler;
+export module csc.wnd.window_handler;
 
 import stl.stdexcept;
 import stl.string_view;
+import stl.vector;
 
 namespace csc {
-namespace pngine {
+namespace wnd {
 
 export using glfw_window = GLFWwindow;
 
@@ -31,7 +32,19 @@ export class window_handler {
 
   void* get_user_pointer() const;
   VkExtent2D get_framebuffer_size() const;
+  std::vector<const char*> get_required_instance_extensions() const;
 };
+
+std::vector<const char*> window_handler::get_required_instance_extensions() const {
+  uint32_t req_extension_count;
+  const char** req_extensions = ::glfwGetRequiredInstanceExtensions(&req_extension_count);
+  std::vector<const char*> extensions;
+  for (auto idx = 0u; idx < req_extension_count; idx++) {
+    const char* const ext = req_extensions[idx];
+    extensions.emplace_back(ext);
+  }
+  return extensions;
+}
 
 window_handler::~window_handler() noexcept {
   if (m_window != nullptr)
@@ -91,5 +104,5 @@ void window_handler::set_framebuffer_size_callback(GLFWframebuffersizefun callba
   ::glfwSetFramebufferSizeCallback(m_window, callback);
 }
 
-} // namespace pngine
+} // namespace wnd
 } // namespace csc

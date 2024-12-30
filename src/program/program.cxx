@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
+#include <chrono>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 
@@ -11,12 +12,15 @@ import csc.png.picture_debug;
 
 import csc.png;
 import csc.pngine;
+import csc.wnd;
+
 import stl.string_view;
 import stl.string;
 import stl.iostream;
 import stl.fstream;
 import stl.ios;
 import stl.stdexcept;
+
 
 csc::png::e_compression_level bring_compression_level(const char* arg) {
   const std::string compr_level_str(arg);
@@ -112,15 +116,45 @@ int main(int argc, char** argv) {
       png_executor.prepare_to_present(png); // здесь происходит второй этап декодирования изображения
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
+      csc::wnd::glfw_handler glfw_instance;
+      csc::wnd::window_handler main_window(1280u, 720u, "PNG-обозреватель");
+      main_window.set_size_limits({320u, 240u});
+
       csc::pngine::pngine_core core(
-          "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 2u), "Intel(R) HD Graphics 2500 (IVB GT1)");
+          "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 2u), main_window.get_required_instance_extensions());
       std::cout << "Движок: " << core.get_engine_name() << '\n';
       const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
+      core.setup_surface(main_window.create_surface(core.get_instance()));
+      core.setup_gpu_and_renderer("AMD Radeon RX 6500 XT (RADV NAVI24)", main_window.get_framebuffer_size());
+
+      main_window.set_user_pointer(&core);
+      main_window.set_framebuffer_size_callback(csc::wnd::resize_framebuffer_event);
+
       core.init_drawing(png.m_image_data, png.header());
-      core.run();
+      core.load_mesh();
+
+      double time = 0.0;
+      uint64_t frames_count = 0u;
+      while (!main_window.should_close()) {
+        glfw_instance.poll_events();
+        const auto start = std::chrono::high_resolution_clock::now();
+        core.render_frame();
+        const auto end = std::chrono::high_resolution_clock::now();
+        time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
+        frames_count += 1ul;
+        [[unlikely]] if (time >= 1.0) {
+          auto prod = core.get_toolbox().rotate_image(4 * 3.1415 / 3);
+          prod = core.get_toolbox().clip_image({0, 0}, {180, 180});
+          // const auto prod = core.get_toolbox().scale_image(0.83f, 0.83f);
+          png.header().width = prod.image_size.width, png.header().height = prod.image_size.height;
+          core.change_drawing(prod.staged, png.header());
+          std::cout << "Render frames per second: " << frames_count << '\n';
+          frames_count = 0u, time = 0.0;
+        }
+      }
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }

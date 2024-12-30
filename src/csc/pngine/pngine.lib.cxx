@@ -1,11 +1,8 @@
 module;
 #include <cstdint>
-#include <unistd.h>
-#include <bits/move.h>
-#include <limits>
+#include <tuple>
+#include <bits/stl_algobase.h>
 #include <cstring>
-#include <iostream>
-#include <chrono>
 #include <shaders_triangle.h>
 export module csc.pngine;
 
@@ -23,8 +20,6 @@ import csc.png.picture.sections.IHDR;
 
 import csc.pngine.instance;
 import csc.pngine.instance.device;
-import csc.pngine.window_handler;
-import csc.pngine.glfw_handler;
 import csc.pngine.vertex;
 import csc.pngine.image_manipulator;
 
@@ -43,18 +38,6 @@ const std::vector<pngine::vertex> rectangle = {
     pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
 const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
 
-// колбэки
-static void recreate_swapchain(pngine::glfw_window* window, int, int) {
-  auto& window_obj = *reinterpret_cast<pngine::window_handler*>(&window);
-  auto& instance = *reinterpret_cast<pngine::instance*>(window_obj.get_user_pointer());
-  auto& dev = instance.get_device();
-  dev.get().waitIdle();
-  dev.create_swapchainKHR(
-      window_obj.get_framebuffer_size(), instance.get_swapchainKHR_dispatch()); // operator= очистит старый класс
-  dev.create_image_views(); // operator= очистит старый класс
-  dev.create_framebuffers("basic_pass"); // operator= очистит старый класс
-}
-
 export class pngine_core {
  private:
   std::string m_app_name{"Application"};
@@ -63,9 +46,6 @@ export class pngine_core {
   std::string m_gpu_name;
 
   png::IHDR* m_png_info = nullptr;
-
-  pngine::glfw_handler m_glfw_state{};
-  pngine::window_handler m_window_handler;
 
   pngine::instance m_instance;
   uint32_t m_current_frame = 0u;
@@ -107,40 +87,48 @@ export class pngine_core {
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   pngine::image_manipulator m_toolbox;
-  void Render_Frame();
-  void Load_Mesh();
   void Update(uint32_t frame_index);
 
  public:
   pngine_core() = delete;
-  pngine_core(std::string app_name, pngine::version app_version, std::string gpu_name);
+  pngine_core(std::string app_name, pngine::version app_version, const std::vector<const char*>& surface_extensions);
+  void setup_surface(vk::SurfaceKHR render_target);
+  void setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D render_target_size);
+
   void init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
   void change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info);
-  void run();
+  void recreate_swapchain(vk::Extent2D framebuffer_size);
+  void render_frame();
+  void load_mesh();
   ~pngine_core() noexcept;
 
+  vk::Instance get_instance() const noexcept;
+  const pngine::image_manipulator& get_toolbox() const noexcept;
+  pngine::image_manipulator& get_toolbox() noexcept;
   const char* get_engine_name() const noexcept;
   pngine::human_version get_engine_version() const noexcept;
   pngine::human_version get_vk_api_version() const noexcept;
   std::string_view get_app_name() const noexcept;
 };
-pngine_core::pngine_core(std::string nm, pngine::version ver, std::string g_nm)
-    : m_app_name(std::move(nm)), m_app_version(ver), m_gpu_name(std::move(g_nm)) {
+pngine_core::pngine_core(std::string nm, pngine::version ver, const std::vector<const char*>& surface_extensions)
+    : m_app_name(std::move(nm)), m_app_version(ver) {
   vk::ApplicationInfo app_info(
       m_app_name.c_str(), m_app_version, pngine::bring_engine_name(), pngine::bring_engine_version(), m_vk_api_version);
   // высокоуровневый алгоритм...
-  m_window_handler = pngine::window_handler(1280u, 720u, m_app_name);
-  m_instance = pngine::instance(app_info);
-  m_window_handler.set_user_pointer(&m_instance);
-  m_window_handler.set_framebuffer_size_callback(recreate_swapchain);
-  m_window_handler.set_size_limits(vk::Extent2D{320u, 240u});
+  m_instance = pngine::instance(app_info, surface_extensions);
 #ifndef NDEBUG
   m_instance.create_debug_reportEXT();
 #endif
-  m_instance.create_surfaceKHR(m_window_handler);
+}
+void pngine_core::setup_surface(vk::SurfaceKHR render_target) {
+  m_instance.create_surfaceKHR(render_target);
+}
+
+void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D render_target_size) {
+  m_gpu_name = std::move(gpu_name);
   m_instance.bring_physical_devices();
   auto& device = m_instance.create_device(m_gpu_name);
-  device.create_swapchainKHR(m_window_handler.get_framebuffer_size(), m_instance.get_swapchainKHR_dispatch());
+  device.create_swapchainKHR(render_target_size, m_instance.get_swapchainKHR_dispatch());
   device.create_image_views();
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
@@ -304,6 +292,14 @@ pngine_core::~pngine_core() noexcept {
     device.get().destroySemaphore(m_image_available_s[i]);
     device.get().destroyFence(m_in_flight_f[i]);
   }
+}
+
+void pngine_core::recreate_swapchain(vk::Extent2D framebuffer_size) {
+  auto& dev = m_instance.get_device();
+  dev.get().waitIdle();
+  dev.create_swapchainKHR(framebuffer_size, m_instance.get_swapchainKHR_dispatch()); // operator= очистит старый класс
+  dev.create_image_views(); // operator= очистит старый класс
+  dev.create_framebuffers("basic_pass"); // operator= очистит старый класс
 }
 
 void pngine_core::change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info) {
@@ -472,30 +468,7 @@ void pngine_core::init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_
   m_toolbox = pngine::image_manipulator(
       device, staged.first, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
 }
-
-void pngine_core::run() {
-  Load_Mesh(); // присылаем данные перед рендерингом
-  double time = 0.0;
-  uint64_t frames_count = 0u;
-  while (!m_window_handler.should_close()) {
-    m_glfw_state.poll_events();
-    const auto start = std::chrono::high_resolution_clock::now();
-    Render_Frame();
-    const auto end = std::chrono::high_resolution_clock::now();
-    time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
-    frames_count += 1ul;
-    [[unlikely]] if (time >= 1.0) {
-      auto prod = m_toolbox.rotate_image(4 * 3.1415 / 3);
-      prod = m_toolbox.clip_image({0, 0}, {180, 180});
-      // const auto prod = m_toolbox.scale_image(0.83f, 0.83f);
-      m_png_info->width = prod.image_size.width, m_png_info->height = prod.image_size.height;
-      change_drawing(prod.staged, *m_png_info);
-      std::cout << "Render frames per second: " << frames_count << '\n';
-      frames_count = 0u, time = 0.0;
-    }
-  }
-}
-void pngine_core::Load_Mesh() {
+void pngine_core::load_mesh() {
   const auto& device = m_instance.get_device();
   /* allocate transfer commands for copy image */
   vk::CommandBufferAllocateInfo alloc_desc{};
@@ -552,7 +525,7 @@ void pngine_core::Update(uint32_t frame_index) {
   ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
 }
 
-void pngine_core::Render_Frame() {
+void pngine_core::render_frame() {
   auto& dev = m_instance.get_device();
   const auto& in_flight_f = m_in_flight_f[m_current_frame];
   const auto& image_available_s = m_image_available_s[m_current_frame];
@@ -661,6 +634,15 @@ std::string_view pngine_core::get_app_name() const noexcept {
 }
 pngine::human_version pngine_core::get_vk_api_version() const noexcept {
   return pngine::bring_human_version(m_vk_api_version);
+}
+vk::Instance pngine_core::get_instance() const noexcept {
+  return m_instance.get();
+}
+const pngine::image_manipulator& pngine_core::get_toolbox() const noexcept {
+  return m_toolbox;
+}
+pngine::image_manipulator& pngine_core::get_toolbox() noexcept {
+  return m_toolbox;
 }
 
 } // namespace pngine
