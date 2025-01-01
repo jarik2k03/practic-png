@@ -84,9 +84,9 @@ instance::instance(const vk::ApplicationInfo& app_info, const std::vector<const 
     m_enabled_extensions.emplace_back(str);
 
 #ifndef NDEBUG
-    m_enabled_layers.reserve(256ul);
-    m_enabled_layers.emplace_back("VK_LAYER_KHRONOS_validation");
-    m_enabled_extensions.emplace_back("VK_EXT_debug_report");
+  m_enabled_layers.reserve(256ul);
+  m_enabled_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+  m_enabled_extensions.emplace_back("VK_EXT_debug_report");
 #endif
   vk::InstanceCreateInfo description{};
   using enum vk::DebugReportFlagBitsEXT;
@@ -123,7 +123,7 @@ pngine::device& instance::get_device() {
 void instance::clear() noexcept {
   if (m_is_created) {
 #ifndef NDEBUG
-      m_debug_report.clear();
+    m_debug_report.clear();
 #endif
     m_device.clear(); // удаление логического устройства
     m_surface.clear(); // удаление поверхности окна
@@ -134,7 +134,7 @@ void instance::clear() noexcept {
 
 void instance::create_debug_reportEXT() {
 #ifndef NDEBUG
-    m_debug_report = pngine::debug_reportEXT(m_instance);
+  m_debug_report = pngine::debug_reportEXT(m_instance);
 #endif
 }
 void instance::create_surfaceKHR(vk::SurfaceKHR handler) {

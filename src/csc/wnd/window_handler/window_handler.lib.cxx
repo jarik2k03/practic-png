@@ -8,6 +8,7 @@ import stl.stdexcept;
 import stl.string_view;
 import stl.vector;
 
+import glm_hpp;
 namespace csc {
 namespace wnd {
 
@@ -29,8 +30,10 @@ export class window_handler {
   void set_size_limits(VkExtent2D min, VkExtent2D max);
   void set_user_pointer(void* user_data);
   void set_framebuffer_size_callback(GLFWframebuffersizefun callback);
+  void set_mouse_button_callback(GLFWmousebuttonfun callback);
 
   void* get_user_pointer() const;
+  glm::vec2 get_cursor_pos() const;
   VkExtent2D get_framebuffer_size() const;
   std::vector<const char*> get_required_instance_extensions() const;
 };
@@ -94,6 +97,12 @@ void window_handler::set_user_pointer(void* user_data) {
 void* window_handler::get_user_pointer() const {
   return ::glfwGetWindowUserPointer(m_window);
 }
+glm::vec2 window_handler::get_cursor_pos() const {
+  double xpos, ypos;
+  ::glfwGetCursorPos(m_window, &xpos, &ypos);
+  return glm::vec2(xpos, ypos);
+}
+
 VkExtent2D window_handler::get_framebuffer_size() const {
   int w, h;
   ::glfwGetFramebufferSize(m_window, &w, &h);
@@ -103,6 +112,8 @@ VkExtent2D window_handler::get_framebuffer_size() const {
 void window_handler::set_framebuffer_size_callback(GLFWframebuffersizefun callback) {
   ::glfwSetFramebufferSizeCallback(m_window, callback);
 }
-
+void window_handler::set_mouse_button_callback(GLFWmousebuttonfun callback) {
+  ::glfwSetMouseButtonCallback(m_window, callback);
+}
 } // namespace wnd
 } // namespace csc

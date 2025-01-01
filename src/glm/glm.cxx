@@ -13,4 +13,8 @@ using glm::scale;
 using glm::uvec2;
 using glm::vec2;
 using glm::vec3;
+using glm::operator!=;
+using glm::operator==;
+using glm::operator+;
+using glm::pi;
 } // namespace glm

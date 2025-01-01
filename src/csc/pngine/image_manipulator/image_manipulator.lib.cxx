@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <tuple>
 #include <unistd.h>
+#include <bits/stl_algo.h>
 #include <shaders_clipping.h>
 #include <shaders_scaling.h>
 #include <shaders_rotating.h>
@@ -29,6 +30,10 @@ struct image_manipulator_bundle {
   vk::Extent2D image_size;
 };
 
+vk::Extent2D force_clamp_image_extent(vk::Extent2D src, vk::Extent2D restrict) {
+  return vk::Extent2D(std::clamp(src.width, 0u, restrict.width), std::clamp(src.height, 0u, restrict.height));
+}
+
 class image_manipulator {
  private:
   pngine::device* m_device = nullptr;
@@ -51,7 +56,8 @@ class image_manipulator {
   vk::UniqueImage m_first_image;
   vk::UniqueImageView m_first_image_view;
   vk::Extent2D m_first_image_size;
-
+  // gpu restrict;
+  vk::Extent2D m_max_image_size;
   static constexpr auto m_uniform_params_max_size = 128u;
 
  public:
@@ -73,6 +79,14 @@ image_manipulator::image_manipulator(
     const vk::UniqueBuffer& staged_buffer,
     vk::Extent2D src_image_size)
     : m_device(&handle), m_first_image_size(src_image_size) {
+  /* check max image size for gpu */
+  const auto props = m_device->get_physdev().getImageFormatProperties(
+      vk::Format::eR8G8B8A8Unorm,
+      vk::ImageType::e2D,
+      vk::ImageTiling::eOptimal,
+      vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc,
+      vk::ImageCreateFlags{});
+  m_max_image_size = vk::Extent2D(props.maxExtent.width, props.maxExtent.height);
   /* descriptor layouts */
   vk::DescriptorSetLayoutBinding u0_bind(
       0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eCompute, nullptr);
@@ -275,7 +289,7 @@ pngine::image_manipulator_bundle image_manipulator::rotate_image(float rotate_an
       std::floorf(std::abs(m_first_image_size.width * cos_angle) + std::abs(m_first_image_size.height * sin_angle));
   second_image_size.height =
       std::floorf(std::abs(m_first_image_size.width * sin_angle) + std::abs(m_first_image_size.height * cos_angle));
-
+  second_image_size = pngine::force_clamp_image_extent(second_image_size, m_max_image_size);
   /* uniform buffer with params */
   void* const mapped = m_device->get().mapMemory(m_uniform_params_memory.get(), 0u, sizeof(pngine::rotating::params));
   pngine::rotating::params params_host_buffer;
@@ -503,7 +517,7 @@ pngine::image_manipulator_bundle image_manipulator::scale_image(float scaleX, fl
 
   /* allocating output image storage memory */
   const auto second_image_size =
-      vk::Extent2D(std::roundf(m_first_image_size.width * scaleX), std::roundf(m_first_image_size.height * scaleY));
+      pngine::force_clamp_image_extent(vk::Extent2D(std::roundf(m_first_image_size.width * scaleX), std::roundf(m_first_image_size.height * scaleY)), m_max_image_size);
   auto [second_image, second_image_memory] = m_device->create_image(
       second_image_size,
       vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
@@ -717,7 +731,9 @@ pngine::image_manipulator_bundle image_manipulator::clip_image(vk::Offset2D offs
   m_device->get().unmapMemory(m_uniform_params_memory.get());
 
   /* allocating output image storage memory */
-  const auto second_image_size = vk::Extent2D(size.width - offset.x, size.height - offset.y);
+  const auto second_image_size = pngine::force_clamp_image_extent(
+      vk::Extent2D(size.width - offset.x, size.height - offset.y),
+      m_first_image_size); // ограничение обрезки под исходное изображение
   auto [second_image, second_image_memory] = m_device->create_image(
       second_image_size,
       vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений

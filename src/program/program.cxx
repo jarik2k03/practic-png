@@ -21,7 +21,6 @@ import stl.fstream;
 import stl.ios;
 import stl.stdexcept;
 
-
 csc::png::e_compression_level bring_compression_level(const char* arg) {
   const std::string compr_level_str(arg);
   if (compr_level_str == "speed")
@@ -129,9 +128,10 @@ int main(int argc, char** argv) {
       std::cout << "Загрузка изображения в память...\n";
       core.setup_surface(main_window.create_surface(core.get_instance()));
       core.setup_gpu_and_renderer("AMD Radeon RX 6500 XT (RADV NAVI24)", main_window.get_framebuffer_size());
-
-      main_window.set_user_pointer(&core);
+      csc::wnd::pngine_picture_package pack_data{&core, &png};
+      main_window.set_user_pointer(&pack_data);
       main_window.set_framebuffer_size_callback(csc::wnd::resize_framebuffer_event);
+      main_window.set_mouse_button_callback(csc::wnd::cursor_click_event);
 
       core.init_drawing(png.m_image_data, png.header());
       core.load_mesh();
@@ -146,11 +146,6 @@ int main(int argc, char** argv) {
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
         [[unlikely]] if (time >= 1.0) {
-          auto prod = core.get_toolbox().rotate_image(4 * 3.1415 / 3);
-          prod = core.get_toolbox().clip_image({0, 0}, {180, 180});
-          // const auto prod = core.get_toolbox().scale_image(0.83f, 0.83f);
-          png.header().width = prod.image_size.width, png.header().height = prod.image_size.height;
-          core.change_drawing(prod.staged, png.header());
           std::cout << "Render frames per second: " << frames_count << '\n';
           frames_count = 0u, time = 0.0;
         }

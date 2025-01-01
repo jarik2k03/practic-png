@@ -616,10 +616,14 @@ void pngine_core::render_frame() {
   present_info.pImageIndices = &current_image;
 
   r = dev.get_present_queue().presentKHR(present_info);
-  if (r == vk::Result::eErrorOutOfDateKHR || r == vk::Result::eSuboptimalKHR)
+  if (r == vk::Result::eErrorOutOfDateKHR || r == vk::Result::eSuboptimalKHR) {
+#ifndef NDEBUG
     std::clog << "Pngine:[NOTIFICATION]: запись в present-очередь. Возвращает: " << vk::to_string(r) << '\n';
-  else if (r != vk::Result::eSuccess)
+#endif
+  }
+  else if (r != vk::Result::eSuccess) {
     throw std::runtime_error("Pngine: не удалось произвести отображение на экране!");
+  }
   m_current_frame = (m_current_frame + 1) % m_flight_count;
 }
 

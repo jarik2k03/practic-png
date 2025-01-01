@@ -52,4 +52,6 @@ int main() {
   img_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
   vk::ImageSubresourceLayers subres;
   vk::DescriptorSetLayoutBinding binding(0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
+  const auto props = dev[0].getImageFormatProperties(vk::Format::eR8G8B8A8Unorm, vk::ImageType::e2D, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc, vk::ImageCreateFlags{});
+
 }
