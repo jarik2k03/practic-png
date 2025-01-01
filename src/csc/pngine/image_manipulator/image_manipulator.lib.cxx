@@ -10,7 +10,7 @@ module;
 #include <shaders_rotating.h>
 export module csc.pngine.image_manipulator;
 
-import :shaderdata;
+export import :shaderdata;
 
 import stl.vector;
 import stl.array;

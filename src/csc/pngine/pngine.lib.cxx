@@ -21,7 +21,7 @@ import csc.png.picture.sections.IHDR;
 import csc.pngine.instance;
 import csc.pngine.instance.device;
 import csc.pngine.vertex;
-import csc.pngine.image_manipulator;
+export import csc.pngine.image_manipulator;
 
 import csc.pngine.commons.utility.graphics_pipeline;
 
@@ -648,6 +648,5 @@ const pngine::image_manipulator& pngine_core::get_toolbox() const noexcept {
 pngine::image_manipulator& pngine_core::get_toolbox() noexcept {
   return m_toolbox;
 }
-
 } // namespace pngine
 } // namespace csc

@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-module csc.pngine.image_manipulator:shaderdata;
+export module csc.pngine.image_manipulator:shaderdata;
 export import glm_hpp;
 
 export namespace csc {

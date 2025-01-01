@@ -21,6 +21,22 @@ import stl.fstream;
 import stl.ios;
 import stl.stdexcept;
 
+void switch_callbacks(csc::wnd::controller& states, csc::wnd::window_handler& event_ctl) {
+  if (states.previous_state == states.current_state)
+    return; // состояние не изменилось
+
+  using namespace csc::wnd;
+  if (states.previous_state == e_program_state::normal && states.current_state == e_program_state::insert) {
+    event_ctl.set_mouse_button_callback(csc::wnd::applying_tool_by_mouse_event);
+    event_ctl.set_char_callback(csc::wnd::character_event);
+  }
+  else if (states.previous_state == e_program_state::insert && states.current_state == e_program_state::normal) {
+    event_ctl.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
+    event_ctl.set_char_callback(nullptr);
+  }
+
+}
+
 csc::png::e_compression_level bring_compression_level(const char* arg) {
   const std::string compr_level_str(arg);
   if (compr_level_str == "speed")
@@ -107,7 +123,6 @@ int main(int argc, char** argv) {
 
     csc::png::picture png;
     csc::png::deserializer png_executor;
-
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
@@ -117,7 +132,6 @@ int main(int argc, char** argv) {
       std::cout << "Инициализация экземпляра Vulkan... \n";
       csc::wnd::glfw_handler glfw_instance;
       csc::wnd::window_handler main_window(1280u, 720u, "PNG-обозреватель");
-      main_window.set_size_limits({320u, 240u});
 
       csc::pngine::pngine_core core(
           "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 2u), main_window.get_required_instance_extensions());
@@ -128,10 +142,15 @@ int main(int argc, char** argv) {
       std::cout << "Загрузка изображения в память...\n";
       core.setup_surface(main_window.create_surface(core.get_instance()));
       core.setup_gpu_and_renderer("AMD Radeon RX 6500 XT (RADV NAVI24)", main_window.get_framebuffer_size());
-      csc::wnd::pngine_picture_package pack_data{&core, &png};
+
+      csc::wnd::controller program_state;
+      csc::wnd::pngine_picture_input_package pack_data{&core, &png, &program_state};
+      main_window.set_size_limits({320u, 240u});
       main_window.set_user_pointer(&pack_data);
       main_window.set_framebuffer_size_callback(csc::wnd::resize_framebuffer_event);
-      main_window.set_mouse_button_callback(csc::wnd::cursor_click_event);
+
+      main_window.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
+      main_window.set_char_callback(nullptr);
 
       core.init_drawing(png.m_image_data, png.header());
       core.load_mesh();
@@ -139,7 +158,11 @@ int main(int argc, char** argv) {
       double time = 0.0;
       uint64_t frames_count = 0u;
       while (!main_window.should_close()) {
+
         glfw_instance.poll_events();
+        ::switch_callbacks(program_state, main_window);
+        program_state.previous_state = program_state.current_state;
+
         const auto start = std::chrono::high_resolution_clock::now();
         core.render_frame();
         const auto end = std::chrono::high_resolution_clock::now();
@@ -147,6 +170,7 @@ int main(int argc, char** argv) {
         frames_count += 1ul;
         [[unlikely]] if (time >= 1.0) {
           std::cout << "Render frames per second: " << frames_count << '\n';
+          std::cout << "Input params string: " << program_state.input_data << '\n';
           frames_count = 0u, time = 0.0;
         }
       }
@@ -179,7 +203,7 @@ int main(int argc, char** argv) {
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
     }
   } catch (const std::runtime_error& e) {
-    std::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
+    std::cout << "PNG-изображение не декодировано или ошибка рендеринга: \n - " << e.what() << '\n';
     std::exit(1);
   } catch (const std::invalid_argument& e) {
     std::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
