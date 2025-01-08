@@ -10,7 +10,7 @@ module;
 #include <shaders_rotating.h>
 export module csc.pngine.image_manipulator;
 
-export import :shaderdata;
+import csc.pngine.commons.toolbox_params;
 
 import stl.vector;
 import stl.array;
@@ -31,6 +31,8 @@ struct image_manipulator_bundle {
 };
 
 vk::Extent2D force_clamp_image_extent(vk::Extent2D src, vk::Extent2D restrict) {
+  if (src.width == 0u && src.height == 0u)
+    return vk::Extent2D(1u, 1u);
   return vk::Extent2D(std::clamp(src.width, 0u, restrict.width), std::clamp(src.height, 0u, restrict.height));
 }
 

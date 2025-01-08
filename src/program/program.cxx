@@ -28,10 +28,12 @@ void switch_callbacks(csc::wnd::controller& states, csc::wnd::window_handler& ev
   using namespace csc::wnd;
   if (states.previous_state == e_program_state::normal && states.current_state == e_program_state::insert) {
     event_ctl.set_mouse_button_callback(csc::wnd::applying_tool_by_mouse_event);
+    event_ctl.set_key_callback(csc::wnd::applying_tool_by_keyboard_event);
     event_ctl.set_char_callback(csc::wnd::character_event);
   }
   else if (states.previous_state == e_program_state::insert && states.current_state == e_program_state::normal) {
     event_ctl.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
+    event_ctl.set_key_callback(csc::wnd::choosing_tool_by_keyboard_event);
     event_ctl.set_char_callback(nullptr);
   }
 
@@ -150,27 +152,32 @@ int main(int argc, char** argv) {
       main_window.set_framebuffer_size_callback(csc::wnd::resize_framebuffer_event);
 
       main_window.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
+      main_window.set_key_callback(csc::wnd::choosing_tool_by_keyboard_event);
       main_window.set_char_callback(nullptr);
 
       core.init_drawing(png.m_image_data, png.header());
       core.load_mesh();
 
       double time = 0.0;
-      uint64_t frames_count = 0u;
+      uint64_t frames_count = 0u, fixed_frame_count = frames_count;
       while (!main_window.should_close()) {
+        const auto start = std::chrono::high_resolution_clock::now();
 
         glfw_instance.poll_events();
         ::switch_callbacks(program_state, main_window);
         program_state.previous_state = program_state.current_state;
 
-        const auto start = std::chrono::high_resolution_clock::now();
         core.render_frame();
         const auto end = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
+        std::cout << "\033[H\033[2J";
+        std::cout << "Render frames per second: " << fixed_frame_count << '\n';
+        if (program_state.current_state == csc::wnd::e_program_state::insert)
+            std::cout << "Input params string: " << program_state.input_data << '\n';
+
         [[unlikely]] if (time >= 1.0) {
-          std::cout << "Render frames per second: " << frames_count << '\n';
-          std::cout << "Input params string: " << program_state.input_data << '\n';
+          fixed_frame_count = frames_count;
           frames_count = 0u, time = 0.0;
         }
       }

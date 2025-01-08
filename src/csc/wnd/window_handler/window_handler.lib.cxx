@@ -32,6 +32,7 @@ export class window_handler {
   void set_framebuffer_size_callback(GLFWframebuffersizefun callback);
   void set_mouse_button_callback(GLFWmousebuttonfun callback);
   void set_char_callback(GLFWcharfun callback);
+  void set_key_callback(GLFWkeyfun callback);
 
   void* get_user_pointer() const;
   glm::vec2 get_cursor_pos() const;
@@ -119,5 +120,9 @@ void window_handler::set_mouse_button_callback(GLFWmousebuttonfun callback) {
 void window_handler::set_char_callback(GLFWcharfun callback) {
   ::glfwSetCharCallback(m_window, callback);
 }
+void window_handler::set_key_callback(GLFWkeyfun callback) {
+  ::glfwSetKeyCallback(m_window, callback);
+}
+
 } // namespace wnd
 } // namespace csc
