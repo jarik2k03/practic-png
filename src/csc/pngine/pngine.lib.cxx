@@ -31,12 +31,19 @@ import glm_hpp;
 namespace csc {
 namespace pngine {
 
-const std::vector<pngine::vertex> rectangle = {
+const std::vector<pngine::vertex> menu_and_rectangle = {
+    // меш изображения
     pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}, {1.f, 0.f}},
     pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
     pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
-    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}}};
-const std::vector<uint16_t> rectangle_ids = {0, 1, 2, 2, 3, 0};
+    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}},
+    // меш меню
+    pngine::vertex{{-0.5f, -0.5f}, {1.f, 1.f, 1.f}, {1.f, 0.f}},
+    pngine::vertex{{0.5f, -0.5f}, {0.f, 0.f, 0.f}, {0.f, 0.f}},
+    pngine::vertex{{0.5f, 0.5f}, {0.f, 0.f, 0.f}, {0.f, 1.f}},
+    pngine::vertex{{-0.5f, 0.5f}, {1.f, 1.f, 1.f}, {1.f, 1.f}},
+};
+const std::vector<uint16_t> menu_and_rectangle_ids = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
 export class pngine_core {
  private:
@@ -185,15 +192,15 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
   device.create_pipeline("basic_pipeline", m_pipeline_layout, "basic_pass", triangle_cfg);
   device.create_framebuffers("basic_pass");
   /* vertex buffer */
-  const uint32_t vtx_buf_size = sizeof(pngine::vertex) * rectangle.size();
+  const uint32_t vtx_buf_size = sizeof(pngine::vertex) * menu_and_rectangle.size();
   std::tie(m_stage_png_surface_mesh, m_stage_png_surface_mesh_memory) = device.create_buffer(
       vtx_buf_size,
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
   void* data =
-      device.get().mapMemory(m_stage_png_surface_mesh_memory.get(), 0u, rectangle.size() * sizeof(pngine::vertex));
-  ::memcpy(data, rectangle.data(), vtx_buf_size);
+      device.get().mapMemory(m_stage_png_surface_mesh_memory.get(), 0u, menu_and_rectangle.size() * sizeof(pngine::vertex));
+  ::memcpy(data, menu_and_rectangle.data(), vtx_buf_size);
   device.get().unmapMemory(m_stage_png_surface_mesh_memory.get());
 
   std::tie(m_png_surface_mesh, m_png_surface_mesh_memory) = device.create_buffer(
@@ -201,14 +208,14 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
   /* index buffer */
-  const uint32_t idx_buf_size = sizeof(uint16_t) * rectangle_ids.size();
+  const uint32_t idx_buf_size = sizeof(uint16_t) * menu_and_rectangle_ids.size();
   std::tie(m_stage_png_surface_ids, m_stage_png_surface_ids_memory) = device.create_buffer(
       vtx_buf_size,
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-  data = device.get().mapMemory(m_stage_png_surface_ids_memory.get(), 0u, rectangle.size() * sizeof(pngine::vertex));
-  ::memcpy(data, rectangle_ids.data(), idx_buf_size);
+  data = device.get().mapMemory(m_stage_png_surface_ids_memory.get(), 0u, menu_and_rectangle.size() * sizeof(pngine::vertex));
+  ::memcpy(data, menu_and_rectangle_ids.data(), idx_buf_size);
   device.get().unmapMemory(m_stage_png_surface_ids_memory.get());
 
   std::tie(m_png_surface_ids, m_png_surface_ids_memory) = device.create_buffer(
@@ -486,9 +493,9 @@ void pngine_core::load_mesh() {
   begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 
   transfer_buffer.begin(begin_info);
-  vk::BufferCopy copy_vtx_region(0u, 0u, sizeof(pngine::vertex) * rectangle.size());
+  vk::BufferCopy copy_vtx_region(0u, 0u, sizeof(pngine::vertex) * menu_and_rectangle.size());
   transfer_buffer.copyBuffer(m_stage_png_surface_mesh.get(), m_png_surface_mesh.get(), 1u, &copy_vtx_region);
-  vk::BufferCopy copy_idx_region(0u, 0u, sizeof(uint16_t) * rectangle_ids.size());
+  vk::BufferCopy copy_idx_region(0u, 0u, sizeof(uint16_t) * menu_and_rectangle_ids.size());
   transfer_buffer.copyBuffer(m_stage_png_surface_ids.get(), m_png_surface_ids.get(), 1u, &copy_idx_region);
   transfer_buffer.end();
 
@@ -580,7 +587,7 @@ void pngine_core::render_frame() {
       cur_descr_sets.data(),
       0u,
       nullptr);
-  const uint32_t rectangle_indices = rectangle_ids.size(), inst_count = 1u, first_vert = 0u, first_inst = 0u;
+  const uint32_t rectangle_indices = menu_and_rectangle_ids.size(), inst_count = 1u, first_vert = 0u, first_inst = 0u;
   cur_command_buffer.drawIndexed(rectangle_indices, inst_count, first_vert, 0, first_inst);
   cur_command_buffer.endRenderPass();
   cur_command_buffer.end();
