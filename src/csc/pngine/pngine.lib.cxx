@@ -3,6 +3,7 @@ module;
 #include <tuple>
 #include <bits/stl_algobase.h>
 #include <cstring>
+#include <cmath>
 #include <shaders_triangle.h>
 export module csc.pngine;
 
@@ -94,7 +95,8 @@ export class pngine_core {
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   pngine::image_manipulator m_toolbox;
-  void Update(uint32_t frame_index);
+  void Update_Menu(uint32_t frame_index);
+  void Update_Image(uint32_t frame_index);
 
  public:
   pngine_core() = delete;
@@ -511,7 +513,7 @@ void pngine_core::load_mesh() {
   device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
 }
 
-void pngine_core::Update(uint32_t frame_index) {
+void pngine_core::Update_Image(uint32_t frame_index) {
   const auto& device = m_instance.get_device();
   const auto extent = device.get_swapchain().get_extent();
   const auto& current_mapping = m_uniform_mvp_mappings[frame_index];
@@ -526,8 +528,56 @@ void pngine_core::Update(uint32_t frame_index) {
   else
     mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
 
-  mvp_host_buffer.view = glm::lookAt(glm::vec3{0.f, 1e-7f, 1.f}, glm::vec3{0.0f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
+  if (extent.width < extent.height)
+    mvp_host_buffer.model = glm::scale(mvp_host_buffer.model, glm::vec3(aspect, aspect, 1.f));
+
+  mvp_host_buffer.view = glm::lookAt(glm::vec3{0.f, 1e-7f, 1.f}, glm::vec3{0.f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
+
   mvp_host_buffer.proj = glm::perspective(glm::radians(70.f), aspect, 0.1f, 10.f);
+  mvp_host_buffer.proj[1][1] *= -1.f;
+  ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
+}
+
+void pngine_core::Update_Menu(uint32_t frame_index) {
+  const auto& device = m_instance.get_device();
+  const auto extent = device.get_swapchain().get_extent();
+  const auto& current_mapping = m_uniform_mvp_mappings[frame_index];
+
+  const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+  const auto &w = m_png_info->width, &h = m_png_info->height;
+  const auto big_side = std::max(w, h), little_side = std::min(w, h);
+  const auto big_extent = std::max(extent.width, extent.height);
+  const auto canvas_sides_ratio = static_cast<float>(little_side) / static_cast<float>(big_side);
+  pngine::MVP mvp_host_buffer;
+
+  // масштабирование под разные формы изображений
+  if (w < h)
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(canvas_sides_ratio, 1.f, 1.f));
+  else
+    mvp_host_buffer.model = glm::scale(glm::mat4(1.f), glm::vec3(1.f, canvas_sides_ratio, 1.f));
+
+  // умещение изображения под узкое окно
+  if (extent.width >= extent.height)
+    mvp_host_buffer.model = glm::scale(mvp_host_buffer.model, glm::vec3(aspect, aspect, 1.f));
+
+  // предотвращение масштабирования элемента интерфейса при ресайзе окна
+  const float floating_scale = static_cast<float>(big_side) / static_cast<float>(big_extent);
+  mvp_host_buffer.model = glm::scale(mvp_host_buffer.model, glm::vec3(floating_scale, floating_scale, 1.f));
+
+  // перемещаем элемент от центра окна к верхней левой границе
+  const auto middle = glm::vec2(static_cast<float>(extent.width) / 2.f, static_cast<float>(extent.height) / 2.f);
+  // также перемещаем центр элемента, чтобы он полностью отрисовался
+  const float offset_edge_x = static_cast<float>(w) / 2.f, offset_edge_y = static_cast<float>(h) / 2.f;
+  const float offset_x = (middle.x - offset_edge_x) / w, offset_y = (middle.y - offset_edge_y) / h;
+  const auto translate = glm::translate(glm::mat4(1.f), glm::vec3(offset_x, -offset_y, 0.f));
+  mvp_host_buffer.model *= translate;
+
+  // матрицы вида и проекции
+  constexpr const float fov = glm::radians(45.f); // угол обзора
+  /*constexpr*/ const float z_position = 1.f / (std::tanf(fov / 2.f) * 2.f); // вычисление отдаления интерфейса
+  mvp_host_buffer.view = glm::lookAt(glm::vec3{0.f, 1e-7f, z_position}, glm::vec3{0.f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
+
+  mvp_host_buffer.proj = glm::perspective(fov, aspect, 0.01f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;
   ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
 }
@@ -547,7 +597,7 @@ void pngine_core::render_frame() {
   const uint32_t current_image =
       dev.get().acquireNextImageKHR(swapchain.get(), without_delays, image_available_s).value;
   const auto extent = dev.get_swapchain().get_extent();
-  Update(m_current_frame);
+  Update_Menu(m_current_frame);
   r = dev.get().resetFences(1u, &in_flight_f);
   if (r != vk::Result::eSuccess)
     throw std::runtime_error("Pngine: не удалось сбросить барьер!");

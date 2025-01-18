@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
 
       csc::wnd::controller program_state;
       csc::wnd::pngine_picture_input_package pack_data{&core, &png, &program_state};
-      main_window.set_size_limits({320u, 240u});
+      main_window.set_size_limits({512u, 256u});
       main_window.set_user_pointer(&pack_data);
       main_window.set_framebuffer_size_callback(csc::wnd::resize_framebuffer_event);
 
