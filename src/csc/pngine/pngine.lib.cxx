@@ -2,6 +2,9 @@ module;
 #include <cstdint>
 #include <tuple>
 #include <bits/stl_algobase.h>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algobase.h>
+#include <bits/ranges_algo.h>
 #include <cstring>
 #include <cmath>
 #include <shaders_triangle.h>
@@ -59,6 +62,15 @@ export class pngine_core {
   uint32_t m_current_frame = 0u;
   static constexpr uint32_t m_flight_count = 2u;
 
+  vk::UniqueDescriptorSetLayout m_descr_layout_0;
+  vk::UniqueDescriptorSetLayout m_descr_layout_1;
+  vk::UniquePipelineLayout m_pipeline_layout;
+
+  vk::UniqueRenderPass m_render_pass;
+
+  std::vector<vk::UniqueImageView> m_swapchain_image_views;
+  std::vector<vk::UniqueFramebuffer> m_framebuffers;
+
   std::array<vk::Semaphore, m_flight_count> m_image_available_s;
   std::array<vk::Semaphore, m_flight_count> m_render_finished_s;
   std::array<vk::Fence, m_flight_count> m_in_flight_f;
@@ -72,10 +84,6 @@ export class pngine_core {
   vk::UniqueDeviceMemory m_stage_png_surface_ids_memory;
   vk::UniqueBuffer m_png_surface_ids;
   vk::UniqueDeviceMemory m_png_surface_ids_memory;
-
-  vk::UniqueDescriptorSetLayout m_descr_layout_0;
-  vk::UniqueDescriptorSetLayout m_descr_layout_1;
-  vk::UniquePipelineLayout m_pipeline_layout;
 
   std::array<vk::UniqueBuffer, m_flight_count> m_uniform_mvps;
   std::array<vk::UniqueDeviceMemory, m_flight_count> m_uniform_mvp_memories;
@@ -95,6 +103,8 @@ export class pngine_core {
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   pngine::image_manipulator m_toolbox;
+  void Create_Swapchain_Views();
+  void Create_Framebuffers();
   void Update_Menu(uint32_t frame_index);
   void Update_Image(uint32_t frame_index);
 
@@ -133,12 +143,57 @@ void pngine_core::setup_surface(vk::SurfaceKHR render_target) {
   m_instance.create_surfaceKHR(render_target);
 }
 
+void pngine_core::Create_Swapchain_Views() {
+  auto& device = m_instance.get_device();
+  auto& swapchain = device.get_swapchain();
+  /* создаем представления свопчейн изображений */
+  std::vector<vk::UniqueImageView> views;
+  views.reserve(swapchain.get_images().size());
+
+  std::ranges::for_each(swapchain.get_images(), [&](const auto& img) {
+    vk::ImageViewCreateInfo image_view_info{};
+    image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+    image_view_info.image = img;
+    image_view_info.format = swapchain.get_image_format();
+    image_view_info.viewType = vk::ImageViewType::e2D;
+    image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+
+    views.emplace_back(device.get().createImageViewUnique(image_view_info, nullptr));
+  });
+
+  m_swapchain_image_views = std::move(views);
+}
+
+void pngine_core::Create_Framebuffers() {
+  auto& device = m_instance.get_device();
+  auto& swapchain = device.get_swapchain();
+  /* создаем фреймбуферы на основе свопчейна и рендер пасса */
+  std::vector<vk::UniqueFramebuffer> fbs;
+  fbs.reserve(m_swapchain_image_views.size());
+
+  std::ranges::for_each(m_swapchain_image_views, [&](const auto& img) {
+    vk::FramebufferCreateInfo fb_create_info{};
+    fb_create_info.sType = vk::StructureType::eFramebufferCreateInfo;
+    fb_create_info.renderPass = m_render_pass.get();
+    fb_create_info.pAttachments = &img.get();
+    fb_create_info.attachmentCount = 1u;
+    fb_create_info.width = swapchain.get_extent().width;
+    fb_create_info.height = swapchain.get_extent().height;
+    fb_create_info.layers = 1u;
+
+    fbs.emplace_back(device.get().createFramebufferUnique(fb_create_info, nullptr));
+  });
+  m_framebuffers = std::move(fbs);
+}
+
 void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D render_target_size) {
   m_gpu_name = std::move(gpu_name);
   m_instance.bring_physical_devices();
   auto& device = m_instance.create_device(m_gpu_name);
   device.create_swapchainKHR(render_target_size, m_instance.get_swapchainKHR_dispatch());
-  device.create_image_views();
+
+  Create_Swapchain_Views();
+
   device.create_shader_module("vs_triangle", pngine::shaders::shaders_triangle::vert_path);
   device.create_shader_module("fs_triangle", pngine::shaders::shaders_triangle::frag_path);
 
@@ -174,7 +229,39 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
   m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
 
   /* render pass */
-  device.create_render_pass("basic_pass");
+  vk::AttachmentDescription color_attachment{};
+  color_attachment.format = device.get_swapchain().get_image_format();
+  color_attachment.samples = vk::SampleCountFlagBits::e1;
+
+  color_attachment.loadOp = vk::AttachmentLoadOp::eClear;
+  color_attachment.storeOp = vk::AttachmentStoreOp::eStore;
+
+  color_attachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+  color_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+  color_attachment.initialLayout = vk::ImageLayout::eUndefined;
+  color_attachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+  vk::AttachmentReference color_attachment_ref{};
+  color_attachment_ref.attachment = 0u;
+  color_attachment_ref.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+  vk::SubpassDescription subpass{};
+  subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+  subpass.pColorAttachments = &color_attachment_ref;
+  subpass.colorAttachmentCount = 1u;
+  // рендер-пасс с цветовым назначением буфера и подпроходом с индексом изображения - 0
+  vk::RenderPassCreateInfo description{};
+  description.sType = vk::StructureType::eRenderPassCreateInfo;
+  description.pAttachments = &color_attachment;
+  description.attachmentCount = 1u;
+
+  description.pSubpasses = &subpass;
+  description.subpassCount = 1u;
+
+  m_render_pass = device.get().createRenderPassUnique(description, nullptr);
+
+  Create_Framebuffers();
 
   /* creating pipeline and framebuffers */
   pngine::graphics_pipeline_config triangle_cfg;
@@ -191,8 +278,7 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
   triangle_cfg.vtx_bindings = {bind_descs};
   triangle_cfg.vtx_attributes = std::vector(attr_descs.cbegin(), attr_descs.cend());
   triangle_cfg.dynamic_states = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  device.create_pipeline("basic_pipeline", m_pipeline_layout, "basic_pass", triangle_cfg);
-  device.create_framebuffers("basic_pass");
+  device.create_pipeline("basic_pipeline", m_pipeline_layout, m_render_pass, triangle_cfg);
   /* vertex buffer */
   const uint32_t vtx_buf_size = sizeof(pngine::vertex) * menu_and_rectangle.size();
   std::tie(m_stage_png_surface_mesh, m_stage_png_surface_mesh_memory) = device.create_buffer(
@@ -307,8 +393,8 @@ void pngine_core::recreate_swapchain(vk::Extent2D framebuffer_size) {
   auto& dev = m_instance.get_device();
   dev.get().waitIdle();
   dev.create_swapchainKHR(framebuffer_size, m_instance.get_swapchainKHR_dispatch()); // operator= очистит старый класс
-  dev.create_image_views(); // operator= очистит старый класс
-  dev.create_framebuffers("basic_pass"); // operator= очистит старый класс
+  Create_Swapchain_Views(); // пересоздаст изобрвжения под новый свопчейн
+  Create_Framebuffers(); // зависит от этих изображений
 }
 
 void pngine_core::change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info) {
@@ -604,8 +690,8 @@ void pngine_core::render_frame() {
 
   vk::RenderPassBeginInfo render_pass_config{};
   render_pass_config.sType = vk::StructureType::eRenderPassBeginInfo;
-  render_pass_config.renderPass = dev.get_render_pass("basic_pass").get();
-  render_pass_config.framebuffer = dev.get_framebuffers().at(current_image).get();
+  render_pass_config.renderPass = m_render_pass.get();
+  render_pass_config.framebuffer = m_framebuffers.at(current_image).get();
   render_pass_config.renderArea.setOffset({0, 0});
   render_pass_config.renderArea.extent = extent;
 

@@ -53,11 +53,8 @@ class device {
   const vk::SurfaceKHR* m_keep_surface{};
 
   pngine::swapchainKHR m_swapchain{};
-  std::vector<pngine::image_view> m_image_views{};
   std::map<std::string, pngine::shader_module> m_shader_modules{};
   std::map<std::string, pngine::graphics_pipeline> m_pipelines{};
-  std::map<std::string, pngine::render_pass> m_render_passes{};
-  std::vector<pngine::framebuffer> m_framebuffers{};
 
   std::vector<const char*> m_enabled_extensions{};
   vk::Bool32 m_is_created = false;
@@ -76,22 +73,17 @@ class device {
   vk::Queue get_compute_queue() const;
   const pngine::shader_module& get_shader_module(std::string_view name) const;
   const pngine::swapchainKHR& get_swapchain() const;
-  const pngine::render_pass& get_render_pass(std::string_view name) const;
-  const std::vector<pngine::framebuffer>& get_framebuffers() const;
   const pngine::graphics_pipeline& get_graphics_pipeline(std::string_view name) const;
   vk::PhysicalDevice get_physdev() const;
 
   void create_swapchainKHR(vk::Extent2D window_framebuffer, pngine::swapchain_dispatch dispatch);
-  void create_image_views();
   void create_shader_module(std::string_view name, std::string_view compiled_filepath);
   template <pngine::c_graphics_pipeline_config Config>
   pngine::graphics_pipeline& create_pipeline(
       std::string_view pipeline_name,
       const vk::UniquePipelineLayout& layout,
-      std::string_view pass_name,
+      const vk::UniqueRenderPass& pass,
       Config&& config);
-  void create_render_pass(std::string_view pass_name);
-  void create_framebuffers(std::string_view pass_name);
 
   buf_and_mem create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
   img_and_mem create_image(
@@ -119,11 +111,8 @@ device& device::operator=(device&& move) noexcept {
   m_keep_phdevice = move.m_keep_phdevice;
 
   m_swapchain = std::move(move.m_swapchain);
-  m_image_views = std::move(move.m_image_views);
   m_shader_modules = std::move(move.m_shader_modules);
   m_pipelines = std::move(move.m_pipelines);
-  m_render_passes = std::move(move.m_render_passes);
-  m_framebuffers = std::move(move.m_framebuffers);
   m_enabled_extensions = std::move(move.m_enabled_extensions);
   m_is_created = std::exchange(move.m_is_created, false);
   return *this;
@@ -173,13 +162,6 @@ void device::create_swapchainKHR(vk::Extent2D window_framebuffer, pngine::swapch
   m_swapchain = pngine::swapchainKHR(m_device, *m_keep_surface, details, m_indices, dispatch);
 }
 
-void device::create_image_views() {
-  m_image_views.clear();
-  m_image_views.reserve(m_swapchain.get_images().size());
-  std::ranges::for_each(m_swapchain.get_images(), [&](const auto& img) {
-    m_image_views.emplace_back(pngine::image_view(m_device, img, m_swapchain.get_image_format()));
-  });
-}
 void device::create_shader_module(std::string_view name, std::string_view compiled_filepath) {
   m_shader_modules.insert(std::make_pair(name.data(), pngine::shader_module(m_device, compiled_filepath)));
 }
@@ -188,36 +170,15 @@ template <pngine::c_graphics_pipeline_config Config>
 pngine::graphics_pipeline& device::create_pipeline(
     std::string_view named_pipeline,
     const vk::UniquePipelineLayout& layout,
-    std::string_view pass_name,
+    const vk::UniqueRenderPass& pass,
     Config&& config) {
-  const auto render_pass_pos = m_render_passes.find(pass_name.data());
-  [[unlikely]] if (render_pass_pos == m_render_passes.cend())
-    throw std::runtime_error("Device: не удалось найти указанный проход конвейера!");
-
   const auto [pipeline_pos, is_success] = m_pipelines.insert(std::make_pair(
       named_pipeline.data(),
-      pngine::graphics_pipeline(m_device, render_pass_pos->second.get(), layout.get(), std::forward<Config>(config))));
+      pngine::graphics_pipeline(m_device, pass.get(), layout.get(), std::forward<Config>(config))));
 
   [[unlikely]] if (!is_success)
     throw std::runtime_error("Device: не удалось добавить конвейер в реестр!");
   return pipeline_pos->second;
-}
-
-void device::create_render_pass(std::string_view name) {
-  m_render_passes.insert(std::make_pair(name.data(), pngine::render_pass(m_device, m_swapchain.get_image_format())));
-}
-
-void device::create_framebuffers(std::string_view pass_name) {
-  m_framebuffers.clear();
-  const auto render_pass_pos = m_render_passes.find(pass_name.data());
-  [[unlikely]] if (render_pass_pos == m_render_passes.cend())
-    throw std::runtime_error("Device: не удалось найти указанный проход рендера!");
-
-  m_framebuffers.reserve(m_image_views.size());
-  std::ranges::for_each(m_image_views, [&](const auto& img) {
-    m_framebuffers.emplace_back(
-        pngine::framebuffer(m_device, img.get(), render_pass_pos->second.get(), m_swapchain.get_extent()));
-  });
 }
 
 vk::UniqueCommandPool device::create_graphics_command_pool(vk::CommandPoolCreateFlags flags) {
@@ -314,22 +275,12 @@ const pngine::shader_module& device::get_shader_module(std::string_view name) co
 const pngine::swapchainKHR& device::get_swapchain() const {
   return m_swapchain;
 }
-const pngine::render_pass& device::get_render_pass(std::string_view name) const {
-  const auto render_pass_pos = m_render_passes.find(name.data());
-  [[unlikely]] if (render_pass_pos == m_render_passes.cend())
-    throw std::runtime_error("Device: не удалось найти указанный проход рендера!");
-  return render_pass_pos->second;
-}
 
 const pngine::graphics_pipeline& device::get_graphics_pipeline(std::string_view name) const {
   const auto pipeline_pos = m_pipelines.find(name.data());
   [[unlikely]] if (pipeline_pos == m_pipelines.cend())
     throw std::runtime_error("Device: не удалось найти указанный графический конвейер!");
   return pipeline_pos->second;
-}
-
-const std::vector<pngine::framebuffer>& device::get_framebuffers() const {
-  return m_framebuffers;
 }
 
 vk::Device device::get() const {
@@ -356,10 +307,7 @@ vk::Queue device::get_compute_queue() const {
 void device::clear() noexcept {
   if (m_is_created != false) {
     m_pipelines.clear();
-    m_framebuffers.clear();
-    m_render_passes.clear();
     m_shader_modules.clear();
-    m_image_views.clear();
     m_swapchain.clear();
     m_device.destroy();
     m_is_created = false;
