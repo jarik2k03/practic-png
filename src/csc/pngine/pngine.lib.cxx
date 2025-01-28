@@ -68,7 +68,15 @@ export class pngine_core {
 
   vk::UniqueRenderPass m_render_pass;
 
+  /* аттачменты (в т.ч. конечное изображение из свопчейна) */
+  std::vector<vk::UniqueImage> m_drawing_attachments;
+  std::vector<vk::UniqueDeviceMemory> m_drawing_attachment_memories;
+  std::vector<vk::UniqueImage> m_menu_attachments;
+  std::vector<vk::UniqueDeviceMemory> m_menu_attachment_memories;
   std::vector<vk::UniqueImageView> m_swapchain_image_views;
+  std::vector<vk::UniqueImageView> m_drawing_attachment_views;
+  std::vector<vk::UniqueImageView> m_menu_attachment_views;
+
   std::vector<vk::UniqueFramebuffer> m_framebuffers;
 
   std::array<vk::Semaphore, m_flight_count> m_image_available_s;
@@ -93,10 +101,16 @@ export class pngine_core {
   std::vector<vk::UniqueDescriptorSet> m_descr_sets_0;
   std::vector<vk::UniqueDescriptorSet> m_descr_sets_1;
 
+  vk::UniqueSampler m_standard_sampler{};
+  vk::UniqueSampler m_image_sampler{};
+
   vk::UniqueImage m_image_buffer{};
   vk::UniqueImageView m_image_view{};
-  vk::UniqueSampler m_image_sampler{};
   vk::UniqueDeviceMemory m_image_memory{};
+
+  vk::UniqueImage m_menu_image_buffer{};
+  vk::UniqueImageView m_menu_image_view{};
+  vk::UniqueDeviceMemory m_menu_image_memory{};
 
   vk::UniqueCommandPool m_graphics_pool;
   vk::UniqueCommandPool m_transfer_pool;
@@ -104,6 +118,7 @@ export class pngine_core {
 
   pngine::image_manipulator m_toolbox;
   void Create_Swapchain_Views();
+  void Create_Attachments_And_Views();
   void Create_Framebuffers();
   void Update_Menu(uint32_t frame_index);
   void Update_Image(uint32_t frame_index);
@@ -115,6 +130,7 @@ export class pngine_core {
   void setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D render_target_size);
 
   void init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
+  void init_menu(const std::vector<uint8_t>& blob);
   void change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info);
   void recreate_swapchain(vk::Extent2D framebuffer_size);
   void render_frame();
@@ -163,27 +179,53 @@ void pngine_core::Create_Swapchain_Views() {
 
   m_swapchain_image_views = std::move(views);
 }
+void pngine_core::Create_Attachments_And_Views() {
+  auto& device = m_instance.get_device();
+  auto& swapchain = device.get_swapchain();
+
+  m_drawing_attachments.clear(), m_drawing_attachments.reserve(m_swapchain_image_views.size());
+  m_drawing_attachment_views.clear(), m_drawing_attachment_views.reserve(m_swapchain_image_views.size());
+  m_menu_attachments.clear(), m_menu_attachments.reserve(m_swapchain_image_views.size());
+  m_menu_attachment_views.clear(), m_menu_attachment_views.reserve(m_swapchain_image_views.size());
+  m_drawing_attachment_memories.clear(), m_drawing_attachment_memories.reserve(m_swapchain_image_views.size());
+  m_menu_attachment_memories.clear(), m_menu_attachment_memories.reserve(m_swapchain_image_views.size());
+
+  std::ranges::for_each(m_swapchain_image_views, [&](const auto& _) {
+    auto [image_1, memory_1, view_1] = device.create_attachment(swapchain.get_extent(), swapchain.get_image_format());
+    m_drawing_attachments.push_back(std::move(image_1));
+    m_drawing_attachment_views.push_back(std::move(view_1));
+    m_drawing_attachment_memories.push_back(std::move(memory_1));
+    auto [image_2, memory_2, view_2] = device.create_attachment(swapchain.get_extent(), swapchain.get_image_format());
+    m_menu_attachments.push_back(std::move(image_2));
+    m_menu_attachment_views.push_back(std::move(view_2));
+    m_menu_attachment_memories.push_back(std::move(memory_2));
+  });
+}
 
 void pngine_core::Create_Framebuffers() {
   auto& device = m_instance.get_device();
   auto& swapchain = device.get_swapchain();
   /* создаем фреймбуферы на основе свопчейна и рендер пасса */
   std::vector<vk::UniqueFramebuffer> fbs;
-  fbs.reserve(m_swapchain_image_views.size());
+  m_framebuffers.clear(), m_framebuffers.reserve(m_swapchain_image_views.size());
 
-  std::ranges::for_each(m_swapchain_image_views, [&](const auto& img) {
+  for (uint32_t index = 0u; index < m_swapchain_image_views.size(); ++index) {
+    const auto attachments = std::array{
+        m_swapchain_image_views[index].get(),
+        m_drawing_attachment_views[index].get(),
+        m_menu_attachment_views[index].get()};
+
     vk::FramebufferCreateInfo fb_create_info{};
     fb_create_info.sType = vk::StructureType::eFramebufferCreateInfo;
     fb_create_info.renderPass = m_render_pass.get();
-    fb_create_info.pAttachments = &img.get();
-    fb_create_info.attachmentCount = 1u;
+    fb_create_info.pAttachments = attachments.data();
+    fb_create_info.attachmentCount = attachments.size();
     fb_create_info.width = swapchain.get_extent().width;
     fb_create_info.height = swapchain.get_extent().height;
     fb_create_info.layers = 1u;
 
-    fbs.emplace_back(device.get().createFramebufferUnique(fb_create_info, nullptr));
-  });
-  m_framebuffers = std::move(fbs);
+    m_framebuffers.emplace_back(device.get().createFramebufferUnique(fb_create_info, nullptr));
+  }
 }
 
 void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D render_target_size) {
@@ -229,38 +271,64 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
   m_pipeline_layout = device.get().createPipelineLayoutUnique(pipeline_layout_info, nullptr);
 
   /* render pass */
-  vk::AttachmentDescription color_attachment{};
-  color_attachment.format = device.get_swapchain().get_image_format();
-  color_attachment.samples = vk::SampleCountFlagBits::e1;
+  // подпроход #1 - рендерим само изображение (=1) и пользовательский интерфейс (=2)
+  vk::AttachmentReference r_drawing_output{};
+  r_drawing_output.attachment = 1u;
+  r_drawing_output.layout = vk::ImageLayout::eColorAttachmentOptimal;
+  vk::AttachmentReference r_menu_output{};
+  r_menu_output.attachment = 2u;
+  r_menu_output.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
-  color_attachment.loadOp = vk::AttachmentLoadOp::eClear;
-  color_attachment.storeOp = vk::AttachmentStoreOp::eStore;
+  const auto out_color_references_1 = std::array{r_drawing_output, r_menu_output};
 
-  color_attachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-  color_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+  vk::SubpassDescription subpass_1{};
+  subpass_1.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+  subpass_1.pColorAttachments = out_color_references_1.data();
+  subpass_1.colorAttachmentCount = out_color_references_1.size();
+  subpass_1.pInputAttachments = nullptr;
+  subpass_1.inputAttachmentCount = 0u;
 
-  color_attachment.initialLayout = vk::ImageLayout::eUndefined;
-  color_attachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+  // подпроход #2 - объединяем в свопчейн изображение (=0)
+  vk::AttachmentReference r_swapchain_output{};
+  r_swapchain_output.attachment = 0u;
+  r_swapchain_output.layout = vk::ImageLayout::eColorAttachmentOptimal;
+  vk::AttachmentReference r_drawing_input{};
+  r_drawing_output.attachment = 1u;
+  r_drawing_output.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+  vk::AttachmentReference r_menu_input{};
+  r_menu_output.attachment = 2u;
+  r_menu_output.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
-  vk::AttachmentReference color_attachment_ref{};
-  color_attachment_ref.attachment = 0u;
-  color_attachment_ref.layout = vk::ImageLayout::eColorAttachmentOptimal;
+  const auto out_color_references_2 = std::array{r_swapchain_output};
+  const auto in_references_2 = std::array{r_drawing_input, r_menu_input};
 
-  vk::SubpassDescription subpass{};
-  subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-  subpass.pColorAttachments = &color_attachment_ref;
-  subpass.colorAttachmentCount = 1u;
-  // рендер-пасс с цветовым назначением буфера и подпроходом с индексом изображения - 0
+  vk::SubpassDescription subpass_2{};
+  subpass_2.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+  subpass_2.pColorAttachments = out_color_references_2.data();
+  subpass_2.colorAttachmentCount = out_color_references_2.size();
+  subpass_2.pInputAttachments = in_references_2.data();
+  subpass_2.inputAttachmentCount = in_references_2.size();
+
+  const auto subpasses = std::array{subpass_1, subpass_2};
+
+  // Описание назначения каждого аттачмента
+  vk::AttachmentDescription present_desc = pngine::swapchain_image_preset(device.get_swapchain().get_image_format());
+  vk::AttachmentDescription drawing_desc = pngine::color_image_preset(device.get_swapchain().get_image_format());
+  vk::AttachmentDescription menu_desc = pngine::color_image_preset(device.get_swapchain().get_image_format());
+
+  const auto descriptions = std::array{present_desc, drawing_desc, menu_desc};
+
   vk::RenderPassCreateInfo description{};
   description.sType = vk::StructureType::eRenderPassCreateInfo;
-  description.pAttachments = &color_attachment;
-  description.attachmentCount = 1u;
+  description.pAttachments = descriptions.data();
+  description.attachmentCount = descriptions.size();
 
-  description.pSubpasses = &subpass;
-  description.subpassCount = 1u;
+  description.pSubpasses = subpasses.data();
+  description.subpassCount = subpasses.size();
 
   m_render_pass = device.get().createRenderPassUnique(description, nullptr);
 
+  Create_Attachments_And_Views();
   Create_Framebuffers();
 
   /* creating pipeline and framebuffers */
@@ -286,8 +354,8 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-  void* data =
-      device.get().mapMemory(m_stage_png_surface_mesh_memory.get(), 0u, menu_and_rectangle.size() * sizeof(pngine::vertex));
+  void* data = device.get().mapMemory(
+      m_stage_png_surface_mesh_memory.get(), 0u, menu_and_rectangle.size() * sizeof(pngine::vertex));
   ::memcpy(data, menu_and_rectangle.data(), vtx_buf_size);
   device.get().unmapMemory(m_stage_png_surface_mesh_memory.get());
 
@@ -302,7 +370,8 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-  data = device.get().mapMemory(m_stage_png_surface_ids_memory.get(), 0u, menu_and_rectangle.size() * sizeof(pngine::vertex));
+  data = device.get().mapMemory(
+      m_stage_png_surface_ids_memory.get(), 0u, menu_and_rectangle.size() * sizeof(pngine::vertex));
   ::memcpy(data, menu_and_rectangle_ids.data(), idx_buf_size);
   device.get().unmapMemory(m_stage_png_surface_ids_memory.get());
 
@@ -394,6 +463,7 @@ void pngine_core::recreate_swapchain(vk::Extent2D framebuffer_size) {
   dev.get().waitIdle();
   dev.create_swapchainKHR(framebuffer_size, m_instance.get_swapchainKHR_dispatch()); // operator= очистит старый класс
   Create_Swapchain_Views(); // пересоздаст изобрвжения под новый свопчейн
+  Create_Attachments_And_Views(); // аттачменты пересоздаются под новый экстент
   Create_Framebuffers(); // зависит от этих изображений
 }
 
@@ -563,6 +633,39 @@ void pngine_core::init_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_
   m_toolbox = pngine::image_manipulator(
       device, staged.first, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
 }
+
+void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
+  auto& device = m_instance.get_device();
+  /* image data */
+  const auto staged = device.create_buffer(
+      blob.size(),
+      vk::BufferUsageFlagBits::eTransferSrc,
+      vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+  void* staged_image_mapping = device.get().mapMemory(staged.second.get(), 0u, blob.size());
+  ::memcpy(staged_image_mapping, blob.data(), blob.size());
+  device.get().unmapMemory(staged.second.get());
+
+  /* standard sampler with filter */
+  vk::SamplerCreateInfo sampler_info{};
+  sampler_info.sType = vk::StructureType::eSamplerCreateInfo;
+  sampler_info.magFilter = vk::Filter::eLinear;
+  sampler_info.minFilter = vk::Filter::eLinear;
+  sampler_info.addressModeU = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeV = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.addressModeW = vk::SamplerAddressMode::eClampToBorder;
+  sampler_info.anisotropyEnable = vk::False;
+  sampler_info.maxAnisotropy = 1.f;
+  sampler_info.borderColor = vk::BorderColor::eIntOpaqueBlack;
+  sampler_info.unnormalizedCoordinates = vk::False;
+  sampler_info.compareEnable = vk::False;
+  sampler_info.compareOp = vk::CompareOp::eAlways;
+  sampler_info.mipmapMode = vk::SamplerMipmapMode::eLinear;
+  sampler_info.mipLodBias = 0.f, sampler_info.minLod = 0.f, sampler_info.maxLod = 0.f;
+
+  m_standard_sampler = device.get().createSamplerUnique(sampler_info, nullptr);
+}
+
 void pngine_core::load_mesh() {
   const auto& device = m_instance.get_device();
   /* allocate transfer commands for copy image */
@@ -661,7 +764,8 @@ void pngine_core::Update_Menu(uint32_t frame_index) {
   // матрицы вида и проекции
   constexpr const float fov = glm::radians(45.f); // угол обзора
   /*constexpr*/ const float z_position = 1.f / (std::tanf(fov / 2.f) * 2.f); // вычисление отдаления интерфейса
-  mvp_host_buffer.view = glm::lookAt(glm::vec3{0.f, 1e-7f, z_position}, glm::vec3{0.f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
+  mvp_host_buffer.view =
+      glm::lookAt(glm::vec3{0.f, 1e-7f, z_position}, glm::vec3{0.f, 0.f, 0.f}, glm::vec3{0.f, 0.f, 1.f});
 
   mvp_host_buffer.proj = glm::perspective(fov, aspect, 0.01f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;
@@ -695,9 +799,10 @@ void pngine_core::render_frame() {
   render_pass_config.renderArea.setOffset({0, 0});
   render_pass_config.renderArea.extent = extent;
 
-  vk::ClearValue clear_color = vk::ClearColorValue{200.f / 256, 200.f / 256, 200.f / 256, 12.f / 256};
-  render_pass_config.pClearValues = &clear_color;
-  render_pass_config.clearValueCount = 1u;
+  vk::ClearValue clear_color = vk::ClearColorValue{200.f / 256, 200.f / 256, 200.f / 256, 122.f / 256};
+  const auto clear_values = std::array{clear_color, clear_color, clear_color};
+  render_pass_config.pClearValues = clear_values.data();
+  render_pass_config.clearValueCount = clear_values.size();
 
   vk::CommandBufferBeginInfo begin_desc{};
   begin_desc.sType = vk::StructureType::eCommandBufferBeginInfo;
@@ -763,8 +868,7 @@ void pngine_core::render_frame() {
 #ifndef NDEBUG
     std::clog << "Pngine:[NOTIFICATION]: запись в present-очередь. Возвращает: " << vk::to_string(r) << '\n';
 #endif
-  }
-  else if (r != vk::Result::eSuccess) {
+  } else if (r != vk::Result::eSuccess) {
     throw std::runtime_error("Pngine: не удалось произвести отображение на экране!");
   }
   m_current_frame = (m_current_frame + 1) % m_flight_count;

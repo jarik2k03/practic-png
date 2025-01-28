@@ -30,13 +30,11 @@ void switch_callbacks(csc::wnd::controller& states, csc::wnd::window_handler& ev
     event_ctl.set_mouse_button_callback(csc::wnd::applying_tool_by_mouse_event);
     event_ctl.set_key_callback(csc::wnd::applying_tool_by_keyboard_event);
     event_ctl.set_char_callback(csc::wnd::character_event);
-  }
-  else if (states.previous_state == e_program_state::insert && states.current_state == e_program_state::normal) {
+  } else if (states.previous_state == e_program_state::insert && states.current_state == e_program_state::normal) {
     event_ctl.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
     event_ctl.set_key_callback(csc::wnd::choosing_tool_by_keyboard_event);
     event_ctl.set_char_callback(nullptr);
   }
-
 }
 
 csc::png::e_compression_level bring_compression_level(const char* arg) {
@@ -174,7 +172,7 @@ int main(int argc, char** argv) {
         std::cout << "\033[H\033[2J";
         std::cout << "Render frames per second: " << fixed_frame_count << '\n';
         if (program_state.current_state == csc::wnd::e_program_state::insert)
-            std::cout << "Input params string: " << program_state.input_data << '\n';
+          std::cout << "Input params string: " << program_state.input_data << '\n';
 
         [[unlikely]] if (time >= 1.0) {
           fixed_frame_count = frames_count;

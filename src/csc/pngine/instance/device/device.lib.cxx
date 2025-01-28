@@ -4,6 +4,7 @@ module;
 #include <bits/ranges_algo.h>
 #include <map>
 #include <cstdint>
+#include <tuple>
 #include <iostream>
 export module csc.pngine.instance.device;
 
@@ -33,6 +34,39 @@ export namespace csc {
 namespace pngine {
 using buf_and_mem = std::pair<vk::UniqueBuffer, vk::UniqueDeviceMemory>;
 using img_and_mem = std::pair<vk::UniqueImage, vk::UniqueDeviceMemory>;
+using attachment_bundle = std::tuple<vk::UniqueImage, vk::UniqueDeviceMemory, vk::UniqueImageView>;
+
+vk::AttachmentDescription swapchain_image_preset(vk::Format need_format) noexcept {
+  vk::AttachmentDescription present_attachment{};
+  present_attachment.format = need_format;
+  present_attachment.samples = vk::SampleCountFlagBits::e1;
+
+  present_attachment.loadOp = vk::AttachmentLoadOp::eClear;
+  present_attachment.storeOp = vk::AttachmentStoreOp::eStore;
+
+  present_attachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+  present_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+  present_attachment.initialLayout = vk::ImageLayout::eUndefined;
+  present_attachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+  return present_attachment;
+}
+
+vk::AttachmentDescription color_image_preset(vk::Format need_format) noexcept {
+  vk::AttachmentDescription color_attachment{};
+  color_attachment.format = need_format;
+  color_attachment.samples = vk::SampleCountFlagBits::e1;
+
+  color_attachment.loadOp = vk::AttachmentLoadOp::eClear;
+  color_attachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+
+  color_attachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+  color_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+  color_attachment.initialLayout = vk::ImageLayout::eUndefined;
+  color_attachment.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
+  return color_attachment;
+}
 
 uint32_t choose_memory_type(
     vk::PhysicalDeviceMemoryProperties supported,
@@ -93,6 +127,8 @@ class device {
       vk::ImageUsageFlags usage,
       vk::MemoryPropertyFlags required_props,
       vk::ImageLayout layout = vk::ImageLayout::eUndefined);
+  attachment_bundle create_attachment(vk::Extent2D img_size, vk::Format format);
+
   vk::UniqueCommandPool create_graphics_command_pool(vk::CommandPoolCreateFlags flags);
   vk::UniqueCommandPool create_transfer_command_pool(vk::CommandPoolCreateFlags flags);
   vk::UniqueCommandPool create_compute_command_pool(vk::CommandPoolCreateFlags flags);
@@ -263,6 +299,24 @@ img_and_mem device::create_image(
   result.second = m_device.allocateMemoryUnique(alloc_info, nullptr);
   m_device.bindImageMemory(result.first.get(), result.second.get(), 0u);
   return result;
+}
+
+attachment_bundle device::create_attachment(vk::Extent2D img_size, vk::Format format) {
+  auto [image, memory] = create_image(
+      img_size,
+      format,
+      vk::ImageTiling::eOptimal,
+      vk::ImageUsageFlagBits::eColorAttachment,
+      vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+  vk::ImageViewCreateInfo image_view_info{};
+  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
+  image_view_info.image = image.get();
+  image_view_info.format = format;
+  image_view_info.viewType = vk::ImageViewType::e2D;
+  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
+  auto view = m_device.createImageViewUnique(image_view_info, nullptr);
+  return std::make_tuple(std::move(image), std::move(memory), std::move(view));
 }
 
 const pngine::shader_module& device::get_shader_module(std::string_view name) const {

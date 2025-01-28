@@ -18,23 +18,26 @@ using clip_params = std::tuple<int32_t, int32_t, uint32_t, uint32_t>;
 using scale_params = std::tuple<float, float>;
 using rotate_params = std::tuple<float>;
 
-
 class params_parser {
  private:
-   std::stringstream m_input;
- public:
-   params_parser(const std::string& unparsed) : m_input(unparsed) {}
+  std::stringstream m_input;
 
-   wnd::clip_params parse_clip_params();
-   wnd::scale_params parse_scale_params();
-   wnd::rotate_params parse_rotate_params();
+ public:
+  params_parser(const std::string& unparsed) : m_input(unparsed) {
+  }
+
+  wnd::clip_params parse_clip_params();
+  wnd::scale_params parse_scale_params();
+  wnd::rotate_params parse_rotate_params();
 };
 
 wnd::clip_params params_parser::parse_clip_params() {
   float beg_x = 0.f, beg_y = 0.f, end_x = 1.f, end_y = 1.f;
   m_input >> beg_x, m_input >> beg_y, m_input >> end_x, m_input >> end_y;
-  const auto bx = static_cast<int32_t>(std::abs(std::floorf(beg_x))), by = static_cast<int32_t>(std::abs(std::floorf(beg_y)));
-  const auto ex = static_cast<uint32_t>(std::abs(std::floorf(end_x))), ey = static_cast<uint32_t>(std::abs(std::floorf(end_y)));
+  const auto bx = static_cast<int32_t>(std::abs(std::floorf(beg_x))),
+             by = static_cast<int32_t>(std::abs(std::floorf(beg_y)));
+  const auto ex = static_cast<uint32_t>(std::abs(std::floorf(end_x))),
+             ey = static_cast<uint32_t>(std::abs(std::floorf(end_y)));
   return {bx, by, ex, ey};
 }
 
@@ -58,5 +61,3 @@ wnd::rotate_params params_parser::parse_rotate_params() {
 
 } // namespace wnd
 } // namespace csc
-
-

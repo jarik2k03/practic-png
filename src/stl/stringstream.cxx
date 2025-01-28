@@ -16,4 +16,4 @@ using std::stringbuf;
 using std::wstringbuf;
 
 using std::swap;
-}
+} // namespace std

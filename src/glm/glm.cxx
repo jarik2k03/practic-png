@@ -7,8 +7,8 @@ export namespace glm {
 using glm::ivec2;
 using glm::lookAt;
 using glm::mat4;
-using glm::perspective;
 using glm::ortho;
+using glm::perspective;
 using glm::radians;
 using glm::scale;
 using glm::translate;
