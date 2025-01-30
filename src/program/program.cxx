@@ -121,13 +121,16 @@ int main(int argc, char** argv) {
 
     const auto i_pos = args.find("-i"), o_pos = args.find("-o");
 
-    csc::png::picture png;
+    csc::png::picture png, menu;
     csc::png::deserializer png_executor;
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
+
+      menu = png_executor.deserialize("./assets/buttons.png", true);
       png_executor.prepare_to_present(png); // здесь происходит второй этап декодирования изображения
+      png_executor.prepare_to_present(menu);
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
       csc::wnd::glfw_handler glfw_instance;
@@ -153,7 +156,8 @@ int main(int argc, char** argv) {
       main_window.set_key_callback(csc::wnd::choosing_tool_by_keyboard_event);
       main_window.set_char_callback(nullptr);
 
-      core.init_drawing(png.m_image_data, png.header());
+      core.change_drawing(png.m_image_data, png.header());
+      core.init_menu(menu.m_image_data);
       core.load_mesh();
 
       double time = 0.0;
@@ -169,7 +173,7 @@ int main(int argc, char** argv) {
         const auto end = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
-        std::cout << "\033[H\033[2J";
+        // std::cout << "\033[H\033[2J";
         std::cout << "Render frames per second: " << fixed_frame_count << '\n';
         if (program_state.current_state == csc::wnd::e_program_state::insert)
           std::cout << "Input params string: " << program_state.input_data << '\n';
