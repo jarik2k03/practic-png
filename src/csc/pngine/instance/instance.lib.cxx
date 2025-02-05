@@ -4,13 +4,13 @@ module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 #include <cstring>
+#include <cstdint>
 export module csc.pngine.instance;
 
 import stl.vector;
 import stl.string;
 import stl.set;
 import stl.stdexcept;
-import stl.optional;
 import stl.string_view;
 
 import csc.pngine.commons.utility.debug_reportEXT;
@@ -18,43 +18,8 @@ import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.instance.debug_reportEXT;
 import csc.pngine.instance.device;
 import csc.pngine.instance.surfaceKHR;
-import csc.pngine.window_handler;
 
 import vulkan_hpp;
-
-namespace csc {
-namespace pngine {
-
-consteval bool is_debug_build() noexcept {
-#ifndef NDEBUG
-  return true;
-#else
-  return false;
-#endif
-}
-
-const char* bring_surface_extension() noexcept {
-#ifdef _WIN32
-  return "VK_KHR_win32_surface";
-#else
-  const char* const session_ty = ::secure_getenv("XDG_SESSION_TYPE");
-  if (session_ty == nullptr) {
-    return nullptr;
-  }
-  const std::string session_type(session_ty);
-  if (session_type == "x11") {
-    return "VK_KHR_xcb_surface";
-  } else if (session_type == "wayland") {
-    return "VK_KHR_wayland_surface";
-  } else {
-    return nullptr;
-  }
-#endif
-  return nullptr;
-}
-
-} // namespace pngine
-} // namespace csc
 
 export namespace csc {
 namespace pngine {
@@ -77,11 +42,11 @@ class instance {
   ~instance() noexcept;
   instance(instance&& move) noexcept = default;
   instance& operator=(instance&& move) noexcept;
-  explicit instance(const vk::ApplicationInfo& app_info);
+  explicit instance(const vk::ApplicationInfo& app_info, const std::vector<const char*>& surface_extensions);
 
   void create_debug_reportEXT();
   pngine::device& create_device(std::string_view dev_name);
-  void create_surfaceKHR(const pngine::window_handler& handler);
+  void create_surfaceKHR(vk::SurfaceKHR handler);
   void bring_physical_devices();
   pngine::device& get_device();
   pngine::swapchain_dispatch get_swapchainKHR_dispatch() const noexcept;
@@ -111,20 +76,18 @@ instance& instance::operator=(instance&& move) noexcept {
   return *this;
 }
 
-instance::instance(const vk::ApplicationInfo& app_info) {
+instance::instance(const vk::ApplicationInfo& app_info, const std::vector<const char*>& surface_extensions) {
   m_vk_extensions = &vk::getInstanceExtensions();
-  const char* const surface_ext = pngine::bring_surface_extension();
 
   m_enabled_extensions.reserve(256ul);
-  [[likely]] if (surface_ext != nullptr) {
-    m_enabled_extensions.emplace_back("VK_KHR_surface");
-    m_enabled_extensions.emplace_back(surface_ext);
-  }
-  if constexpr (pngine::is_debug_build()) {
-    m_enabled_layers.reserve(256ul);
-    m_enabled_layers.emplace_back("VK_LAYER_KHRONOS_validation");
-    m_enabled_extensions.emplace_back("VK_EXT_debug_report");
-  }
+  for (const auto& str : surface_extensions)
+    m_enabled_extensions.emplace_back(str);
+
+#ifndef NDEBUG
+  m_enabled_layers.reserve(256ul);
+  m_enabled_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+  m_enabled_extensions.emplace_back("VK_EXT_debug_report");
+#endif
   vk::InstanceCreateInfo description{};
   using enum vk::DebugReportFlagBitsEXT;
   constexpr const auto config =
@@ -159,9 +122,9 @@ pngine::device& instance::get_device() {
 }
 void instance::clear() noexcept {
   if (m_is_created) {
-    if constexpr (pngine::is_debug_build()) {
-      m_debug_report.clear();
-    }
+#ifndef NDEBUG
+    m_debug_report.clear();
+#endif
     m_device.clear(); // удаление логического устройства
     m_surface.clear(); // удаление поверхности окна
     m_instance.destroy(); // прежде чем очищать устройство, надо очистить его вложенности
@@ -170,12 +133,12 @@ void instance::clear() noexcept {
 }
 
 void instance::create_debug_reportEXT() {
-  if constexpr (pngine::is_debug_build()) {
-    m_debug_report = pngine::debug_reportEXT(m_instance);
-  }
+#ifndef NDEBUG
+  m_debug_report = pngine::debug_reportEXT(m_instance);
+#endif
 }
-void instance::create_surfaceKHR(const pngine::window_handler& handler) {
-  m_surface = pngine::surfaceKHR(m_instance, handler.create_surface(m_instance));
+void instance::create_surfaceKHR(vk::SurfaceKHR handler) {
+  m_surface = pngine::surfaceKHR(m_instance, handler);
 }
 
 pngine::device& instance::create_device(std::string_view gpu_name) {

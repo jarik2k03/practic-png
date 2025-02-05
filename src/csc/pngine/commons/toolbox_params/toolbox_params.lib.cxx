@@ -1,7 +1,8 @@
 module;
 #include <cstdint>
-module csc.pngine.image_manipulator:shaderdata;
-export import glm_hpp;
+export module csc.pngine.commons.toolbox_params;
+
+import glm_hpp;
 
 export namespace csc {
 namespace pngine {
@@ -25,7 +26,6 @@ struct params {
   float cos_angle;
   float sin_angle;
 };
-
 } // namespace rotating
 
 } // namespace pngine
