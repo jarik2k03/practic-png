@@ -39,7 +39,5 @@ export struct controller {
   wnd::e_toolbox_buttons current_pressed;
 };
 
-
 } // namespace wnd
 } // namespace csc
-

@@ -34,6 +34,8 @@ export class window_handler {
   void set_char_callback(GLFWcharfun callback);
   void set_key_callback(GLFWkeyfun callback);
 
+  void set_window_title(const char* title);
+
   void* get_user_pointer() const;
   glm::vec2 get_cursor_pos() const;
   VkExtent2D get_framebuffer_size() const;
@@ -116,6 +118,9 @@ void window_handler::set_framebuffer_size_callback(GLFWframebuffersizefun callba
 }
 void window_handler::set_mouse_button_callback(GLFWmousebuttonfun callback) {
   ::glfwSetMouseButtonCallback(m_window, callback);
+}
+void window_handler::set_window_title(const char* title) {
+  ::glfwSetWindowTitle(m_window, title);
 }
 void window_handler::set_char_callback(GLFWcharfun callback) {
   ::glfwSetCharCallback(m_window, callback);

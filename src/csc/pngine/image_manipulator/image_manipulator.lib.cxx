@@ -518,8 +518,9 @@ pngine::image_manipulator_bundle image_manipulator::scale_image(float scaleX, fl
   m_device->get().unmapMemory(m_uniform_params_memory.get());
 
   /* allocating output image storage memory */
-  const auto second_image_size =
-      pngine::force_clamp_image_extent(vk::Extent2D(std::roundf(m_first_image_size.width * scaleX), std::roundf(m_first_image_size.height * scaleY)), m_max_image_size);
+  const auto second_image_size = pngine::force_clamp_image_extent(
+      vk::Extent2D(std::roundf(m_first_image_size.width * scaleX), std::roundf(m_first_image_size.height * scaleY)),
+      m_max_image_size);
   auto [second_image, second_image_memory] = m_device->create_image(
       second_image_size,
       vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
