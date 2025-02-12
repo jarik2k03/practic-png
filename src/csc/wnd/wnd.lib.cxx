@@ -62,19 +62,19 @@ void switch_from_insert_to_normal(
     bool abort_action) {
   if (first_btn && work_action) {
     wnd::params_parser parser(to_fill->input_data);
-    pngine::image_manipulator_bundle result;
     if (to_fill->current_pressed == wnd::e_toolbox_buttons::clip_image) {
       const auto [a, b, c, d] = parser.parse_clip_params();
-      result = render->get_toolbox().clip_image({a, b}, {c, d});
+      render->get_toolbox().clip_image({a, b}, {c, d});
     } else if (to_fill->current_pressed == wnd::e_toolbox_buttons::scale_image) {
       const auto [a, b] = parser.parse_scale_params();
-      result = render->get_toolbox().scale_image(a, b);
+      render->get_toolbox().scale_image(a, b);
     } else if (to_fill->current_pressed == wnd::e_toolbox_buttons::rotate_image) {
       const auto [a] = parser.parse_rotate_params();
-      result = render->get_toolbox().rotate_image(a);
+      render->get_toolbox().rotate_image(a);
     }
-    image_data->header().width = result.image_size.width, image_data->header().height = result.image_size.height;
-    render->change_drawing(result.staged, image_data->header());
+    const auto new_size = render->get_toolbox().get_first_image_size();
+    image_data->header().width = new_size.width, image_data->header().height = new_size.height;
+    render->change_drawing(render->get_toolbox().get_first_image_view(), image_data->header());
   }
   if (first_btn &&
       (work_action || abort_action)) { // abort-нажатие только переключит состояние, а work переключит после работы
