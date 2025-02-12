@@ -1,0 +1,16 @@
+#version 450
+
+layout(binding = 0) uniform range {
+  ivec2 clip_offset;
+}params;
+
+layout(rgba8, binding = 1) uniform readonly image2D in_image;
+layout(rgba8, binding = 2) uniform writeonly image2D out_image;
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main() {
+  const ivec2 idx = ivec2(gl_GlobalInvocationID.xy);
+  vec4 rgba_pixel = imageLoad(in_image, idx + params.clip_offset);
+  imageStore(out_image, idx, rgba_pixel);
+}

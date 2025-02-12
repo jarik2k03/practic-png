@@ -3,7 +3,8 @@
 *.a
 *.so
 # безобразно тяжелый файл - приблизительно равен восьми тоннам...
-images/elephant.png
+elephant.png
+ruby_bloat.png
 *.d
 *.exe
 build/

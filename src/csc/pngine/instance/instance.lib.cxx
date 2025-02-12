@@ -137,7 +137,6 @@ instance::instance(const vk::ApplicationInfo& app_info) {
   description.ppEnabledLayerNames = m_enabled_layers.data();
   description.enabledExtensionCount = m_enabled_extensions.size();
   description.ppEnabledExtensionNames = m_enabled_extensions.data();
-
   m_instance = vk::createInstance(description, nullptr);
 
   m_swapchain_dispatch.vkCreateSwapchainKHR =

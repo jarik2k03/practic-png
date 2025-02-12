@@ -3,6 +3,7 @@ module;
 #include <bits/stl_construct.h>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
+#include <cmath>
 #include <cstdint>
 export module csc.png.deserializer:impl;
 import stl.string_view;
@@ -19,6 +20,7 @@ import :utility;
 export import csc.png.picture;
 
 import csc.png.commons.chunk;
+import csc.png.deserializer.unfilterer;
 import csc.png.deserializer.consume_chunk;
 import csc.png.deserializer.consume_chunk.inflater;
 
@@ -28,6 +30,7 @@ namespace png {
 class deserializer_impl {
  public:
   png::picture do_deserialize(std::string_view filepath, bool ignore_checksum);
+  void do_prepare_to_present(png::picture& deserialized);
 };
 
 png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool ignore_checksum) {
@@ -40,17 +43,17 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
   png::read_png_signature_from_file(png_fs, image);
   try {
     auto header_chunk = png::read_chunk_from_ifstream(png_fs);
-    consume_chunk_and_write_to_image(header_chunk, image), check_sum(header_chunk);
-    image.m_image_data.reserve(png::bring_image_size(std::get<IHDR>(image.m_structured.at(0))));
+    png::consume_chunk_and_write_to_image(header_chunk, image), png::check_sum(header_chunk);
+    image.m_image_data.reserve(png::bring_filtered_image_size(image.header(), 1.1f));
     while (png_fs.tellg() != -1) {
       auto chunk = png::read_chunk_from_ifstream(png_fs);
 
       if (chunk.chunk_name == std::array<char, 4>{'I', 'D', 'A', 'T'}) {
-        inflate_fragment_to_image(chunk, image, z_stream);
+        png::inflate_fragment_to_image(chunk, image, z_stream);
         if (ignore_checksum == false)
           check_sum(chunk);
       } else {
-        consume_chunk_and_write_to_image(chunk, image);
+        png::consume_chunk_and_write_to_image(chunk, image);
         if (ignore_checksum == false)
           check_sum(chunk);
       }
@@ -72,5 +75,23 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
   }
   return image;
 }
+
+void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
+  const auto& ihdr = deserialized.header();
+  const auto& filtered = deserialized.m_image_data;
+
+  png::u8buffer unfiltered_image(png::bring_unfiltered_image_size(ihdr));
+  auto channels_count = png::channels_count_from_color_type(ihdr.color_type);
+  const auto pixel_bytesize = channels_count * (static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f)));
+  const auto width_bytes = ihdr.width * pixel_bytesize;
+
+  png::unfilterer decoder({filtered.begin(), filtered.end()}, unfiltered_image, width_bytes, pixel_bytesize);
+  for (auto height = 0u; height < ihdr.height; ++height) {
+    decoder.unfilter_line();
+  }
+  // теперь вместо фильтрованного изображения будет лежать нефильтрованное
+  deserialized.m_image_data = std::vector(unfiltered_image.begin(), unfiltered_image.end());
+}
+
 } // namespace png
 } // namespace csc

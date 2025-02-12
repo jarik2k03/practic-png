@@ -35,7 +35,7 @@ constexpr std::string generate_section_error_message(png::e_section_code sec, st
   return "Неизвестная ошибка секции!"s;
 }
 
-constexpr uint8_t pixel_size_from_color_type(png::e_color_type t) {
+constexpr uint8_t channels_count_from_color_type(png::e_color_type t) {
   using enum png::e_color_type;
   switch (t) {
     case rgba:
@@ -43,9 +43,9 @@ constexpr uint8_t pixel_size_from_color_type(png::e_color_type t) {
     case rgb:
       return 3u;
     case bw:
-      return 2u;
+      return 1u;
     case bwa:
-      return 3u;
+      return 2u;
     case indexed:
       return 1u;
     default:
@@ -54,12 +54,20 @@ constexpr uint8_t pixel_size_from_color_type(png::e_color_type t) {
   return 0u;
 }
 
-constexpr uint32_t bring_image_size(const png::IHDR& header) {
+constexpr uint32_t bring_unfiltered_image_size(const png::IHDR& header) {
   const float pixel_size = header.bit_depth / 8.f;
-  const uint32_t channels = png::pixel_size_from_color_type(header.color_type);
-  // (длина * высота * размер * общий размер пикселя + байт на каждую строку) + 10% резерв
-  return static_cast<uint32_t>((header.width * header.height * pixel_size * channels + (header.height * 1)) * 1.10f);
-};
+  const uint32_t channels = png::channels_count_from_color_type(header.color_type);
+  // (длина * высота * размер * общий размер пикселя
+  return static_cast<uint32_t>(header.width * header.height * pixel_size * channels);
+}
+
+constexpr uint32_t bring_filtered_image_size(const png::IHDR& header, float reserve_coefficient) {
+  const float pixel_size = header.bit_depth / 8.f;
+  const uint32_t channels = png::channels_count_from_color_type(header.color_type);
+  // (длина * высота * размер * общий размер пикселя + байт фильтрации на каждую строку) + 10% резерв
+  return static_cast<uint32_t>(
+      (header.width * header.height * pixel_size * channels + (header.height * 1)) * reserve_coefficient);
+}
 
 constexpr std::optional<png::v_section> init_section(const png::chunk& ch) {
   if (ch.chunk_name == std::array<char, 4>{'I', 'H', 'D', 'R'})
