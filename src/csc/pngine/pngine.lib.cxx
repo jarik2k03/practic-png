@@ -94,10 +94,6 @@ export class pngine_core {
 
   vk::UniqueSampler m_image_sampler{};
 
-  vk::UniqueImage m_image_buffer{};
-  vk::UniqueImageView m_image_view{};
-  vk::UniqueDeviceMemory m_image_memory{};
-
   vk::UniqueImage m_menu_image_buffer{};
   vk::UniqueImageView m_menu_image_view{};
   vk::UniqueDeviceMemory m_menu_image_memory{};
@@ -112,6 +108,11 @@ export class pngine_core {
 
   void Create_Sampler();
   void Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2D size);
+  void Update_Descriptor_Set_0(
+      const std::vector<vk::UniqueDescriptorSet>& dst_sets,
+      uint32_t mvp_offset,
+      vk::ImageView image);
+  void Update_Descriptor_Set_1();
 
   void Update_Menu(uint32_t frame_index);
   void Update_Image(uint32_t frame_index);
@@ -124,7 +125,7 @@ export class pngine_core {
 
   void init_menu(const std::vector<uint8_t>& blob);
   void change_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
-  void change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info);
+  void change_drawing(vk::ImageView drawing_view, png::IHDR& img_info);
   void recreate_swapchain(vk::Extent2D framebuffer_size);
   void render_frame();
   void load_mesh();
@@ -247,7 +248,6 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       1u, vk::DescriptorType::eSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
   const auto binds_1 = std::array{s1_1_bind}; // deduction guides!
 
-
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_1_info{};
   descriptor_layout_1_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
   descriptor_layout_1_info.bindingCount = binds_1.size();
@@ -334,8 +334,8 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-  data = device.get().mapMemory(
-      m_stage_png_surface_ids_memory.get(), 0u, basic_rectangle.size() * sizeof(pngine::vertex));
+  data =
+      device.get().mapMemory(m_stage_png_surface_ids_memory.get(), 0u, basic_rectangle.size() * sizeof(pngine::vertex));
   ::memcpy(data, rectangle_ids.data(), idx_buf_size);
   device.get().unmapMemory(m_stage_png_surface_ids_memory.get());
 
@@ -440,74 +440,15 @@ void pngine_core::recreate_swapchain(vk::Extent2D framebuffer_size) {
   Create_Framebuffers(); // зависит от этих изображений
 }
 
-void pngine_core::change_drawing(const pngine::buf_and_mem& staging, png::IHDR& img_info) {
-  auto& device = m_instance.get_device();
+void pngine_core::change_drawing(vk::ImageView drawing_view, png::IHDR& img_info) {
   m_png_info = &img_info;
-  device.get().waitIdle(); // ожидаем, когда gpu завершит работу над прошлыми операциями
-
-  /* image for render */
-  std::tie(m_image_buffer, m_image_memory) = device.create_image(
-      vk::Extent2D(m_png_info->width, m_png_info->height),
-      // pngine::bring_texture_format_from_png(m_png_info->color_type, m_png_info->bit_depth),
-      vk::Format::eR8G8B8A8Srgb,
-      vk::ImageTiling::eOptimal,
-      vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-      vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-  /* image view */
-  vk::ImageViewCreateInfo image_view_info{};
-  image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
-  image_view_info.image = m_image_buffer.get();
-  image_view_info.format = vk::Format::eR8G8B8A8Srgb;
-  image_view_info.viewType = vk::ImageViewType::e2D;
-  image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
-
-  m_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
-
-  /* setup descriptor sets */
-  for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), 0u, sizeof(pngine::MVP));
-    vk::DescriptorImageInfo d_image_texture_info({}, m_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
-
-    vk::WriteDescriptorSet w_drawing_mvp{}, w_image_texture{};
-    w_drawing_mvp.sType = vk::StructureType::eWriteDescriptorSet;
-    w_drawing_mvp.descriptorCount = 1u;
-    w_drawing_mvp.pBufferInfo = &d_mvp_info;
-    w_drawing_mvp.descriptorType = vk::DescriptorType::eUniformBuffer;
-    w_drawing_mvp.dstSet = m_drawing_descr_sets_0[i].get();
-    w_drawing_mvp.dstBinding = 0u;
-    w_drawing_mvp.dstArrayElement = 0u;
-
-    w_image_texture.sType = vk::StructureType::eWriteDescriptorSet;
-    w_image_texture.descriptorCount = 1u;
-    w_image_texture.pImageInfo = &d_image_texture_info;
-    w_image_texture.descriptorType = vk::DescriptorType::eSampledImage;
-    w_image_texture.dstSet = m_drawing_descr_sets_0[i].get();
-    w_image_texture.dstBinding = 1u;
-    w_image_texture.dstArrayElement = 0u;
-
-    const auto sets = std::array{w_drawing_mvp, w_image_texture};
-    device.get().updateDescriptorSets(sets.size(), sets.data(), 0u, nullptr);
-  }
-  for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    vk::DescriptorImageInfo d_image_sampler_info(m_image_sampler.get(), {}, {});
-
-    vk::WriteDescriptorSet w_image_sampler{};
-    w_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
-    w_image_sampler.descriptorCount = 1u;
-    w_image_sampler.pImageInfo = &d_image_sampler_info;
-    w_image_sampler.descriptorType = vk::DescriptorType::eSampler;
-    w_image_sampler.dstSet = m_descr_sets_1[i].get();
-    w_image_sampler.dstBinding = 1u;
-    w_image_sampler.dstArrayElement = 0u;
-
-    device.get().updateDescriptorSets(1u, &w_image_sampler, 0u, nullptr);
-  }
-  Transfer_Image_HTOD(m_image_buffer.get(), staging.first.get(), vk::Extent2D(img_info.width, img_info.height));
+  Update_Descriptor_Set_0(m_drawing_descr_sets_0, 0u, drawing_view);
+  Update_Descriptor_Set_1();
 }
 
 void pngine_core::change_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info) {
   auto& device = m_instance.get_device();
+  m_png_info = &img_info;
   /* image data */
   const auto staged = device.create_buffer(
       blob.size(),
@@ -518,12 +459,11 @@ void pngine_core::change_drawing(const std::vector<uint8_t>& blob, png::IHDR& im
   ::memcpy(staged_image_mapping, blob.data(), blob.size());
   device.get().unmapMemory(staged.second.get());
 
-  /* изменение только подвижных частей */
-  change_drawing(staged, img_info);
-
   /* clip & rotate & scale */
   m_toolbox = pngine::image_manipulator(
       device, staged.first, {m_png_info->width, m_png_info->height}); // выполняет преобразования изображений
+
+  change_drawing(m_toolbox.get_first_image_view(), img_info);
 }
 
 void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
@@ -558,31 +498,7 @@ void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
   m_menu_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
-  /* setup descriptor sets */
-  for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), sizeof(pngine::MVP), sizeof(pngine::MVP));
-    vk::DescriptorImageInfo d_image_texture_info({}, m_menu_image_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
-
-    vk::WriteDescriptorSet w_menu_mvp{}, w_image_texture{};
-    w_menu_mvp.sType = vk::StructureType::eWriteDescriptorSet;
-    w_menu_mvp.descriptorCount = 1u;
-    w_menu_mvp.pBufferInfo = &d_mvp_info;
-    w_menu_mvp.descriptorType = vk::DescriptorType::eUniformBuffer;
-    w_menu_mvp.dstSet = m_menu_descr_sets_0[i].get();
-    w_menu_mvp.dstBinding = 0u;
-    w_menu_mvp.dstArrayElement = 0u;
-
-    w_image_texture.sType = vk::StructureType::eWriteDescriptorSet;
-    w_image_texture.descriptorCount = 1u;
-    w_image_texture.pImageInfo = &d_image_texture_info;
-    w_image_texture.descriptorType = vk::DescriptorType::eSampledImage;
-    w_image_texture.dstSet = m_menu_descr_sets_0[i].get();
-    w_image_texture.dstBinding = 1u;
-    w_image_texture.dstArrayElement = 0u;
-
-    const auto sets = std::array{w_menu_mvp, w_image_texture};
-    device.get().updateDescriptorSets(sets.size(), sets.data(), 0u, nullptr);
-  }
+  Update_Descriptor_Set_0(m_menu_descr_sets_0, sizeof(pngine::MVP), m_menu_image_view.get());
 }
 
 void pngine_core::load_mesh() {
@@ -671,8 +587,7 @@ void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2
   copy_img_region.imageOffset = vk::Offset3D(0, 0, 0);
   copy_img_region.imageExtent = vk::Extent3D(size, 1u);
 
-  transfer_buffer.copyBufferToImage(
-      src, dst, vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
+  transfer_buffer.copyBufferToImage(src, dst, vk::ImageLayout::eTransferDstOptimal, 1u, &copy_img_region);
   transfer_buffer.pipelineBarrier(
       eTransfer, eFragmentShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &transferDst_to_shaderRD);
   transfer_buffer.end();
@@ -685,7 +600,51 @@ void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2
     throw std::runtime_error("Pngine: не удалось записать изорбражение в очередь передачи!");
   transfer_queue.waitIdle();
   device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+}
+void pngine_core::Update_Descriptor_Set_0(
+    const std::vector<vk::UniqueDescriptorSet>& dst_sets,
+    uint32_t mvp_offset,
+    vk::ImageView image_view) {
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), mvp_offset, sizeof(pngine::MVP));
+    vk::DescriptorImageInfo d_texture_info({}, image_view, vk::ImageLayout::eShaderReadOnlyOptimal);
 
+    vk::WriteDescriptorSet w_mvp{}, w_texture{};
+    w_mvp.sType = vk::StructureType::eWriteDescriptorSet;
+    w_mvp.descriptorCount = 1u;
+    w_mvp.pBufferInfo = &d_mvp_info;
+    w_mvp.descriptorType = vk::DescriptorType::eUniformBuffer;
+    w_mvp.dstSet = dst_sets[i].get();
+    w_mvp.dstBinding = 0u;
+    w_mvp.dstArrayElement = 0u;
+
+    w_texture.sType = vk::StructureType::eWriteDescriptorSet;
+    w_texture.descriptorCount = 1u;
+    w_texture.pImageInfo = &d_texture_info;
+    w_texture.descriptorType = vk::DescriptorType::eSampledImage;
+    w_texture.dstSet = dst_sets[i].get();
+    w_texture.dstBinding = 1u;
+    w_texture.dstArrayElement = 0u;
+
+    const auto sets = std::array{w_mvp, w_texture};
+    m_instance.get_device().get().updateDescriptorSets(sets.size(), sets.data(), 0u, nullptr);
+  }
+}
+void pngine_core::Update_Descriptor_Set_1() {
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorImageInfo d_image_sampler_info(m_image_sampler.get(), {}, {});
+
+    vk::WriteDescriptorSet w_image_sampler{};
+    w_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
+    w_image_sampler.descriptorCount = 1u;
+    w_image_sampler.pImageInfo = &d_image_sampler_info;
+    w_image_sampler.descriptorType = vk::DescriptorType::eSampler;
+    w_image_sampler.dstSet = m_descr_sets_1[i].get();
+    w_image_sampler.dstBinding = 1u;
+    w_image_sampler.dstArrayElement = 0u;
+
+    m_instance.get_device().get().updateDescriptorSets(1u, &w_image_sampler, 0u, nullptr);
+  }
 }
 
 void pngine_core::Update_Image(uint32_t frame_index) {
@@ -764,8 +723,10 @@ void pngine_core::render_frame() {
   const auto& in_flight_f = m_in_flight_f[m_current_frame];
   const auto& image_available_s = m_image_available_s[m_current_frame];
   const auto& render_finished_s = m_render_finished_s[m_current_frame];
-  const auto drawing_descr_sets = std::array{m_drawing_descr_sets_0[m_current_frame].get(), m_descr_sets_1[m_current_frame].get()};
-  const auto menu_descr_sets = std::array{m_menu_descr_sets_0[m_current_frame].get(), m_descr_sets_1[m_current_frame].get()};
+  const auto drawing_descr_sets =
+      std::array{m_drawing_descr_sets_0[m_current_frame].get(), m_descr_sets_1[m_current_frame].get()};
+  const auto menu_descr_sets =
+      std::array{m_menu_descr_sets_0[m_current_frame].get(), m_descr_sets_1[m_current_frame].get()};
   const auto& cur_command_buffer = m_command_buffers[m_current_frame];
   constexpr const auto without_delays = std::numeric_limits<uint64_t>::max();
   vk::Result r = dev.get().waitForFences(1u, &in_flight_f, vk::True, without_delays);
@@ -809,7 +770,7 @@ void pngine_core::render_frame() {
   const vk::DeviceSize offsets[1] = {0u};
   cur_command_buffer.bindVertexBuffers(0u, vertex_buffer_count, buffers, offsets);
   cur_command_buffer.bindIndexBuffer(m_png_surface_ids.get(), 0u, vk::IndexType::eUint16);
-  //draw drawing
+  // draw drawing
   cur_command_buffer.bindDescriptorSets(
       vk::PipelineBindPoint::eGraphics,
       m_pipeline_layout.get(),

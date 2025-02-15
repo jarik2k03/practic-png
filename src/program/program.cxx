@@ -173,10 +173,10 @@ int main(int argc, char** argv) {
         const auto end = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
-        std::cout << "\033[H\033[2J";
-        std::cout << "Render frames per second: " << fixed_frame_count << '\n';
-        if (program_state.current_state == csc::wnd::e_program_state::insert)
-          std::cout << "Input params string: " << program_state.input_data << '\n';
+        // std::cout << "\033[H\033[2J";
+        // std::cout << "Render frames per second: " << fixed_frame_count << '\n';
+        // if (program_state.current_state == csc::wnd::e_program_state::insert)
+        //   std::cout << "Input params string: " << program_state.input_data << '\n';
 
         [[unlikely]] if (time >= 1.0) {
           fixed_frame_count = frames_count;
