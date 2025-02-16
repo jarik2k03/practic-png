@@ -159,6 +159,7 @@ int main(int argc, char** argv) {
       core.change_drawing(png.m_image_data, png.header());
       core.init_menu(menu.m_image_data);
       core.load_mesh();
+      core.apply_colorspace(csc::png::cHRM{});
 
       double time = 0.0;
       uint64_t frames_count = 0u, fixed_frame_count = frames_count;

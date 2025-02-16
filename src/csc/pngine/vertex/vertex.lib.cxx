@@ -48,5 +48,11 @@ struct MVP {
   alignas(16) glm::mat4 proj;
 };
 
+// на самом деле здесь матрица 3х3, но шейдер не читает по 3 байта, поэтому выравнивает каждую строку
+struct conversion {
+  glm::mat4x3 image_colorspace;
+  glm::mat4x3 monitor_colorspace;
+};
+
 } // namespace pngine
 } // namespace csc

@@ -21,6 +21,7 @@ import stl.stdexcept;
 import stl.iostream;
 #endif
 import csc.png.picture.sections.IHDR;
+import csc.png.picture.sections.cHRM;
 
 import csc.pngine.instance;
 import csc.pngine.instance.device;
@@ -84,8 +85,10 @@ export class pngine_core {
   vk::UniqueDeviceMemory m_png_surface_ids_memory;
 
   std::array<vk::UniqueBuffer, m_flight_count> m_uniform_mvps;
-  std::array<vk::UniqueDeviceMemory, m_flight_count> m_uniform_mvp_memories;
-  std::array<void*, m_flight_count> m_uniform_mvp_map;
+  vk::UniqueBuffer m_uniform_conversion;
+
+  void* m_uniform_mapping;
+  vk::UniqueDeviceMemory m_uniforms_memory;
 
   vk::UniqueDescriptorPool m_descr_pool;
   std::vector<vk::UniqueDescriptorSet> m_drawing_descr_sets_0;
@@ -127,6 +130,7 @@ export class pngine_core {
   void change_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
   void change_drawing(vk::ImageView drawing_view, png::IHDR& img_info);
   void recreate_swapchain(vk::Extent2D framebuffer_size);
+  void apply_colorspace(const png::cHRM& img_info);
   void render_frame();
   void load_mesh();
   ~pngine_core() noexcept;
@@ -244,9 +248,11 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
 
   m_descr_layout_0 = device.get().createDescriptorSetLayoutUnique(descriptor_layout_0_info, nullptr);
 
+  vk::DescriptorSetLayoutBinding u0_1_bind(
+      0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
   vk::DescriptorSetLayoutBinding s1_1_bind(
       1u, vk::DescriptorType::eSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
-  const auto binds_1 = std::array{s1_1_bind}; // deduction guides!
+  const auto binds_1 = std::array{u0_1_bind, s1_1_bind}; // deduction guides!
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_1_info{};
   descriptor_layout_1_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
@@ -343,14 +349,45 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       idx_buf_size,
       vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
+
   /* uniform buffers */
+  vk::BufferCreateInfo mvp_info{};
+  mvp_info.sType = vk::StructureType::eBufferCreateInfo;
+  mvp_info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+  mvp_info.size = sizeof(pngine::MVP) * 2u;
+  mvp_info.sharingMode = vk::SharingMode::eExclusive;
+
+  vk::BufferCreateInfo cnv_info{};
+  cnv_info.sType = vk::StructureType::eBufferCreateInfo;
+  cnv_info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+  cnv_info.size = sizeof(pngine::conversion);
+  cnv_info.sharingMode = vk::SharingMode::eExclusive;
+
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    std::tie(m_uniform_mvps[i], m_uniform_mvp_memories[i]) = device.create_buffer(
-        sizeof(pngine::MVP) * 2u,
-        vk::BufferUsageFlagBits::eUniformBuffer,
-        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    m_uniform_mvp_map[i] = device.get().mapMemory(m_uniform_mvp_memories[i].get(), 0u, sizeof(pngine::MVP));
+    m_uniform_mvps[i] = device.get().createBufferUnique(mvp_info, nullptr);
   }
+  m_uniform_conversion = device.get().createBufferUnique(cnv_info, nullptr);
+
+  const auto mvp_props = device.get().getBufferMemoryRequirements(m_uniform_mvps[0u].get());
+  const auto cnv_props = device.get().getBufferMemoryRequirements(m_uniform_conversion.get());
+  const auto supported_props = device.get_physdev().getMemoryProperties();
+  using mp = vk::MemoryPropertyFlagBits;
+  constexpr const auto required_props = mp::eHostVisible | mp::eHostCoherent;
+
+  vk::MemoryAllocateInfo alloc_info{};
+  alloc_info.sType = vk::StructureType::eMemoryAllocateInfo;
+  alloc_info.allocationSize = mvp_props.size * m_flight_count + cnv_props.size; // аллоцируем под две юниформы
+  alloc_info.memoryTypeIndex = pngine::choose_memory_type(supported_props, mvp_props, required_props);
+  m_uniforms_memory = device.get().allocateMemoryUnique(alloc_info, nullptr);
+
+  uint32_t mem_offset = 0u;
+  for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    device.get().bindBufferMemory(m_uniform_mvps[i].get(), m_uniforms_memory.get(), mem_offset);
+    mem_offset += sizeof(pngine::MVP) * 2u;
+  }
+  device.get().bindBufferMemory(m_uniform_conversion.get(), m_uniforms_memory.get(), mem_offset);
+
+  m_uniform_mapping = device.get().mapMemory(m_uniforms_memory.get(), 0u, alloc_info.allocationSize);
 
   /* creating pools and allocating buffers for render commands */
   m_graphics_pool = device.create_graphics_command_pool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
@@ -365,7 +402,7 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
   m_command_buffers = device.get().allocateCommandBuffers(alloc_desc);
 
   /* descriptor pool */
-  vk::DescriptorPoolSize mvp_pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count * 2u);
+  vk::DescriptorPoolSize mvp_pool_size(vk::DescriptorType::eUniformBuffer, m_flight_count * 2u * 2u);
   vk::DescriptorPoolSize image_texture_pool_size(vk::DescriptorType::eSampledImage, m_flight_count * 2u);
   vk::DescriptorPoolSize image_sampler_pool_size(vk::DescriptorType::eSampler, m_flight_count);
   auto pool_sizes = std::array{mvp_pool_size, image_sampler_pool_size, image_texture_pool_size};
@@ -482,7 +519,7 @@ void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
   /* image for render */
   std::tie(m_menu_image_buffer, m_menu_image_memory) = device.create_image(
       vk::Extent2D(64u, 256u),
-      vk::Format::eR8G8B8A8Srgb,
+      vk::Format::eR8G8B8A8Unorm,
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -493,7 +530,7 @@ void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
   vk::ImageViewCreateInfo image_view_info{};
   image_view_info.sType = vk::StructureType::eImageViewCreateInfo;
   image_view_info.image = m_menu_image_buffer.get();
-  image_view_info.format = vk::Format::eR8G8B8A8Srgb;
+  image_view_info.format = vk::Format::eR8G8B8A8Unorm;
   image_view_info.viewType = vk::ImageViewType::e2D;
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
@@ -535,6 +572,24 @@ void pngine_core::load_mesh() {
     throw std::runtime_error("Pngine: не удалось записать вершинный буфер в очередь передачи!");
   transfer_queue.waitIdle();
   device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
+}
+void pngine_core::apply_colorspace(const png::cHRM& img_info) {
+  const auto from_drawing = glm::mat4x3(
+  0.4124564f,  0.3575761f,  0.1804375f, 0,
+  0.2126729f,  0.7151522f,  0.0721750f, 0,
+  0.0193339f,  0.1191920f,  0.9503041f, 0);
+  const auto to_monitor = glm::mat4x3(
+  3.2404542f, -1.5371385f, -0.4985314f, 0,
+  -0.9692660f,  1.8760108f,  0.0415560f, 0,
+  0.0556434f, -0.2040259f,  1.0572252f, 0);
+
+  pngine::conversion cnv_host_buffer;
+  cnv_host_buffer.image_colorspace = (from_drawing);
+  cnv_host_buffer.monitor_colorspace = (to_monitor);
+
+  const uint32_t offset = sizeof(pngine::MVP) * 2u * m_flight_count;
+  void* conversion_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset;
+  ::memcpy(conversion_mapping, &cnv_host_buffer, sizeof(pngine::MVP));
 }
 
 void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2D size) {
@@ -632,9 +687,18 @@ void pngine_core::Update_Descriptor_Set_0(
 }
 void pngine_core::Update_Descriptor_Set_1() {
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
+    vk::DescriptorBufferInfo d_cnv_info(m_uniform_conversion.get(), 0u, sizeof(pngine::conversion));
     vk::DescriptorImageInfo d_image_sampler_info(m_image_sampler.get(), {}, {});
 
-    vk::WriteDescriptorSet w_image_sampler{};
+    vk::WriteDescriptorSet w_cnv{}, w_image_sampler{};
+    w_cnv.sType = vk::StructureType::eWriteDescriptorSet;
+    w_cnv.descriptorCount = 1u;
+    w_cnv.pBufferInfo = &d_cnv_info;
+    w_cnv.descriptorType = vk::DescriptorType::eUniformBuffer;
+    w_cnv.dstSet = m_descr_sets_1[i].get();
+    w_cnv.dstBinding = 0u;
+    w_cnv.dstArrayElement = 0u;
+
     w_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
     w_image_sampler.descriptorCount = 1u;
     w_image_sampler.pImageInfo = &d_image_sampler_info;
@@ -643,14 +707,14 @@ void pngine_core::Update_Descriptor_Set_1() {
     w_image_sampler.dstBinding = 1u;
     w_image_sampler.dstArrayElement = 0u;
 
-    m_instance.get_device().get().updateDescriptorSets(1u, &w_image_sampler, 0u, nullptr);
+    const auto sets = std::array{w_cnv, w_image_sampler};
+    m_instance.get_device().get().updateDescriptorSets(sets.size(), sets.data(), 0u, nullptr);
   }
 }
 
 void pngine_core::Update_Image(uint32_t frame_index) {
   const auto& device = m_instance.get_device();
   const auto extent = device.get_swapchain().get_extent();
-  const auto& current_mapping = m_uniform_mvp_map[frame_index];
 
   const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
   const auto &w = m_png_info->width, &h = m_png_info->height;
@@ -669,13 +733,14 @@ void pngine_core::Update_Image(uint32_t frame_index) {
 
   mvp_host_buffer.proj = glm::perspective(glm::radians(70.f), aspect, 0.1f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;
-  ::memcpy(current_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
+  const uint32_t offset = frame_index * sizeof(pngine::MVP) * 2u;
+  void* drawing_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset;
+  ::memcpy(drawing_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
 }
 
 void pngine_core::Update_Menu(uint32_t frame_index) {
   const auto& device = m_instance.get_device();
   const auto extent = device.get_swapchain().get_extent();
-  const auto& current_mapping = m_uniform_mvp_map[frame_index];
 
   const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
   const auto w = 64u, h = 256u;
@@ -714,7 +779,8 @@ void pngine_core::Update_Menu(uint32_t frame_index) {
 
   mvp_host_buffer.proj = glm::perspective(fov, aspect, 0.01f, 10.f);
   mvp_host_buffer.proj[1][1] *= -1.f;
-  void* menu_mapping = reinterpret_cast<char*>(current_mapping) + sizeof(pngine::MVP);
+  const uint32_t offset = frame_index * sizeof(pngine::MVP) * 2u;
+  void* menu_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset + sizeof(pngine::MVP);
   ::memcpy(menu_mapping, &mvp_host_buffer, sizeof(pngine::MVP));
 }
 
