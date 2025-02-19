@@ -574,10 +574,29 @@ void pngine_core::load_mesh() {
   device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
 }
 void pngine_core::apply_colorspace(const png::cHRM& img_info) {
+  constexpr const auto d = 100'000.f; // преобразование данных чанка в float (div 100'000)
+  const float xr = static_cast<float>(img_info.red_x) / d, yr = static_cast<float>(img_info.red_y) / d;
+  const float xg = static_cast<float>(img_info.green_x) / d, yg = static_cast<float>(img_info.green_y) / d;
+  const float xb = static_cast<float>(img_info.blue_x) / d, yb = static_cast<float>(img_info.blue_y) / d;
+  const float xw = static_cast<float>(img_info.white_x) / d, yw = static_cast<float>(img_info.white_y) / d;
+
+  const float Xr = xr / yr, Yr = 1.f, Zr = (1.f - xr - yr) / yr;
+  const float Xg = xg / yg, Yg = 1.f, Zg = (1.f - xg - yg) / yg;
+  const float Xb = xb / yb, Yb = 1.f, Zb = (1.f - xb - yb) / yb;
+  const float Xw = xw / yw, Yw = 1.f, Zw = (1.f - xw - yw) / yw;
+
+  const auto XYZ = glm::mat3x3(
+      Xr, Xg, Xb,
+      Yr, Yg, Yb,
+      Zr, Zg, Zb);
+  const auto XYZ_inverted = glm::inverse(glm::transpose(XYZ));
+  const auto S = XYZ_inverted * glm::vec3(Xw, Yw, Zw);
+
   const auto from_drawing = glm::mat4x3(
-  0.4124564f,  0.3575761f,  0.1804375f, 0,
-  0.2126729f,  0.7151522f,  0.0721750f, 0,
-  0.0193339f,  0.1191920f,  0.9503041f, 0);
+    S.r * Xr, S.g * Xg, S.b * Xb, 0.f,
+    S.r * Yr, S.g * Yg, S.b * Yb, 0.f,
+    S.r * Zr, S.g * Zg, S.b * Zb, 0.f);
+
   const auto to_monitor = glm::mat4x3(
   3.2404542f, -1.5371385f, -0.4985314f, 0,
   -0.9692660f,  1.8760108f,  0.0415560f, 0,

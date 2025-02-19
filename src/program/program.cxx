@@ -159,7 +159,12 @@ int main(int argc, char** argv) {
       core.change_drawing(png.m_image_data, png.header());
       core.init_menu(menu.m_image_data);
       core.load_mesh();
-      core.apply_colorspace(csc::png::cHRM{});
+      csc::png::cHRM colorspace;
+      colorspace.white_x = 31270u, colorspace.white_y = 32900u;
+      colorspace.red_x = 64000u, colorspace.red_y = 33000u;
+      colorspace.green_x = 30000u, colorspace.green_y = 60000u;
+      colorspace.blue_x = 15000u, colorspace.blue_y = 6000u;
+      core.apply_colorspace(colorspace);
 
       double time = 0.0;
       uint64_t frames_count = 0u, fixed_frame_count = frames_count;
@@ -174,8 +179,8 @@ int main(int argc, char** argv) {
         const auto end = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
-        // std::cout << "\033[H\033[2J";
-        // std::cout << "Render frames per second: " << fixed_frame_count << '\n';
+        std::cout << "\033[H\033[2J";
+        std::cout << "Render frames per second: " << fixed_frame_count << '\n';
         // if (program_state.current_state == csc::wnd::e_program_state::insert)
         //   std::cout << "Input params string: " << program_state.input_data << '\n';
 

@@ -20,6 +20,8 @@ using glm::vec3;
 using glm::operator!=;
 using glm::operator==;
 using glm::operator+;
+using glm::operator*;
 using glm::pi;
 using glm::transpose;
+using glm::inverse;
 } // namespace glm
