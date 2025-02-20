@@ -106,6 +106,7 @@ export class pngine_core {
   std::vector<vk::CommandBuffer> m_command_buffers;
 
   pngine::image_manipulator m_toolbox;
+
   void Create_Swapchain_Views();
   void Create_Framebuffers();
 
@@ -114,9 +115,11 @@ export class pngine_core {
   void Update_Descriptor_Set_0(
       const std::vector<vk::UniqueDescriptorSet>& dst_sets,
       uint32_t mvp_offset,
+      uint32_t conversion_offset,
       vk::ImageView image);
   void Update_Descriptor_Set_1();
 
+  glm::mat4x3 Compute_cHRM(const png::cHRM& section) const;
   void Update_Menu(uint32_t frame_index);
   void Update_Image(uint32_t frame_index);
 
@@ -130,7 +133,8 @@ export class pngine_core {
   void change_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
   void change_drawing(vk::ImageView drawing_view, png::IHDR& img_info);
   void recreate_swapchain(vk::Extent2D framebuffer_size);
-  void apply_colorspace(const png::cHRM& img_info);
+  void apply_drawing_colorspace(const png::cHRM& img_info);
+  void apply_menu_colorspace(const png::cHRM& img_info);
   void render_frame();
   void load_mesh();
   ~pngine_core() noexcept;
@@ -239,7 +243,9 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
       0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eVertex, nullptr);
   vk::DescriptorSetLayoutBinding t1_0_bind(
       1u, vk::DescriptorType::eSampledImage, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
-  const auto binds_0 = std::array{u0_0_bind, t1_0_bind}; // deduction guides!
+  vk::DescriptorSetLayoutBinding u2_0_bind(
+      2u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
+  const auto binds_0 = std::array{u0_0_bind, t1_0_bind, u2_0_bind}; // deduction guides!
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_0_info{};
   descriptor_layout_0_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
@@ -248,11 +254,9 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
 
   m_descr_layout_0 = device.get().createDescriptorSetLayoutUnique(descriptor_layout_0_info, nullptr);
 
-  vk::DescriptorSetLayoutBinding u0_1_bind(
-      0u, vk::DescriptorType::eUniformBuffer, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
   vk::DescriptorSetLayoutBinding s1_1_bind(
       1u, vk::DescriptorType::eSampler, 1u, vk::ShaderStageFlagBits::eFragment, nullptr);
-  const auto binds_1 = std::array{u0_1_bind, s1_1_bind}; // deduction guides!
+  const auto binds_1 = std::array{s1_1_bind}; // deduction guides!
 
   vk::DescriptorSetLayoutCreateInfo descriptor_layout_1_info{};
   descriptor_layout_1_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
@@ -360,7 +364,7 @@ void pngine_core::setup_gpu_and_renderer(std::string gpu_name, vk::Extent2D rend
   vk::BufferCreateInfo cnv_info{};
   cnv_info.sType = vk::StructureType::eBufferCreateInfo;
   cnv_info.usage = vk::BufferUsageFlagBits::eUniformBuffer;
-  cnv_info.size = sizeof(pngine::conversion);
+  cnv_info.size = sizeof(pngine::conversion) * 2u;
   cnv_info.sharingMode = vk::SharingMode::eExclusive;
 
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
@@ -479,7 +483,7 @@ void pngine_core::recreate_swapchain(vk::Extent2D framebuffer_size) {
 
 void pngine_core::change_drawing(vk::ImageView drawing_view, png::IHDR& img_info) {
   m_png_info = &img_info;
-  Update_Descriptor_Set_0(m_drawing_descr_sets_0, 0u, drawing_view);
+  Update_Descriptor_Set_0(m_drawing_descr_sets_0, 0u, 0u, drawing_view);
   Update_Descriptor_Set_1();
 }
 
@@ -535,7 +539,7 @@ void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
   m_menu_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
-  Update_Descriptor_Set_0(m_menu_descr_sets_0, sizeof(pngine::MVP), m_menu_image_view.get());
+  Update_Descriptor_Set_0(m_menu_descr_sets_0, sizeof(pngine::MVP), sizeof(pngine::conversion), m_menu_image_view.get());
 }
 
 void pngine_core::load_mesh() {
@@ -573,29 +577,8 @@ void pngine_core::load_mesh() {
   transfer_queue.waitIdle();
   device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
 }
-void pngine_core::apply_colorspace(const png::cHRM& img_info) {
-  constexpr const auto d = 100'000.f; // преобразование данных чанка в float (div 100'000)
-  const float xr = static_cast<float>(img_info.red_x) / d, yr = static_cast<float>(img_info.red_y) / d;
-  const float xg = static_cast<float>(img_info.green_x) / d, yg = static_cast<float>(img_info.green_y) / d;
-  const float xb = static_cast<float>(img_info.blue_x) / d, yb = static_cast<float>(img_info.blue_y) / d;
-  const float xw = static_cast<float>(img_info.white_x) / d, yw = static_cast<float>(img_info.white_y) / d;
-
-  const float Xr = xr / yr, Yr = 1.f, Zr = (1.f - xr - yr) / yr;
-  const float Xg = xg / yg, Yg = 1.f, Zg = (1.f - xg - yg) / yg;
-  const float Xb = xb / yb, Yb = 1.f, Zb = (1.f - xb - yb) / yb;
-  const float Xw = xw / yw, Yw = 1.f, Zw = (1.f - xw - yw) / yw;
-
-  const auto XYZ = glm::mat3x3(
-      Xr, Xg, Xb,
-      Yr, Yg, Yb,
-      Zr, Zg, Zb);
-  const auto XYZ_inverted = glm::inverse(glm::transpose(XYZ));
-  const auto S = XYZ_inverted * glm::vec3(Xw, Yw, Zw);
-
-  const auto from_drawing = glm::mat4x3(
-    S.r * Xr, S.g * Xg, S.b * Xb, 0.f,
-    S.r * Yr, S.g * Yg, S.b * Yb, 0.f,
-    S.r * Zr, S.g * Zg, S.b * Zb, 0.f);
+void pngine_core::apply_drawing_colorspace(const png::cHRM& img_info) {
+  const auto from_drawing = Compute_cHRM(img_info);
 
   const auto to_monitor = glm::mat4x3(
   3.2404542f, -1.5371385f, -0.4985314f, 0,
@@ -609,6 +592,47 @@ void pngine_core::apply_colorspace(const png::cHRM& img_info) {
   const uint32_t offset = sizeof(pngine::MVP) * 2u * m_flight_count;
   void* conversion_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset;
   ::memcpy(conversion_mapping, &cnv_host_buffer, sizeof(pngine::MVP));
+}
+
+void pngine_core::apply_menu_colorspace(const png::cHRM& img_info) {
+  const auto from_drawing = Compute_cHRM(img_info);
+  const auto to_monitor = glm::mat4x3(
+  3.2404542f, -1.5371385f, -0.4985314f, 0,
+  -0.9692660f,  1.8760108f,  0.0415560f, 0,
+  0.0556434f, -0.2040259f,  1.0572252f, 0);
+
+  pngine::conversion cnv_host_buffer;
+  cnv_host_buffer.image_colorspace = (from_drawing);
+  cnv_host_buffer.monitor_colorspace = (to_monitor);
+
+  const uint32_t offset = sizeof(pngine::MVP) * 2u * m_flight_count + sizeof(pngine::conversion);
+  void* conversion_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset;
+  ::memcpy(conversion_mapping, &cnv_host_buffer, sizeof(pngine::MVP));
+}
+
+glm::mat4x3 pngine_core::Compute_cHRM(const png::cHRM& section) const {
+  constexpr const auto d = 100'000.f; // преобразование данных чанка в float (div 100'000)
+  const float xr = static_cast<float>(section.red_x) / d, yr = static_cast<float>(section.red_y) / d;
+  const float xg = static_cast<float>(section.green_x) / d, yg = static_cast<float>(section.green_y) / d;
+  const float xb = static_cast<float>(section.blue_x) / d, yb = static_cast<float>(section.blue_y) / d;
+  const float xw = static_cast<float>(section.white_x) / d, yw = static_cast<float>(section.white_y) / d;
+
+  const float Xr = xr / yr, Yr = 1.f, Zr = (1.f - xr - yr) / yr;
+  const float Xg = xg / yg, Yg = 1.f, Zg = (1.f - xg - yg) / yg;
+  const float Xb = xb / yb, Yb = 1.f, Zb = (1.f - xb - yb) / yb;
+  const float Xw = xw / yw, Yw = 1.f, Zw = (1.f - xw - yw) / yw;
+
+  const auto XYZ = glm::mat3x3(
+      Xr, Xg, Xb,
+      Yr, Yg, Yb,
+      Zr, Zg, Zb);
+  const auto XYZ_inverted = glm::inverse(glm::transpose(XYZ));
+  const auto S = XYZ_inverted * glm::vec3(Xw, Yw, Zw);
+
+  return glm::mat4x3(
+    S.r * Xr, S.g * Xg, S.b * Xb, 0.f,
+    S.r * Yr, S.g * Yg, S.b * Yb, 0.f,
+    S.r * Zr, S.g * Zg, S.b * Zb, 0.f);
 }
 
 void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2D size) {
@@ -678,12 +702,14 @@ void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2
 void pngine_core::Update_Descriptor_Set_0(
     const std::vector<vk::UniqueDescriptorSet>& dst_sets,
     uint32_t mvp_offset,
+    uint32_t conversion_offset,
     vk::ImageView image_view) {
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
     vk::DescriptorBufferInfo d_mvp_info(m_uniform_mvps[i].get(), mvp_offset, sizeof(pngine::MVP));
     vk::DescriptorImageInfo d_texture_info({}, image_view, vk::ImageLayout::eShaderReadOnlyOptimal);
+    vk::DescriptorBufferInfo d_cnv_info(m_uniform_conversion.get(), conversion_offset, sizeof(pngine::conversion));
 
-    vk::WriteDescriptorSet w_mvp{}, w_texture{};
+    vk::WriteDescriptorSet w_mvp{}, w_texture{}, w_cnv{};
     w_mvp.sType = vk::StructureType::eWriteDescriptorSet;
     w_mvp.descriptorCount = 1u;
     w_mvp.pBufferInfo = &d_mvp_info;
@@ -700,24 +726,22 @@ void pngine_core::Update_Descriptor_Set_0(
     w_texture.dstBinding = 1u;
     w_texture.dstArrayElement = 0u;
 
-    const auto sets = std::array{w_mvp, w_texture};
+    w_cnv.sType = vk::StructureType::eWriteDescriptorSet;
+    w_cnv.descriptorCount = 1u;
+    w_cnv.pBufferInfo = &d_cnv_info;
+    w_cnv.descriptorType = vk::DescriptorType::eUniformBuffer;
+    w_cnv.dstSet = dst_sets[i].get();
+    w_cnv.dstBinding = 2u;
+    w_cnv.dstArrayElement = 0u;
+    const auto sets = std::array{w_mvp, w_texture, w_cnv};
     m_instance.get_device().get().updateDescriptorSets(sets.size(), sets.data(), 0u, nullptr);
   }
 }
 void pngine_core::Update_Descriptor_Set_1() {
   for (uint32_t i = 0u; i < m_flight_count; ++i) {
-    vk::DescriptorBufferInfo d_cnv_info(m_uniform_conversion.get(), 0u, sizeof(pngine::conversion));
     vk::DescriptorImageInfo d_image_sampler_info(m_image_sampler.get(), {}, {});
 
-    vk::WriteDescriptorSet w_cnv{}, w_image_sampler{};
-    w_cnv.sType = vk::StructureType::eWriteDescriptorSet;
-    w_cnv.descriptorCount = 1u;
-    w_cnv.pBufferInfo = &d_cnv_info;
-    w_cnv.descriptorType = vk::DescriptorType::eUniformBuffer;
-    w_cnv.dstSet = m_descr_sets_1[i].get();
-    w_cnv.dstBinding = 0u;
-    w_cnv.dstArrayElement = 0u;
-
+    vk::WriteDescriptorSet w_image_sampler{};
     w_image_sampler.sType = vk::StructureType::eWriteDescriptorSet;
     w_image_sampler.descriptorCount = 1u;
     w_image_sampler.pImageInfo = &d_image_sampler_info;
@@ -726,7 +750,7 @@ void pngine_core::Update_Descriptor_Set_1() {
     w_image_sampler.dstBinding = 1u;
     w_image_sampler.dstArrayElement = 0u;
 
-    const auto sets = std::array{w_cnv, w_image_sampler};
+    const auto sets = std::array{w_image_sampler};
     m_instance.get_device().get().updateDescriptorSets(sets.size(), sets.data(), 0u, nullptr);
   }
 }

@@ -1,9 +1,9 @@
 include(png_short_paths)
 
 add_subdirectory(picture)
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+# if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   add_subdirectory(picture_debug)
-endif() 
+# endif() 
 add_subdirectory(commons)
 add_subdirectory(deserializer)
 add_subdirectory(serializer)

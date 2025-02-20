@@ -6,9 +6,7 @@
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 
-#ifndef NDEBUG
 import csc.png.picture_debug;
-#endif
 
 import csc.png;
 import csc.pngine;
@@ -159,12 +157,16 @@ int main(int argc, char** argv) {
       core.change_drawing(png.m_image_data, png.header());
       core.init_menu(menu.m_image_data);
       core.load_mesh();
-      csc::png::cHRM colorspace;
-      colorspace.white_x = 31270u, colorspace.white_y = 32900u;
-      colorspace.red_x = 64000u, colorspace.red_y = 33000u;
-      colorspace.green_x = 30000u, colorspace.green_y = 60000u;
-      colorspace.blue_x = 15000u, colorspace.blue_y = 6000u;
-      core.apply_colorspace(colorspace);
+
+      auto* cHRM = png.colorspace_status();
+      if (cHRM != nullptr)
+        core.apply_drawing_colorspace(*cHRM);
+      else {
+        core.apply_drawing_colorspace(csc::png::generate_sRGB_D65());
+      }
+      // в случае отсутствия секции полагается, что изображение было редактировано в популярном sRGB 6500K
+
+      core.apply_menu_colorspace(csc::png::generate_sRGB_D65());
 
       double time = 0.0;
       uint64_t frames_count = 0u, fixed_frame_count = frames_count;
@@ -179,8 +181,8 @@ int main(int argc, char** argv) {
         const auto end = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
-        std::cout << "\033[H\033[2J";
-        std::cout << "Render frames per second: " << fixed_frame_count << '\n';
+        // std::cout << "\033[H\033[2J";
+        // std::cout << "Render frames per second: " << fixed_frame_count << '\n';
         // if (program_state.current_state == csc::wnd::e_program_state::insert)
         //   std::cout << "Input params string: " << program_state.input_data << '\n';
 
@@ -192,9 +194,7 @@ int main(int argc, char** argv) {
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }
-#ifndef NDEBUG
     std::cout << png << '\n';
-#endif
     if (o_pos != args.cend()) {
       const auto compress_pos = args.find("-compress"), memory_usage_pos = args.find("-memory_usage");
       const auto window_bits_pos = args.find("-window_bits"), strategy_pos = args.find("-strategy");
