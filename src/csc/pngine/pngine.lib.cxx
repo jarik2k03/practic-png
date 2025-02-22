@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <tuple>
+#include <iomanip>
 #include <bits/stl_algobase.h>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algobase.h>
@@ -119,7 +120,8 @@ export class pngine_core {
       vk::ImageView image);
   void Update_Descriptor_Set_1();
 
-  glm::mat4x3 Compute_cHRM(const png::cHRM& section) const;
+  glm::mat3x3 Compute_cHRM(const png::cHRM& section) const;
+  glm::mat4x3 From_3x3_to_4x3(glm::mat3x3 src) const;
   void Update_Menu(uint32_t frame_index);
   void Update_Image(uint32_t frame_index);
 
@@ -133,8 +135,8 @@ export class pngine_core {
   void change_drawing(const std::vector<uint8_t>& blob, png::IHDR& img_info);
   void change_drawing(vk::ImageView drawing_view, png::IHDR& img_info);
   void recreate_swapchain(vk::Extent2D framebuffer_size);
-  void apply_drawing_colorspace(const png::cHRM& img_info);
-  void apply_menu_colorspace(const png::cHRM& img_info);
+  void apply_drawing_colorspace(png::cHRM& src_data, const png::cHRM& dst_data);
+  void apply_menu_colorspace(png::cHRM& src_data, const png::cHRM& dst_data);
   void render_frame();
   void load_mesh();
   ~pngine_core() noexcept;
@@ -577,13 +579,9 @@ void pngine_core::load_mesh() {
   transfer_queue.waitIdle();
   device.get().freeCommandBuffers(m_transfer_pool.get(), 1u, &transfer_buffer);
 }
-void pngine_core::apply_drawing_colorspace(const png::cHRM& img_info) {
-  const auto from_drawing = Compute_cHRM(img_info);
-
-  const auto to_monitor = glm::mat4x3(
-  3.2404542f, -1.5371385f, -0.4985314f, 0,
-  -0.9692660f,  1.8760108f,  0.0415560f, 0,
-  0.0556434f, -0.2040259f,  1.0572252f, 0);
+void pngine_core::apply_drawing_colorspace(png::cHRM& src_data, const png::cHRM& dst_data) {
+  const auto from_drawing = From_3x3_to_4x3(Compute_cHRM(src_data));
+  const auto to_monitor = From_3x3_to_4x3(glm::inverse(Compute_cHRM(dst_data)));
 
   pngine::conversion cnv_host_buffer;
   cnv_host_buffer.image_colorspace = (from_drawing);
@@ -592,14 +590,12 @@ void pngine_core::apply_drawing_colorspace(const png::cHRM& img_info) {
   const uint32_t offset = sizeof(pngine::MVP) * 2u * m_flight_count;
   void* conversion_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset;
   ::memcpy(conversion_mapping, &cnv_host_buffer, sizeof(pngine::MVP));
+  src_data = dst_data; // записываем изменения в секцию cHRM
 }
 
-void pngine_core::apply_menu_colorspace(const png::cHRM& img_info) {
-  const auto from_drawing = Compute_cHRM(img_info);
-  const auto to_monitor = glm::mat4x3(
-  3.2404542f, -1.5371385f, -0.4985314f, 0,
-  -0.9692660f,  1.8760108f,  0.0415560f, 0,
-  0.0556434f, -0.2040259f,  1.0572252f, 0);
+void pngine_core::apply_menu_colorspace(png::cHRM& src_data, const png::cHRM& dst_data) {
+  const auto from_drawing = From_3x3_to_4x3(Compute_cHRM(src_data));
+  const auto to_monitor = From_3x3_to_4x3(glm::inverse(Compute_cHRM(dst_data)));
 
   pngine::conversion cnv_host_buffer;
   cnv_host_buffer.image_colorspace = (from_drawing);
@@ -608,9 +604,11 @@ void pngine_core::apply_menu_colorspace(const png::cHRM& img_info) {
   const uint32_t offset = sizeof(pngine::MVP) * 2u * m_flight_count + sizeof(pngine::conversion);
   void* conversion_mapping = reinterpret_cast<char*>(m_uniform_mapping) + offset;
   ::memcpy(conversion_mapping, &cnv_host_buffer, sizeof(pngine::MVP));
+  src_data = dst_data; // записываем изменения в секцию cHRM
 }
 
-glm::mat4x3 pngine_core::Compute_cHRM(const png::cHRM& section) const {
+
+glm::mat3x3 pngine_core::Compute_cHRM(const png::cHRM& section) const {
   constexpr const auto d = 100'000.f; // преобразование данных чанка в float (div 100'000)
   const float xr = static_cast<float>(section.red_x) / d, yr = static_cast<float>(section.red_y) / d;
   const float xg = static_cast<float>(section.green_x) / d, yg = static_cast<float>(section.green_y) / d;
@@ -629,10 +627,17 @@ glm::mat4x3 pngine_core::Compute_cHRM(const png::cHRM& section) const {
   const auto XYZ_inverted = glm::inverse(glm::transpose(XYZ));
   const auto S = XYZ_inverted * glm::vec3(Xw, Yw, Zw);
 
+  return glm::mat3x3(
+    S.r * Xr, S.g * Xg, S.b * Xb,
+    S.r * Yr, S.g * Yg, S.b * Yb,
+    S.r * Zr, S.g * Zg, S.b * Zb);
+}
+
+glm::mat4x3 pngine_core::From_3x3_to_4x3(glm::mat3x3 src) const {
   return glm::mat4x3(
-    S.r * Xr, S.g * Xg, S.b * Xb, 0.f,
-    S.r * Yr, S.g * Yg, S.b * Yb, 0.f,
-    S.r * Zr, S.g * Zg, S.b * Zb, 0.f);
+    src[0][0], src[0][1], src[0][2], 0.f,
+    src[1][0], src[1][1], src[1][2], 0.f,
+    src[2][0], src[2][1], src[2][2], 0.f);
 }
 
 void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2D size) {
