@@ -55,5 +55,6 @@ int main() {
   const auto props = dev[0].getImageFormatProperties(vk::Format::eR8G8B8A8Unorm, vk::ImageType::e2D, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc, vk::ImageCreateFlags{});
   vk::RenderPassCreateInfo pass;
   vk::AttachmentDescription desc;
+  device.mapMemory(
 
 }

@@ -1,6 +1,8 @@
 module;
 
 #include <cstdint>
+#include <bits/stl_algo.h>
+#include <bits/ranges_algo.h>
 
 export module csc.png.picture;
 export import :signature;
@@ -28,6 +30,12 @@ class picture {
   png::png_signature& start() {
     return m_start;
   }
+  png::cHRM* colorspace_status() {
+    const auto is_this_section = [](png::v_section& cur) { return std::get_if<png::cHRM>(&cur) != nullptr; };
+    auto cHRM_iterator = std::ranges::find_if(m_structured, is_this_section);
+    return (cHRM_iterator != m_structured.end()) ? &std::get<png::cHRM>(*cHRM_iterator) : nullptr;
+  }
+
   const png::IHDR& header() const {
     return std::get<png::IHDR>(m_structured.at(0u));
   }
