@@ -1,10 +1,10 @@
 module;
 #include <GLFW/glfw3.h>
 #include <utility>
-export module csc.pngine.glfw_handler;
+export module csc.wnd.glfw_handler;
 
 namespace csc {
-namespace pngine {
+namespace wnd {
 
 export class glfw_handler {
  private:
@@ -49,5 +49,5 @@ void glfw_handler::poll_events() const {
   ::glfwPollEvents();
 }
 
-} // namespace pngine
+} // namespace wnd
 } // namespace csc

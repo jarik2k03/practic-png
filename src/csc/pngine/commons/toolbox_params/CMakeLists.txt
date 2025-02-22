@@ -1,10 +1,9 @@
-include(pngine_short_paths)
-# макросы
-set(src fence)
-set(target ${FENCE})
+set(src toolbox_params)
+set(target pngine_commons_toolbox_params)
 
 add_library(${target} STATIC ${src}.lib.cxx)
 target_sources(${target} PUBLIC FILE_SET csc_pngine TYPE CXX_MODULES FILES ${src}.lib.cxx )
-target_link_libraries(${target} PRIVATE vk_vulkan)
+target_link_libraries(${target} PRIVATE glm)
+
 
 

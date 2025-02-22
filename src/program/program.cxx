@@ -2,21 +2,38 @@
 #include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
+#include <chrono>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 
-#ifndef NDEBUG
 import csc.png.picture_debug;
-#endif
 
 import csc.png;
 import csc.pngine;
+import csc.wnd;
+
 import stl.string_view;
 import stl.string;
 import stl.iostream;
 import stl.fstream;
 import stl.ios;
 import stl.stdexcept;
+
+void switch_callbacks(csc::wnd::controller& states, csc::wnd::window_handler& event_ctl) {
+  if (states.previous_state == states.current_state)
+    return; // состояние не изменилось
+
+  using namespace csc::wnd;
+  if (states.previous_state == e_program_state::normal && states.current_state == e_program_state::insert) {
+    event_ctl.set_mouse_button_callback(csc::wnd::applying_tool_by_mouse_event);
+    event_ctl.set_key_callback(csc::wnd::applying_tool_by_keyboard_event);
+    event_ctl.set_char_callback(csc::wnd::character_event);
+  } else if (states.previous_state == e_program_state::insert && states.current_state == e_program_state::normal) {
+    event_ctl.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
+    event_ctl.set_key_callback(csc::wnd::choosing_tool_by_keyboard_event);
+    event_ctl.set_char_callback(nullptr);
+  }
+}
 
 csc::png::e_compression_level bring_compression_level(const char* arg) {
   const std::string compr_level_str(arg);
@@ -102,31 +119,86 @@ int main(int argc, char** argv) {
 
     const auto i_pos = args.find("-i"), o_pos = args.find("-o");
 
-    csc::png::picture png;
+    csc::png::picture png, menu;
     csc::png::deserializer png_executor;
-
     if (i_pos != args.cend()) {
       const auto force_pos = args.find("-force");
       const bool ignore_checksum = force_pos != args.end();
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
+
+      menu = png_executor.deserialize("./assets/buttons.png", true);
       png_executor.prepare_to_present(png); // здесь происходит второй этап декодирования изображения
+      png_executor.prepare_to_present(menu);
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
+      csc::wnd::glfw_handler glfw_instance;
+      csc::wnd::window_handler main_window(1280u, 720u, "PNG-обозреватель");
+
       csc::pngine::pngine_core core(
-          "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 2u), "Intel(R) HD Graphics 2500 (IVB GT1)");
+          "PNG-обозреватель", csc::pngine::bring_version(1u, 0u, 2u), main_window.get_required_instance_extensions());
       std::cout << "Движок: " << core.get_engine_name() << '\n';
       const auto vers = core.get_engine_version(), api = core.get_vk_api_version();
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
-      core.init_drawing(png.m_image_data, png.header());
-      core.run();
+      std::cout << png << '\n';
+
+      core.setup_surface(main_window.create_surface(core.get_instance()));
+      core.setup_gpu_and_renderer("AMD Radeon RX 6500 XT (RADV NAVI24)", main_window.get_framebuffer_size());
+
+      csc::wnd::controller program_state;
+      csc::wnd::pngine_picture_input_package pack_data{&core, &png, &program_state};
+      main_window.set_size_limits({512u, 256u});
+      main_window.set_user_pointer(&pack_data);
+      main_window.set_framebuffer_size_callback(csc::wnd::resize_framebuffer_event);
+
+      main_window.set_mouse_button_callback(csc::wnd::choosing_tool_by_mouse_event);
+      main_window.set_key_callback(csc::wnd::choosing_tool_by_keyboard_event);
+      main_window.set_char_callback(nullptr);
+
+      core.change_drawing(png.m_image_data, png.header());
+      core.init_menu(menu.m_image_data);
+      core.load_mesh();
+
+      auto* drawing_cHRM = png.colorspace_status();
+      auto default_cHRM = csc::png::generate_sRGB_D65();
+      auto menu_cHRM = csc::png::generate_sRGB_D65();
+      const auto monitor_cHRM = csc::png::generate_sRGB_D65();
+
+      if (drawing_cHRM != nullptr)
+        core.apply_drawing_colorspace(*drawing_cHRM, monitor_cHRM);
+      else {
+        core.apply_drawing_colorspace(default_cHRM, monitor_cHRM);
+      }
+      // в случае отсутствия секции полагается, что изображение было сохранено в популярном sRGB 6500K
+      core.apply_menu_colorspace(menu_cHRM, monitor_cHRM);
+
+      double time = 0.0;
+      uint64_t frames_count = 0u, fixed_frame_count = frames_count;
+      while (!main_window.should_close()) {
+        const auto start = std::chrono::high_resolution_clock::now();
+
+        glfw_instance.poll_events();
+        ::switch_callbacks(program_state, main_window);
+        program_state.previous_state = program_state.current_state;
+
+        core.render_frame();
+        const auto end = std::chrono::high_resolution_clock::now();
+        time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
+        frames_count += 1ul;
+        // std::cout << "\033[H\033[2J";
+        // std::cout << "Render frames per second: " << fixed_frame_count << '\n';
+        // if (program_state.current_state == csc::wnd::e_program_state::insert)
+        //   std::cout << "Input params string: " << program_state.input_data << '\n';
+
+        [[unlikely]] if (time >= 1.0) {
+          fixed_frame_count = frames_count;
+          frames_count = 0u, time = 0.0;
+        }
+      }
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }
-#ifndef NDEBUG
-    std::cout << png << '\n';
-#endif
     if (o_pos != args.cend()) {
       const auto compress_pos = args.find("-compress"), memory_usage_pos = args.find("-memory_usage");
       const auto window_bits_pos = args.find("-window_bits"), strategy_pos = args.find("-strategy");
@@ -148,9 +220,10 @@ int main(int argc, char** argv) {
       png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
       std::cout << "Изображение успешно сохранено: " << o_pos->second
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
+      std::cout << png << '\n';
     }
   } catch (const std::runtime_error& e) {
-    std::cout << "PNG-изображение не декодировано: \n - " << e.what() << '\n';
+    std::cout << "PNG-изображение не декодировано или ошибка рендеринга: \n - " << e.what() << '\n';
     std::exit(1);
   } catch (const std::invalid_argument& e) {
     std::cout << "Ошибка входных данных: \n - " << e.what() << '\n';
