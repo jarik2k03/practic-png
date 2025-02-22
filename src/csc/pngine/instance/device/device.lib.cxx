@@ -5,7 +5,6 @@ module;
 #include <map>
 #include <cstdint>
 #include <tuple>
-#include <iostream>
 export module csc.pngine.instance.device;
 
 import vulkan_hpp;
@@ -18,13 +17,8 @@ import stl.string_view;
 
 import csc.pngine.instance.device.queues;
 import csc.pngine.instance.device.swapchainKHR;
-import csc.pngine.instance.device.image_view;
 import csc.pngine.instance.device.shader_module;
 import csc.pngine.instance.device.graphics_pipeline;
-import csc.pngine.instance.device.render_pass;
-import csc.pngine.instance.device.framebuffer;
-import csc.pngine.instance.device.fence;
-import csc.pngine.instance.device.semaphore;
 
 import csc.pngine.commons.utility.swapchain_details;
 import csc.pngine.commons.utility.queue_family_indices;

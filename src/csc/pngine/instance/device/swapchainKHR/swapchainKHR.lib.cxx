@@ -19,7 +19,7 @@ namespace pngine {
 
 vk::SurfaceFormatKHR choose_surface_format(const std::vector<vk::SurfaceFormatKHR>& candidates) {
   auto is_good_candidat = [](const auto& candidat) -> bool {
-    return candidat.format == vk::Format::eB8G8R8A8Srgb && candidat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
+    return candidat.format == vk::Format::eR8G8B8A8Unorm;
   };
   const auto good_candidat_pos = std::ranges::find_if(candidates, is_good_candidat);
   return (good_candidat_pos != candidates.cend()) ? *good_candidat_pos : candidates.front();

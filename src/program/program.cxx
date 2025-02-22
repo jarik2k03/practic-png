@@ -6,9 +6,7 @@
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 
-#ifndef NDEBUG
 import csc.png.picture_debug;
-#endif
 
 import csc.png;
 import csc.pngine;
@@ -143,6 +141,8 @@ int main(int argc, char** argv) {
       std::cout << "Версия: " << vers.major << '.' << vers.minor << '.' << vers.patch << '\n';
       std::cout << "Версия выбранного VulkanAPI: " << api.major << '.' << api.minor << '.' << api.patch << '\n';
       std::cout << "Загрузка изображения в память...\n";
+      std::cout << png << '\n';
+
       core.setup_surface(main_window.create_surface(core.get_instance()));
       core.setup_gpu_and_renderer("AMD Radeon RX 6500 XT (RADV NAVI24)", main_window.get_framebuffer_size());
 
@@ -160,6 +160,19 @@ int main(int argc, char** argv) {
       core.init_menu(menu.m_image_data);
       core.load_mesh();
 
+      auto* drawing_cHRM = png.colorspace_status();
+      auto default_cHRM = csc::png::generate_sRGB_D65();
+      auto menu_cHRM = csc::png::generate_sRGB_D65();
+      const auto monitor_cHRM = csc::png::generate_sRGB_D65();
+
+      if (drawing_cHRM != nullptr)
+        core.apply_drawing_colorspace(*drawing_cHRM, monitor_cHRM);
+      else {
+        core.apply_drawing_colorspace(default_cHRM, monitor_cHRM);
+      }
+      // в случае отсутствия секции полагается, что изображение было сохранено в популярном sRGB 6500K
+      core.apply_menu_colorspace(menu_cHRM, monitor_cHRM);
+
       double time = 0.0;
       uint64_t frames_count = 0u, fixed_frame_count = frames_count;
       while (!main_window.should_close()) {
@@ -173,10 +186,10 @@ int main(int argc, char** argv) {
         const auto end = std::chrono::high_resolution_clock::now();
         time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() * 1e-9;
         frames_count += 1ul;
-        std::cout << "\033[H\033[2J";
-        std::cout << "Render frames per second: " << fixed_frame_count << '\n';
-        if (program_state.current_state == csc::wnd::e_program_state::insert)
-          std::cout << "Input params string: " << program_state.input_data << '\n';
+        // std::cout << "\033[H\033[2J";
+        // std::cout << "Render frames per second: " << fixed_frame_count << '\n';
+        // if (program_state.current_state == csc::wnd::e_program_state::insert)
+        //   std::cout << "Input params string: " << program_state.input_data << '\n';
 
         [[unlikely]] if (time >= 1.0) {
           fixed_frame_count = frames_count;
@@ -186,9 +199,6 @@ int main(int argc, char** argv) {
     } else {
       throw std::invalid_argument("Не назначен входной файл!");
     }
-#ifndef NDEBUG
-    std::cout << png << '\n';
-#endif
     if (o_pos != args.cend()) {
       const auto compress_pos = args.find("-compress"), memory_usage_pos = args.find("-memory_usage");
       const auto window_bits_pos = args.find("-window_bits"), strategy_pos = args.find("-strategy");
@@ -210,6 +220,7 @@ int main(int argc, char** argv) {
       png_writer.serialize(o_pos->second, png, compress, memory_usage, window_bits, strategy);
       std::cout << "Изображение успешно сохранено: " << o_pos->second
                 << " С уровнем сжатия: " << static_cast<int32_t>(compress) << '\n';
+      std::cout << png << '\n';
     }
   } catch (const std::runtime_error& e) {
     std::cout << "PNG-изображение не декодировано или ошибка рендеринга: \n - " << e.what() << '\n';
