@@ -15,7 +15,15 @@ layout(set = 0, binding = 2) uniform conversion {
 } cnv;
 
 void main() {
-    const vec4 unorm_pixel = texture(sampler2D(image_texture, image_sampler), fragTexcoord); // - стандартный rgba
+//     const vec4 unorm_pixel = texture(sampler2D(image_texture, image_sampler), fragTexcoord); // - стандартный rgba
+//     const vec3 encoded = vec3(unorm_pixel.rgb * cnv.image_colorspace);
+//     const vec3 decoded = vec3(encoded * cnv.monitor_colorspace);
+// 
+//     outColor = vec4(decoded, unorm_pixel.a);
+    // outColor = unorm_pixel;
+
+    const float unorm_p = texture(sampler2D(image_texture, image_sampler), fragTexcoord).r; // - grayscale
+    const vec4 unorm_pixel = vec4(unorm_p, unorm_p, unorm_p, 1.f);
     const vec3 encoded = vec3(unorm_pixel.rgb * cnv.image_colorspace);
     const vec3 decoded = vec3(encoded * cnv.monitor_colorspace);
 

@@ -30,6 +30,10 @@ class basic_buffer_view {
   basic_buffer_view(const Val* d) = delete;
   basic_buffer_view(std::nullptr_t) = delete;
 
+  const Val& operator[](uint32_t idx) const noexcept {
+    return m_data[idx];
+  }
+
   const Val* data() const noexcept {
     return m_data;
   }

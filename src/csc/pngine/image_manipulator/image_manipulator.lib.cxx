@@ -90,7 +90,7 @@ image_manipulator::image_manipulator(
     : m_device(&handle), m_first_image_size(src_image_size) {
   /* check max image size for gpu */
   const auto props = m_device->get_physdev().getImageFormatProperties(
-      vk::Format::eR8G8B8A8Unorm,
+      vk::Format::eR8Unorm,
       vk::ImageType::e2D,
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
@@ -143,13 +143,13 @@ image_manipulator::image_manipulator(
   /* allocating input image storage memory */
   std::tie(m_first_image, m_first_image_memory) = m_device->create_image(
       m_first_image_size,
-      vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
+      vk::Format::eR8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
 
   /* image view for input image */
-  m_first_image_view = Create_ImageView(m_first_image.get(), vk::Format::eR8G8B8A8Unorm);
+  m_first_image_view = Create_ImageView(m_first_image.get(), vk::Format::eR8Unorm);
 
   /* creating compute and transfer command pools */
   m_compute_pool = m_device->create_compute_command_pool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
@@ -297,7 +297,7 @@ void image_manipulator::rotate_image(float rotate_angle_radians) {
   m_device->get().unmapMemory(m_uniform_params_memory.get());
 
   auto [second_image, second_image_memory] = Create_Second_Image(second_image_size);
-  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8G8B8A8Unorm);
+  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8Unorm);
 
   /* аллокация и запись дескрипторов */
   auto rotate_descr_set = Allocate_Descriptor();
@@ -344,7 +344,7 @@ void image_manipulator::scale_image(float scaleX, float scaleY) {
       m_max_image_size);
 
   auto [second_image, second_image_memory] = Create_Second_Image(second_image_size);
-  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8G8B8A8Unorm);
+  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8Unorm);
 
   /* аллокация и запись дескрипторов */
   auto scale_descr_set = Allocate_Descriptor();
@@ -385,7 +385,7 @@ void image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
       m_first_image_size); // ограничение обрезки под исходное изображение
 
   auto [second_image, second_image_memory] = Create_Second_Image(second_image_size);
-  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8G8B8A8Unorm);
+  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8Unorm);
 
   /* аллокация и запись дескрипторов */
   auto clip_descr_set = Allocate_Descriptor();
@@ -537,7 +537,7 @@ vk::CommandBuffer image_manipulator::Allocate_CommandBuffer(vk::CommandPool used
 pngine::img_and_mem image_manipulator::Create_Second_Image(vk::Extent2D size) {
   auto pair = m_device->create_image(
       size,
-      vk::Format::eR8G8B8A8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
+      vk::Format::eR8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);

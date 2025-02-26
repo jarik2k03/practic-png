@@ -78,19 +78,33 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
 
 void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
   const auto& ihdr = deserialized.header();
-  const auto& filtered = deserialized.m_image_data;
+  auto& filtered = deserialized.m_image_data;
 
-  png::u8buffer unfiltered_image(png::bring_unfiltered_image_size(ihdr));
   auto channels_count = png::channels_count_from_color_type(ihdr.color_type);
-  const auto pixel_bytesize = channels_count * (static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f)));
-  const auto width_bytes = ihdr.width * pixel_bytesize;
+  const auto ceil_pixel_bytesize = channels_count * static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f));
+  const auto width_bytes = static_cast<uint32_t>(::ceilf(ihdr.width * ceil_pixel_bytesize));
 
-  png::unfilterer decoder({filtered.begin(), filtered.end()}, unfiltered_image, width_bytes, pixel_bytesize);
+  std::vector<uint8_t> unfiltered_image(width_bytes * ihdr.height);
+
+  switch (ihdr.bit_depth) {
+    case 1u:
+      filtered = png::convert_from_1bit_to_8bit(filtered, width_bytes, ihdr.height);
+      break;
+    case 2u:
+      filtered = png::convert_from_2bit_to_8bit(filtered, width_bytes, ihdr.height);
+      break;
+    case 4u:
+      filtered = png::convert_from_4bit_to_8bit(filtered, width_bytes, ihdr.height);
+      break;
+    default:
+      break;
+  }
+  png::unfilterer decoder({filtered.begin(), filtered.end()}, unfiltered_image, width_bytes, ceil_pixel_bytesize);
   for (auto height = 0u; height < ihdr.height; ++height) {
     decoder.unfilter_line();
   }
   // теперь вместо фильтрованного изображения будет лежать нефильтрованное
-  deserialized.m_image_data = std::vector(unfiltered_image.begin(), unfiltered_image.end());
+  deserialized.m_image_data = std::move(unfiltered_image);
 }
 
 } // namespace png

@@ -56,6 +56,12 @@ class basic_buffer {
   Val* data() noexcept {
     return m_data;
   }
+  Val& operator[](uint32_t idx) noexcept {
+    return m_data[idx];
+  }
+  const Val& operator[](uint32_t idx) const noexcept {
+    return m_data[idx];
+  }
 
   const Val* data() const noexcept {
     return m_data;
