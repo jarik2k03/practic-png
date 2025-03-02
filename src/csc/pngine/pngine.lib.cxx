@@ -541,7 +541,8 @@ void pngine_core::init_menu(const std::vector<uint8_t>& blob) {
   image_view_info.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0u, 1u, 0u, 1u);
 
   m_menu_image_view = device.get().createImageViewUnique(image_view_info, nullptr);
-  Update_Descriptor_Set_0(m_menu_descr_sets_0, sizeof(pngine::MVP), sizeof(pngine::conversion), m_menu_image_view.get());
+  Update_Descriptor_Set_0(
+      m_menu_descr_sets_0, sizeof(pngine::MVP), sizeof(pngine::conversion), m_menu_image_view.get());
 }
 
 void pngine_core::load_mesh() {
@@ -607,7 +608,6 @@ void pngine_core::apply_menu_colorspace(png::cHRM& src_data, const png::cHRM& ds
   src_data = dst_data; // записываем изменения в секцию cHRM
 }
 
-
 glm::mat3x3 pngine_core::Compute_cHRM(const png::cHRM& section) const {
   constexpr const auto d = 100'000.f; // преобразование данных чанка в float (div 100'000)
   const float xr = static_cast<float>(section.red_x) / d, yr = static_cast<float>(section.red_y) / d;
@@ -620,24 +620,16 @@ glm::mat3x3 pngine_core::Compute_cHRM(const png::cHRM& section) const {
   const float Xb = xb / yb, Yb = 1.f, Zb = (1.f - xb - yb) / yb;
   const float Xw = xw / yw, Yw = 1.f, Zw = (1.f - xw - yw) / yw;
 
-  const auto XYZ = glm::mat3x3(
-      Xr, Xg, Xb,
-      Yr, Yg, Yb,
-      Zr, Zg, Zb);
+  const auto XYZ = glm::mat3x3(Xr, Xg, Xb, Yr, Yg, Yb, Zr, Zg, Zb);
   const auto XYZ_inverted = glm::inverse(glm::transpose(XYZ));
   const auto S = XYZ_inverted * glm::vec3(Xw, Yw, Zw);
 
-  return glm::mat3x3(
-    S.r * Xr, S.g * Xg, S.b * Xb,
-    S.r * Yr, S.g * Yg, S.b * Yb,
-    S.r * Zr, S.g * Zg, S.b * Zb);
+  return glm::mat3x3(S.r * Xr, S.g * Xg, S.b * Xb, S.r * Yr, S.g * Yg, S.b * Yb, S.r * Zr, S.g * Zg, S.b * Zb);
 }
 
 glm::mat4x3 pngine_core::From_3x3_to_4x3(glm::mat3x3 src) const {
   return glm::mat4x3(
-    src[0][0], src[0][1], src[0][2], 0.f,
-    src[1][0], src[1][1], src[1][2], 0.f,
-    src[2][0], src[2][1], src[2][2], 0.f);
+      src[0][0], src[0][1], src[0][2], 0.f, src[1][0], src[1][1], src[1][2], 0.f, src[2][0], src[2][1], src[2][2], 0.f);
 }
 
 void pngine_core::Transfer_Image_HTOD(vk::Image dst, vk::Buffer src, vk::Extent2D size) {

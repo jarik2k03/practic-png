@@ -10,6 +10,8 @@ module;
 #include <shaders_clipping.h>
 #include <shaders_scaling.h>
 #include <shaders_rotating.h>
+
+#define IMG_FORMAT vk::Format::eR8Unorm
 export module csc.pngine.image_manipulator;
 
 import csc.pngine.commons.toolbox_params;
@@ -64,7 +66,12 @@ class image_manipulator {
   vk::UniqueImageView Create_ImageView(vk::Image image, vk::Format format);
   vk::UniqueDescriptorSet Allocate_Descriptor();
   vk::CommandBuffer Allocate_CommandBuffer(vk::CommandPool used);
-  void Record_Manipulations(vk::CommandBuffer& rec, vk::Pipeline bind_pipeline, vk::DescriptorSet bind_dset, vk::Image img, vk::Extent2D img_size);
+  void Record_Manipulations(
+      vk::CommandBuffer& rec,
+      vk::Pipeline bind_pipeline,
+      vk::DescriptorSet bind_dset,
+      vk::Image img,
+      vk::Extent2D img_size);
   void Record_FinalCopy(vk::CommandBuffer& rec, vk::Buffer dst, vk::Image src, vk::Extent2D img_size);
 
  public:
@@ -90,7 +97,7 @@ image_manipulator::image_manipulator(
     : m_device(&handle), m_first_image_size(src_image_size) {
   /* check max image size for gpu */
   const auto props = m_device->get_physdev().getImageFormatProperties(
-      vk::Format::eR8Unorm,
+      IMG_FORMAT,
       vk::ImageType::e2D,
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
@@ -143,13 +150,13 @@ image_manipulator::image_manipulator(
   /* allocating input image storage memory */
   std::tie(m_first_image, m_first_image_memory) = m_device->create_image(
       m_first_image_size,
-      vk::Format::eR8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
+      IMG_FORMAT, // мы работаем с сырыми данными изображений, без гамма-наложений
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);
 
   /* image view for input image */
-  m_first_image_view = Create_ImageView(m_first_image.get(), vk::Format::eR8Unorm);
+  m_first_image_view = Create_ImageView(m_first_image.get(), IMG_FORMAT);
 
   /* creating compute and transfer command pools */
   m_compute_pool = m_device->create_compute_command_pool(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
@@ -297,7 +304,7 @@ void image_manipulator::rotate_image(float rotate_angle_radians) {
   m_device->get().unmapMemory(m_uniform_params_memory.get());
 
   auto [second_image, second_image_memory] = Create_Second_Image(second_image_size);
-  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8Unorm);
+  auto second_image_view = Create_ImageView(second_image.get(), IMG_FORMAT);
 
   /* аллокация и запись дескрипторов */
   auto rotate_descr_set = Allocate_Descriptor();
@@ -305,7 +312,8 @@ void image_manipulator::rotate_image(float rotate_angle_radians) {
 
   /* запись команд */
   auto compute_buffer = Allocate_CommandBuffer(m_compute_pool.get());
-  Record_Manipulations(compute_buffer, m_rotating_pipeline.get(), rotate_descr_set.get(), second_image.get(), second_image_size);
+  Record_Manipulations(
+      compute_buffer, m_rotating_pipeline.get(), rotate_descr_set.get(), second_image.get(), second_image_size);
 
   vk::SubmitInfo submit_comp_info{};
   submit_comp_info.sType = vk::StructureType::eSubmitInfo;
@@ -344,7 +352,7 @@ void image_manipulator::scale_image(float scaleX, float scaleY) {
       m_max_image_size);
 
   auto [second_image, second_image_memory] = Create_Second_Image(second_image_size);
-  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8Unorm);
+  auto second_image_view = Create_ImageView(second_image.get(), IMG_FORMAT);
 
   /* аллокация и запись дескрипторов */
   auto scale_descr_set = Allocate_Descriptor();
@@ -352,7 +360,8 @@ void image_manipulator::scale_image(float scaleX, float scaleY) {
 
   /* запись команд */
   auto compute_buffer = Allocate_CommandBuffer(m_compute_pool.get());
-  Record_Manipulations(compute_buffer, m_scaling_pipeline.get(), scale_descr_set.get(), second_image.get(), second_image_size);
+  Record_Manipulations(
+      compute_buffer, m_scaling_pipeline.get(), scale_descr_set.get(), second_image.get(), second_image_size);
 
   vk::SubmitInfo submit_comp_info{};
   submit_comp_info.sType = vk::StructureType::eSubmitInfo;
@@ -385,7 +394,7 @@ void image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
       m_first_image_size); // ограничение обрезки под исходное изображение
 
   auto [second_image, second_image_memory] = Create_Second_Image(second_image_size);
-  auto second_image_view = Create_ImageView(second_image.get(), vk::Format::eR8Unorm);
+  auto second_image_view = Create_ImageView(second_image.get(), IMG_FORMAT);
 
   /* аллокация и запись дескрипторов */
   auto clip_descr_set = Allocate_Descriptor();
@@ -393,7 +402,8 @@ void image_manipulator::clip_image(vk::Offset2D offset, vk::Extent2D size) {
 
   /* запись команд */
   auto compute_buffer = Allocate_CommandBuffer(m_compute_pool.get());
-  Record_Manipulations(compute_buffer, m_clipping_pipeline.get(), clip_descr_set.get(), second_image.get(), second_image_size);
+  Record_Manipulations(
+      compute_buffer, m_clipping_pipeline.get(), clip_descr_set.get(), second_image.get(), second_image_size);
 
   vk::SubmitInfo submit_comp_info{};
   submit_comp_info.sType = vk::StructureType::eSubmitInfo;
@@ -466,7 +476,12 @@ vk::UniqueDescriptorSet image_manipulator::Allocate_Descriptor() {
   return descr_set;
 }
 
-void image_manipulator::Record_Manipulations(vk::CommandBuffer& rec, vk::Pipeline bind_pipeline, vk::DescriptorSet bind_dset, vk::Image img, vk::Extent2D img_size) {
+void image_manipulator::Record_Manipulations(
+    vk::CommandBuffer& rec,
+    vk::Pipeline bind_pipeline,
+    vk::DescriptorSet bind_dset,
+    vk::Image img,
+    vk::Extent2D img_size) {
   vk::CommandBufferBeginInfo compute_begin_info{};
   compute_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
   compute_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
@@ -485,7 +500,15 @@ void image_manipulator::Record_Manipulations(vk::CommandBuffer& rec, vk::Pipelin
   shaderRD_to_general_1.dstAccessMask = vk::AccessFlagBits::eShaderRead;
   using stg = vk::PipelineStageFlagBits;
   rec.pipelineBarrier(
-      stg::eFragmentShader, stg::eComputeShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &shaderRD_to_general_1);
+      stg::eFragmentShader,
+      stg::eComputeShader,
+      vk::DependencyFlags{},
+      0u,
+      nullptr,
+      0u,
+      nullptr,
+      1u,
+      &shaderRD_to_general_1);
   /* pipelineBarrier */
   vk::ImageMemoryBarrier undef_to_general_2{};
   undef_to_general_2.sType = vk::StructureType::eImageMemoryBarrier;
@@ -519,7 +542,15 @@ void image_manipulator::Record_Manipulations(vk::CommandBuffer& rec, vk::Pipelin
   general_to_shaderRD_2.srcAccessMask = vk::AccessFlagBits::eShaderWrite;
   general_to_shaderRD_2.dstAccessMask = vk::AccessFlagBits::eShaderRead;
   rec.pipelineBarrier(
-      stg::eComputeShader, stg::eFragmentShader, vk::DependencyFlags{}, 0u, nullptr, 0u, nullptr, 1u, &general_to_shaderRD_2);
+      stg::eComputeShader,
+      stg::eFragmentShader,
+      vk::DependencyFlags{},
+      0u,
+      nullptr,
+      0u,
+      nullptr,
+      1u,
+      &general_to_shaderRD_2);
 
   rec.end();
 }
@@ -537,7 +568,7 @@ vk::CommandBuffer image_manipulator::Allocate_CommandBuffer(vk::CommandPool used
 pngine::img_and_mem image_manipulator::Create_Second_Image(vk::Extent2D size) {
   auto pair = m_device->create_image(
       size,
-      vk::Format::eR8Unorm, // мы работаем с сырыми данными изображений, без гамма-наложений
+      IMG_FORMAT, // мы работаем с сырыми данными изображений, без гамма-наложений
       vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
       vk::MemoryPropertyFlagBits::eDeviceLocal);

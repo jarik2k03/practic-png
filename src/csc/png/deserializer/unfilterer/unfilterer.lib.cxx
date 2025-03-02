@@ -14,8 +14,10 @@ import stl.vector;
 export namespace csc {
 namespace png {
 
-std::vector<uint8_t> convert_from_4bit_to_8bit(const std::vector<uint8_t>& filtered, uint32_t byteline_count, uint32_t rows_count) {
-  std::vector<uint8_t> dst(byteline_count * rows_count + rows_count); // байтовое изображение + фильтр-байт на каждой строке
+std::vector<uint8_t>
+convert_from_4bit_to_8bit(const std::vector<uint8_t>& filtered, uint32_t byteline_count, uint32_t rows_count) {
+  std::vector<uint8_t> dst(
+      byteline_count * rows_count + rows_count); // байтовое изображение + фильтр-байт на каждой строке
 
   uint32_t read_offset = 0u, write_offset = 0u;
   for (uint32_t _ = 0u; _ < rows_count; ++_) {
@@ -40,8 +42,10 @@ std::vector<uint8_t> convert_from_4bit_to_8bit(const std::vector<uint8_t>& filte
   return dst;
 }
 
-std::vector<uint8_t> convert_from_2bit_to_8bit(const std::vector<uint8_t>& filtered, uint32_t byteline_count, uint32_t rows_count) {
-  std::vector<uint8_t> dst(byteline_count * rows_count + rows_count); // байтовое изображение + фильтр-байт на каждой строке
+std::vector<uint8_t>
+convert_from_2bit_to_8bit(const std::vector<uint8_t>& filtered, uint32_t byteline_count, uint32_t rows_count) {
+  std::vector<uint8_t> dst(
+      byteline_count * rows_count + rows_count); // байтовое изображение + фильтр-байт на каждой строке
   uint32_t read_offset = 0u, write_offset = 0u;
   for (uint32_t _ = 0u; _ < rows_count; ++_) {
     dst[write_offset] = filtered[read_offset]; // записываем фильтр-байт как есть
@@ -63,13 +67,14 @@ std::vector<uint8_t> convert_from_2bit_to_8bit(const std::vector<uint8_t>& filte
     } // если так будет, используем последний байт в строке с оставшимися пикселями
     if (byteline_count % packed_count != 0u)
       read_offset += 1u;
-
   }
   return dst;
 }
 
-std::vector<uint8_t> convert_from_1bit_to_8bit(const std::vector<uint8_t>& filtered, uint32_t byteline_count, uint32_t rows_count) {
-  std::vector<uint8_t> dst(byteline_count * rows_count + rows_count); // байтовое изображение + фильтр-байт на каждой строке
+std::vector<uint8_t>
+convert_from_1bit_to_8bit(const std::vector<uint8_t>& filtered, uint32_t byteline_count, uint32_t rows_count) {
+  std::vector<uint8_t> dst(
+      byteline_count * rows_count + rows_count); // байтовое изображение + фильтр-байт на каждой строке
   uint32_t read_offset = 0u, write_offset = 0u;
   for (uint32_t _ = 0u; _ < rows_count; ++_) {
     dst[write_offset] = filtered[read_offset]; // записываем фильтр-байт как есть
@@ -99,62 +104,78 @@ std::vector<uint8_t> convert_from_1bit_to_8bit(const std::vector<uint8_t>& filte
   return dst;
 }
 
+template <uint32_t x_init, uint32_t x_gap, uint32_t y_init, uint32_t y_gap>
 class unfilterer {
  private:
-  png::u8buffer_view m_filtered;
-  std::vector<uint8_t>& m_write;
-  const uint8_t* m_previous_line = nullptr;
+  std::vector<uint8_t>& m_read;
   uint32_t m_read_offset = 0u;
-  uint32_t m_write_offset = 0u;
+  // в обычном случае достаточно указателя на начало строки, но если изображение с битовой глубиной < 8 бит,
+  // то здесь будет хранится нормализованная строка С 8-битными пискелями.
+  std::vector<uint8_t> m_normalized_readline;
+
   png::filtering m_algo;
+  std::vector<uint8_t> m_current_line;
+  std::vector<uint8_t> m_previous_line;
 
  public:
   unfilterer() = delete;
-  unfilterer(png::u8buffer_view filtered, std::vector<uint8_t>& to_write, uint32_t byteline_count, uint32_t pixel_bytesize)
-      : m_filtered(filtered), m_write(to_write), m_algo(pixel_bytesize, byteline_count) {
+  unfilterer(std::vector<uint8_t>& read, uint32_t byteline_count, uint32_t pixel_bytesize)
+      : m_read(read),
+        m_algo(pixel_bytesize, byteline_count),
+        m_current_line(byteline_count),
+        m_previous_line(byteline_count) {
+    m_normalized_readline.reserve(byteline_count + 1u);
   }
-  void unfilter_line();
+  std::vector<uint8_t>& unfilter_line();
 };
 
-void unfilterer::unfilter_line() {
-  const auto filter_algo = static_cast<png::e_filter_types>(m_filtered.data()[m_read_offset]);
+template <uint32_t x_init, uint32_t x_gap, uint32_t y_init, uint32_t y_gap>
+std::vector<uint8_t>& unfilterer<x_init, x_gap, y_init, y_gap>::unfilter_line() {
+  const auto filter_algo = static_cast<png::e_filter_types>(m_read[m_read_offset]);
+  const auto rng = std::ranges::subrange(m_read.cbegin() + m_read_offset + 1u, m_read.cend());
+  m_normalized_readline.clear(), std::ranges::copy(rng, std::back_inserter(m_normalized_readline));
+
   switch (filter_algo) {
     case e_filter_types::none:
-      m_algo.none(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u);
+      m_algo.none(m_current_line.data(), m_normalized_readline.data());
       break;
     case e_filter_types::sub:
-      m_algo.sub(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u);
+      m_algo.sub(m_current_line.data(), m_normalized_readline.data());
       break;
     case e_filter_types::up:
-      [[likely]] if (m_previous_line != nullptr)
-        m_algo.up(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u, m_previous_line);
+      [[likely]] if (!m_previous_line.empty())
+        m_algo.up(m_current_line.data(), m_normalized_readline.data(), m_previous_line.data());
       else
-        m_algo.none(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u);
+        m_algo.none(m_current_line.data(), m_normalized_readline.data());
       break;
     case e_filter_types::average:
-      [[likely]] if (m_previous_line != nullptr)
-        m_algo.average(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u, m_previous_line);
+      [[likely]] if (!m_previous_line.empty())
+        m_algo.average(m_current_line.data(), m_normalized_readline.data(), m_previous_line.data());
       else
-        m_algo.average(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u);
+        m_algo.average(m_current_line.data(), m_normalized_readline.data());
       break;
     case e_filter_types::paeth:
-      [[likely]] if (m_previous_line != nullptr)
-        m_algo.paeth(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u, m_previous_line);
+      [[likely]] if (!m_previous_line.empty())
+        m_algo.paeth(m_current_line.data(), m_normalized_readline.data(), m_previous_line.data());
       else
-        m_algo.paeth(m_write.data() + m_write_offset, m_filtered.data() + m_read_offset + 1u);
+        m_algo.paeth(m_current_line.data(), m_normalized_readline.data());
       break;
     default:
-        throw std::domain_error("Неизвестный тип фильтра. Дефильтровать невозможно.");
+      throw std::domain_error("Неизвестный тип фильтра. Дефильтровать невозможно.");
       break;
   }
-//    std::cout << " - - READ OFFSET: " << m_read_offset << "; WRITE OFFSET: " << m_write_offset
-//              << "; FILTER: " << +filter_algo << '\n';
-//    std::cout << "WIDTH BYTES: " << m_algo.get_linebytes_width() << " ; PIXEL SIZE: " << m_algo.get_pixel_bytesize()
-//              << '\n';
-  m_previous_line = m_write.data() + m_write_offset; // предыдущая дефильтрованная строка
-  m_read_offset += m_algo.get_linebytes_width() + sizeof(filter_algo); // учитываем фильтр-байт
-  m_write_offset += m_algo.get_linebytes_width();
+  //    std::cout << " - - READ OFFSET: " << m_read_offset << "; WRITE OFFSET: " << m_write_offset
+  //              << "; FILTER: " << +filter_algo << '\n';
+  //    std::cout << "WIDTH BYTES: " << m_algo.get_linebytes_width() << " ; PIXEL SIZE: " << m_algo.get_pixel_bytesize()
+  //              << '\n';
+  m_previous_line = m_current_line; // предыдущая дефильтрованная строка
+  m_read_offset +=
+      y_init + (m_algo.get_linebytes_width() + sizeof(filter_algo)) * (y_gap - y_init); // учитываем фильтр-байт
+  return m_current_line;
 }
+
+using unfilterer_0 = png::unfilterer<0u, 1u, 0u, 1u>;
+using unfilterer_1 = png::unfilterer<0u, 8u, 0u, 8u>;
 
 } // namespace png
 } // namespace csc

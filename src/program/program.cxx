@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
       png = png_executor.deserialize(i_pos->second, ignore_checksum);
 
       menu = png_executor.deserialize("./assets/buttons.png", true);
-      png_executor.prepare_to_present(png); // здесь происходит второй этап декодирования изображения
+      // png_executor.prepare_to_present_1(png); // здесь происходит второй этап декодирования изображения
       png_executor.prepare_to_present(menu);
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";

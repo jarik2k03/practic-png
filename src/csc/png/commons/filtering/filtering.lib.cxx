@@ -39,7 +39,9 @@ uint32_t filtering::get_pixel_bytesize() const noexcept {
 }
 
 void filtering::none(uint8_t* to, const uint8_t* current) const noexcept {
-  ::memcpy(to, current, m_linebytes_width); // копируем линию
+  for (uint32_t i = 0u; i < m_linebytes_width; ++i) {
+    to[i] = current[i];
+  }
 }
 
 void filtering::sub(uint8_t* to, const uint8_t* current) const noexcept {
@@ -108,5 +110,5 @@ void filtering::paeth(uint8_t* to, const uint8_t* current) const noexcept {
   }
 }
 
-}
-}
+} // namespace png
+} // namespace csc
