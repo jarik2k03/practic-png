@@ -21,6 +21,8 @@ import :utility;
 export import csc.png.picture;
 
 import csc.png.commons.chunk;
+import csc.png.commons.utility.pixel_formats;
+
 import csc.png.deserializer.unfilterer;
 import csc.png.deserializer.consume_chunk;
 import csc.png.deserializer.consume_chunk.inflater;
@@ -32,7 +34,6 @@ class deserializer_impl {
  public:
   png::picture do_deserialize(std::string_view filepath, bool ignore_checksum);
   void do_prepare_to_present(png::picture& deserialized);
-  void do_prepare_to_present_1(png::picture& deserialized);
 };
 
 png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool ignore_checksum) {
@@ -78,47 +79,39 @@ png::picture deserializer_impl::do_deserialize(std::string_view filepath, bool i
   return image;
 }
 
-void deserializer_impl::do_prepare_to_present_1(png::picture& deserialized) {
-  auto& ihdr = deserialized.header();
-  const png::IHDR src_ihdr = deserialized.header();
-  auto& filtered = deserialized.m_image_data;
-
-  auto channels_count = png::channels_count_from_color_type(ihdr.color_type);
-  const auto ceil_pixel_bytesize = channels_count * static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f));
-
-  /* первая волна */
-  constexpr const auto x_init = 0u, x_jump = 8u, y_init = 0u, y_jump = 8u;
-
-  auto interlace_width = (src_ihdr.width - x_init + x_jump - 1) / x_jump;
-  auto width_bytes = static_cast<uint32_t>(::ceilf(interlace_width * ceil_pixel_bytesize));
-  auto interlace_height = (src_ihdr.height - y_init + y_jump - 1) / y_jump;
-  std::vector<uint8_t> unfiltered_image(interlace_width * interlace_height * channels_count);
-
-  png::unfilterer_1 decoder_1(filtered, width_bytes, ceil_pixel_bytesize);
-  for (auto height = y_init; height < src_ihdr.height; height += y_jump) {
-    const auto& prod = decoder_1.unfilter_line();
-
-  }
-  ihdr.width = interlace_width, ihdr.height = interlace_height;
-
-  // теперь вместо фильтрованного изображения будет лежать нефильтрованное
-  deserialized.m_image_data = std::move(unfiltered_image);
-}
-
 void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
   const auto& ihdr = deserialized.header();
   auto& filtered = deserialized.m_image_data;
 
   auto channels_count = png::channels_count_from_color_type(ihdr.color_type);
   const auto ceil_pixel_bytesize = channels_count * static_cast<uint32_t>(std::ceilf(ihdr.bit_depth / 8.f));
-  const auto width_bytes = static_cast<uint32_t>(::ceilf(ihdr.width * ceil_pixel_bytesize));
 
-  std::vector<uint8_t> unfiltered_image(width_bytes * ihdr.height);
+  std::vector<uint8_t> unfiltered_image(ihdr.width * ihdr.height * ceil_pixel_bytesize);
+  constexpr const uint8_t x_inits[] = {0, 0, 4, 0, 2, 0, 1, 0};
+  constexpr const uint8_t x_jumps[] = {1, 8, 8, 4, 4, 2, 2, 1};
+  constexpr const uint8_t y_inits[] = {0, 0, 0, 4, 0, 2, 0, 1};
+  constexpr const uint8_t y_jumps[] = {1, 8, 8, 8, 4, 4, 2, 2};
 
-  png::unfilterer_0 decoder(filtered, width_bytes, ceil_pixel_bytesize);
-  for (auto write_offset = 0u; write_offset < width_bytes * ihdr.height; write_offset += width_bytes) {
-    const auto& prod = decoder.unfilter_line();
-    ::memcpy(unfiltered_image.data() + write_offset, prod.data(), prod.size());
+  const uint32_t pass_begin = (ihdr.interlace == png::e_interlace::adam7) ? 1u : 0u;
+  const uint32_t pass_count = (ihdr.interlace == png::e_interlace::adam7) ? 8u : 1u;
+  png::unfilterer decoder(filtered, ihdr.bit_depth);
+
+  for (uint32_t pass = pass_begin; pass < pass_count; ++pass) { // без adam7 - выполнится один раз, с ним - семь
+    const auto x_init = x_inits[pass], x_jump = x_jumps[pass], y_init = y_inits[pass], y_jump = y_jumps[pass];
+    const auto interlace_width = (ihdr.width - x_init + x_jump - 1) / x_jump;
+    const auto read_width_bytes = static_cast<uint32_t>(::ceilf(interlace_width * ceil_pixel_bytesize));
+    const auto write_width_bytes = static_cast<uint32_t>(::ceilf(ihdr.width * ceil_pixel_bytesize));
+    decoder.switch_context(read_width_bytes, ceil_pixel_bytesize);
+
+    for (uint32_t y = y_init; y < ihdr.height; y += y_jump) {
+      const auto write_offset = write_width_bytes * y;
+      const auto& prod = decoder.unfilter_line();
+
+      for (uint32_t x = 0u; x < prod.size(); x += ceil_pixel_bytesize) {
+        const auto init_offset = x_init * ceil_pixel_bytesize;
+        ::memcpy(&unfiltered_image[write_offset + init_offset + x * x_jump], &prod[x], ceil_pixel_bytesize);
+      }
+    }
   }
   // теперь вместо фильтрованного изображения будет лежать нефильтрованное
   deserialized.m_image_data = std::move(unfiltered_image);

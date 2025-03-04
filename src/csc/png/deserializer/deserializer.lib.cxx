@@ -21,9 +21,6 @@ class deserializer : private deserializer_impl {
   void prepare_to_present(png::picture& deserialized) {
     do_prepare_to_present(deserialized);
   }
-  void prepare_to_present_1(png::picture& deserialized) {
-    do_prepare_to_present_1(deserialized);
-  }
 };
 
 } // namespace png

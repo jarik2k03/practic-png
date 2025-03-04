@@ -1,6 +1,7 @@
 module;
 
 #include <cstdint>
+#include <cstring>
 export module csc.png.commons.utility.pixel_formats;
 
 export namespace csc {

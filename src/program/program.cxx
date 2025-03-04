@@ -129,6 +129,7 @@ int main(int argc, char** argv) {
       menu = png_executor.deserialize("./assets/buttons.png", true);
       png_executor.prepare_to_present(png); // здесь происходит второй этап декодирования изображения
       png_executor.prepare_to_present(menu);
+      // ::exit(0);
       // движок на Vulkan для рендеринга картинки
       std::cout << "Инициализация экземпляра Vulkan... \n";
       csc::wnd::glfw_handler glfw_instance;

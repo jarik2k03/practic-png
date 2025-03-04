@@ -15,7 +15,7 @@ class filtering {
   uint32_t m_linebytes_width;
 
  public:
-  filtering() = delete;
+  filtering() = default;
   filtering(uint32_t pixel_bytesize, uint32_t linebytes_width)
       : m_pixel_bytesize(pixel_bytesize), m_linebytes_width(linebytes_width) {
   }
