@@ -11,7 +11,7 @@ module;
 #include <shaders_scaling.h>
 #include <shaders_rotating.h>
 
-#define IMG_FORMAT vk::Format::eR8Unorm
+#define IMG_FORMAT vk::Format::eR8G8B8A8Unorm
 export module csc.pngine.image_manipulator;
 
 import csc.pngine.commons.toolbox_params;

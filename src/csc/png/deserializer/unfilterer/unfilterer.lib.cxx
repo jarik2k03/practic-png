@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <iostream>
+#include <cstring>
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 export module csc.png.deserializer.unfilterer;
@@ -124,7 +125,7 @@ class unfilterer {
         m_algo(pixel_bytesize, byteline_count),
         m_current_line(byteline_count),
         m_previous_line(byteline_count) {
-    m_normalized_readline.reserve(byteline_count + 1u);
+    m_normalized_readline.resize(byteline_count + 1u);
   }
   std::vector<uint8_t>& unfilter_line();
 };
@@ -132,8 +133,7 @@ class unfilterer {
 template <uint32_t x_init, uint32_t x_gap, uint32_t y_init, uint32_t y_gap>
 std::vector<uint8_t>& unfilterer<x_init, x_gap, y_init, y_gap>::unfilter_line() {
   const auto filter_algo = static_cast<png::e_filter_types>(m_read[m_read_offset]);
-  const auto rng = std::ranges::subrange(m_read.cbegin() + m_read_offset + 1u, m_read.cend());
-  m_normalized_readline.clear(), std::ranges::copy(rng, std::back_inserter(m_normalized_readline));
+  ::memcpy(m_normalized_readline.data(), m_read.data() + m_read_offset + 1u, m_algo.get_linebytes_width());
 
   switch (filter_algo) {
     case e_filter_types::none:

@@ -4,6 +4,7 @@ module;
 #include <bits/stl_algo.h>
 #include <bits/ranges_algo.h>
 #include <cmath>
+#include <cstring>
 #include <cstdint>
 export module csc.png.deserializer:impl;
 import stl.string_view;
@@ -115,11 +116,9 @@ void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
   std::vector<uint8_t> unfiltered_image(width_bytes * ihdr.height);
 
   png::unfilterer_0 decoder(filtered, width_bytes, ceil_pixel_bytesize);
-  for (auto height = 0u; height < ihdr.height; height += 1u) {
+  for (auto write_offset = 0u; write_offset < width_bytes * ihdr.height; write_offset += width_bytes) {
     const auto& prod = decoder.unfilter_line();
-    for (uint32_t idx = 0u; idx < prod.size(); ++idx) {
-       unfiltered_image[height * ihdr.height + idx] = prod[idx];
-    }
+    ::memcpy(unfiltered_image.data() + write_offset, prod.data(), prod.size());
   }
   // теперь вместо фильтрованного изображения будет лежать нефильтрованное
   deserialized.m_image_data = std::move(unfiltered_image);
