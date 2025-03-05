@@ -94,7 +94,7 @@ void deserializer_impl::do_prepare_to_present(png::picture& deserialized) {
 
   const uint32_t pass_begin = (ihdr.interlace == png::e_interlace::adam7) ? 1u : 0u;
   const uint32_t pass_count = (ihdr.interlace == png::e_interlace::adam7) ? 8u : 1u;
-  png::unfilterer decoder(filtered, ihdr.bit_depth);
+  png::unfilterer decoder(filtered, std::clamp(static_cast<uint32_t>(ihdr.bit_depth), 0u, 8u));
 
   for (uint32_t pass = pass_begin; pass < pass_count; ++pass) { // без adam7 - выполнится один раз, с ним - семь
     const auto x_init = x_inits[pass], x_jump = x_jumps[pass], y_init = y_inits[pass], y_jump = y_jumps[pass];

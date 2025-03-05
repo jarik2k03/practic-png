@@ -15,31 +15,30 @@ import stl.vector;
 export namespace csc {
 namespace png {
 
-
-void normalize_readline(uint8_t* dst, const uint8_t* src, uint32_t size, uint8_t src_bit_depth) {
-    const uint32_t packed_count = (8u / std::clamp(static_cast<uint32_t>(src_bit_depth), 0u, 8u));
-    for (uint32_t idx = 0u; idx < size; ++idx) {
-        const uint8_t px = src[idx];
-        const uint32_t p = idx * packed_count;
-        switch (src_bit_depth) {
-            case 1:
-             dst[p + 0] = (px >> 7 & 0x1) * 255, dst[p + 1] = (px >> 6 & 0x1) * 255;
-             dst[p + 2] = (px >> 5 & 0x1) * 255, dst[p + 3] = (px >> 4 & 0x1) * 255;
-             dst[p + 4] = (px >> 3 & 0x1) * 255, dst[p + 5] = (px >> 2 & 0x1) * 255;
-             dst[p + 6] = (px >> 1 & 0x1) * 255, dst[p + 7] = (px >> 0 & 0x1) * 255;
-             break;
-            case 2:
-             dst[p + 0] = (px >> 6 & 0b0011) * 64, dst[p + 1] = (px >> 4 & 0b0011) * 64;
-             dst[p + 2] = (px >> 2 & 0b0011) * 64, dst[p + 3] = (px >> 0 & 0b0011) * 64;
-             break;
-            case 4:
-             dst[p + 0] = (px >> 4 & 0b1111) * 16, dst[p + 1] = (px >> 0 & 0b1111) * 16;
-             break;
-            default:
-             dst[p + 0] = px;
-             break;
-        }
+void normalize_readline(uint8_t* dst, const uint8_t* src, uint32_t size, uint8_t clamped_bit_depth) {
+  const uint32_t packed_count = (8u / clamped_bit_depth);
+  for (uint32_t idx = 0u; idx < size; ++idx) {
+    const uint8_t px = src[idx];
+    const uint32_t p = idx * packed_count;
+    switch (clamped_bit_depth) {
+      case 1:
+        dst[p + 0] = (px >> 7 & 0x1) * 255, dst[p + 1] = (px >> 6 & 0x1) * 255;
+        dst[p + 2] = (px >> 5 & 0x1) * 255, dst[p + 3] = (px >> 4 & 0x1) * 255;
+        dst[p + 4] = (px >> 3 & 0x1) * 255, dst[p + 5] = (px >> 2 & 0x1) * 255;
+        dst[p + 6] = (px >> 1 & 0x1) * 255, dst[p + 7] = (px >> 0 & 0x1) * 255;
+        break;
+      case 2:
+        dst[p + 0] = (px >> 6 & 0b0011) * 64, dst[p + 1] = (px >> 4 & 0b0011) * 64;
+        dst[p + 2] = (px >> 2 & 0b0011) * 64, dst[p + 3] = (px >> 0 & 0b0011) * 64;
+        break;
+      case 4:
+        dst[p + 0] = (px >> 4 & 0b1111) * 16, dst[p + 1] = (px >> 0 & 0b1111) * 16;
+        break;
+      default:
+        dst[p + 0] = px;
+        break;
     }
+  }
 }
 
 class unfilterer {
@@ -57,7 +56,8 @@ class unfilterer {
 
  public:
   unfilterer() = delete;
-  unfilterer(std::vector<uint8_t>& read, uint8_t bit_depth) : m_read(read), m_bit_depth(bit_depth) {}
+  unfilterer(std::vector<uint8_t>& read, uint8_t bit_depth) : m_read(read), m_bit_depth(bit_depth) {
+  }
   unfilterer(std::vector<uint8_t>& read, uint32_t byteline_count, uint32_t pixel_bytesize, uint8_t bit_depth)
       : m_read(read),
         m_bit_depth(bit_depth),
@@ -80,7 +80,8 @@ class unfilterer {
 
 std::vector<uint8_t>& unfilterer::unfilter_line() {
   const auto filter_algo = static_cast<png::e_filter_types>(m_read[m_read_offset]);
-  png::normalize_readline(m_normalized_readline.data(), m_read.data() + m_read_offset + 1u, m_algo.get_linebytes_width(), m_bit_depth);
+  uint8_t *begin = m_normalized_readline.data(), *end = m_read.data() + m_read_offset + 1u;
+  png::normalize_readline(begin, end, m_algo.get_linebytes_width(m_bit_depth), m_bit_depth);
 
   switch (filter_algo) {
     case e_filter_types::none:
@@ -112,7 +113,7 @@ std::vector<uint8_t>& unfilterer::unfilter_line() {
       break;
   }
   ::memcpy(m_previous_line.data(), m_current_line.data(), m_current_line.size()); // предыдущая дефильтрованная строка
-  m_read_offset += (m_algo.get_linebytes_width() + sizeof(filter_algo)); // учитываем фильтр-байт
+  m_read_offset += (m_algo.get_linebytes_width(m_bit_depth) + sizeof(filter_algo)); // учитываем фильтр-байт
   return m_current_line;
 }
 

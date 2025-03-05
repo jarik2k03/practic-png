@@ -2,6 +2,7 @@ module;
 
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 export module csc.png.commons.filtering;
 
 export import :attributes;
@@ -19,7 +20,7 @@ class filtering {
   filtering(uint32_t pixel_bytesize, uint32_t linebytes_width)
       : m_pixel_bytesize(pixel_bytesize), m_linebytes_width(linebytes_width) {
   }
-  uint32_t get_linebytes_width() const noexcept;
+  uint32_t get_linebytes_width(uint32_t clamped_bit_depth) const noexcept;
   uint32_t get_pixel_bytesize() const noexcept;
 
   void none(uint8_t* to, const uint8_t* current) const noexcept;
@@ -31,8 +32,8 @@ class filtering {
   void paeth(uint8_t* to, const uint8_t* current) const noexcept;
 };
 
-uint32_t filtering::get_linebytes_width() const noexcept {
-  return m_linebytes_width;
+uint32_t filtering::get_linebytes_width(uint32_t clamped_bit_depth) const noexcept {
+  return static_cast<uint32_t>(::ceilf(static_cast<float>(m_linebytes_width) / (8u / clamped_bit_depth)));
 }
 uint32_t filtering::get_pixel_bytesize() const noexcept {
   return m_pixel_bytesize;
